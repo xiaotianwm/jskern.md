@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -55,6 +57,113 @@ func TestOpenDocumentRejectsOutsideWorkspace(t *testing.T) {
 	}
 	if _, err := app.OpenDocument(outside); err == nil {
 		t.Fatal("expected outside workspace document to be rejected")
+	}
+}
+
+func TestOpenDocumentRewritesLocalImagesAndMarkdownLinks(t *testing.T) {
+	dir := t.TempDir()
+	assetsDir := filepath.Join(dir, "assets")
+	if err := os.MkdirAll(assetsDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	imagePath := filepath.Join(assetsDir, "pic.png")
+	if err := os.WriteFile(imagePath, []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	nextPath := filepath.Join(dir, "next.md")
+	if err := os.WriteFile(nextPath, []byte("# Next\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outsideImage := filepath.Join(filepath.Dir(dir), "outside.png")
+	if err := os.WriteFile(outsideImage, []byte("outside"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	docPath := filepath.Join(dir, "README.md")
+	source := "# Home\n\n![local](./assets/pic.png)\n\n[Next](next.md#next)\n\n![outside](../outside.png)\n"
+	if err := os.WriteFile(docPath, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := app.OpenDocument(docPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(doc.HTML, `src="/kern-asset?path=assets%2Fpic.png"`) {
+		t.Fatalf("expected local image to use controlled asset URL, got %q", doc.HTML)
+	}
+	if !strings.Contains(doc.HTML, `data-kern-document="next.md"`) || !strings.Contains(doc.HTML, `data-kern-heading="next"`) {
+		t.Fatalf("expected markdown link data attributes, got %q", doc.HTML)
+	}
+	if strings.Contains(doc.HTML, "outside.png") {
+		t.Fatalf("expected outside image not to be rewritten or preserved, got %q", doc.HTML)
+	}
+}
+
+func TestOpenWorkspaceDocumentUsesWorkspaceRelativePath(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "next.md"), []byte("# Next\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(filepath.Dir(dir), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := app.OpenWorkspaceDocument("docs/next.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if doc.Title != "Next" {
+		t.Fatalf("expected linked document title, got %q", doc.Title)
+	}
+	if _, err := app.OpenWorkspaceDocument("../outside.md"); err == nil {
+		t.Fatal("expected relative path outside workspace to be rejected")
+	}
+}
+
+func TestAssetHandlerServesOnlyWorkspaceImages(t *testing.T) {
+	dir := t.TempDir()
+	imagePath := filepath.Join(dir, "pic.png")
+	imageBytes := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}
+	if err := os.WriteFile(imagePath, imageBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(filepath.Dir(dir), "outside.png")
+	if err := os.WriteFile(outside, imageBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/kern-asset?path=pic.png", nil)
+	rec := httptest.NewRecorder()
+	app.assetHandler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected asset status 200, got %d", rec.Code)
+	}
+	if rec.Body.String() != string(imageBytes) {
+		t.Fatalf("expected image bytes, got %q", rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/kern-asset?path=../outside.png", nil)
+	rec = httptest.NewRecorder()
+	app.assetHandler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected outside asset status 404, got %d", rec.Code)
 	}
 }
 

@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace, RestoreWorkspace} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
 type TreeNode = main.TreeNode;
@@ -71,6 +71,42 @@ function App() {
             setDocument(result);
         } finally {
             setDocumentBusy(false);
+        }
+    }
+
+    async function openLinkedDocument(path: string, heading: string) {
+        if (documentBusy) {
+            return;
+        }
+        setDocumentBusy(true);
+        try {
+            const result = await OpenWorkspaceDocument(path);
+            setSelectedPath(result.path);
+            setDocument(result);
+            if (heading) {
+                window.requestAnimationFrame(() => {
+                    globalThis.document.getElementById(heading)?.scrollIntoView({block: 'start'});
+                });
+            }
+        } finally {
+            setDocumentBusy(false);
+        }
+    }
+
+    function handleMarkdownClick(event: React.MouseEvent<HTMLDivElement>) {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+        const link = target.closest<HTMLAnchorElement>('a[data-kern-document]');
+        if (!link) {
+            return;
+        }
+        event.preventDefault();
+        const path = link.dataset.kernDocument ?? '';
+        const heading = link.dataset.kernHeading ?? '';
+        if (path) {
+            void openLinkedDocument(path, heading);
         }
     }
 
@@ -150,7 +186,7 @@ function App() {
                                 <h1>{document.title}</h1>
                                 <div className="document-path selectable-data">{document.path}</div>
                             </header>
-                            <div className="markdown-body" dangerouslySetInnerHTML={{__html: document.html}}/>
+                            <div className="markdown-body" onClick={handleMarkdownClick} dangerouslySetInnerHTML={{__html: document.html}}/>
                         </div>
                     ) : (
                         <div className="reader-placeholder" aria-busy={documentBusy}>

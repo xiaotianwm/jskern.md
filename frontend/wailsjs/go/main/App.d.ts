@@ -8,6 +8,8 @@ export function OpenDocument(arg1:string):Promise<main.Document>;
 
 export function OpenWorkspace():Promise<main.WorkspaceTree>;
 
+export function OpenWorkspaceDocument(arg1:string):Promise<main.Document>;
+
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
 
 export function ScanWorkspace(arg1:string):Promise<main.WorkspaceTree>;

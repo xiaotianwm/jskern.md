@@ -4,6 +4,35 @@
 
 ### Added
 
+- Added a Go-controlled `/kern-asset` endpoint through the Wails asset server for local Markdown images.
+- Added Markdown AST rewriting for workspace-local bitmap image references.
+- Added Markdown AST rewriting for relative Markdown document links.
+- Added `OpenWorkspaceDocument(path)` Wails API for opening workspace-relative Markdown links.
+- Added frontend Markdown click handling for links marked with `data-kern-document`.
+- Added image sizing styles for rendered Markdown images.
+- Added Go tests for local image rewriting, relative Markdown link rewriting, workspace-relative document opening, and asset endpoint path rejection.
+
+### Changed
+
+- `OpenDocument(path)` now renders Markdown through the App instance so it can resolve workspace-local resources.
+- Workspace-local image serving now streams files through Go instead of embedding image bytes in JSON.
+- Workspace-relative document links now round-trip through Go path validation instead of letting the WebView resolve local paths.
+- SVG images are intentionally not served in this first local asset pass; bitmap formats are supported first.
+
+### Validation
+
+- Local image and relative Markdown link support:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
+### Added
+
 - Added Go-managed AppData initialization for the `jskernmd` data root.
 - Added the required local storage layout:
   - `config/`

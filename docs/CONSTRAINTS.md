@@ -28,6 +28,8 @@
 - Rendered Markdown must be sanitized before entering the frontend.
 - Physical paths must use `path/filepath`; no string-concatenated paths.
 - Large files and assets must use IDs, controlled URLs, or streaming paths instead of base64 JSON payloads.
+- Local Markdown images must be served through a Go-controlled workspace asset endpoint, not embedded as base64 and not read by React.
+- Relative Markdown document links must be resolved by Go against the current workspace before opening.
 - App configuration and durable reader state must be stored by Go under the system app data root for `jskernmd`; on Windows this is `%APPDATA%\jskernmd`.
 - The last opened workspace directory must be persisted and restored on startup so users do not need to reopen the same folder every launch.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.

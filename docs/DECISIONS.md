@@ -29,3 +29,9 @@ Consequence: `PROJECT_STATE.md`, `DECISIONS.md`, and `CHANGELOG.md` must be upda
 Reason: A directory-tree reader should reopen the last reading workspace automatically instead of making the user choose the same folder every launch.
 
 Consequence: Go owns `%APPDATA%\jskernmd` on Windows and the equivalent system config directory on other platforms. `settings.json` must remain versioned and store `last_workspace`; React must not use browser storage for this durable path state.
+
+## 2026-07-07: Serve Local Markdown Assets Through Go
+
+Reason: Folder-based Markdown libraries commonly use relative images and cross-document links, but React must not read local files or trust relative paths.
+
+Consequence: Markdown rendering rewrites local bitmap images to a Go-controlled `/kern-asset` URL and rewrites relative Markdown links to workspace-relative document actions. Go validates every resolved path against the current workspace before serving or opening it.

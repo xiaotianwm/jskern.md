@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore.
+Readable Markdown document MVP loop with persisted workspace restore and local relative resource support.
 
 ## Done
 
@@ -36,10 +36,12 @@ Readable Markdown document MVP loop with persisted workspace restore.
 - Opening a workspace persists the directory path through Go-managed settings.
 - Startup now restores the last valid workspace directory tree without expanding child directories.
 - Invalid `settings.json` files are backed up as `.bad-*` before default settings are restored.
+- Local relative Markdown images now render through a Go-controlled `/kern-asset` endpoint.
+- Relative Markdown document links now open through `OpenWorkspaceDocument(path)`.
+- Local image and Markdown link resolution remains restricted to the current workspace and rejects path escapes.
 
 ## Next
 
-- Add local image and relative link resolver.
 - Add Shiki code highlighting.
 - Add theme and language switching APIs.
 - Add user-visible error display for failed document loads.
@@ -47,10 +49,10 @@ Readable Markdown document MVP loop with persisted workspace restore.
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
-- Local relative images and links are not resolved through a Go asset endpoint yet.
 - Code blocks render as plain code until Shiki is integrated.
 - Failed document opens currently keep the previous document without a visible error panel.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
+- SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 
 ## Validation
 
@@ -79,4 +81,11 @@ Readable Markdown document MVP loop with persisted workspace restore.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
   - AppData smoke check passed: `C:\Users\cool\AppData\Roaming\jskernmd\config\settings.json` was created with `storage_version: 1`.
+- Latest validation after local image and relative Markdown link support:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.

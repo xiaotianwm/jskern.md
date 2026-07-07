@@ -14,6 +14,10 @@ export function OpenWorkspace() {
   return window['go']['main']['App']['OpenWorkspace']();
 }
 
+export function OpenWorkspaceDocument(arg1) {
+  return window['go']['main']['App']['OpenWorkspaceDocument'](arg1);
+}
+
 export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
 }

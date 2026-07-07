@@ -5,6 +5,7 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -32,6 +33,10 @@ type App struct {
 	appDataRoot       string
 	settingsPath      string
 	settings          Settings
+}
+
+type workspaceAssetHandler struct {
+	app *App
 }
 
 type ProductInfo struct {
@@ -184,7 +189,15 @@ func (a *App) OpenDocument(path string) (*Document, error) {
 	if !a.isWithinWorkspace(abs) {
 		return nil, errors.New("document is outside the current workspace")
 	}
-	return renderMarkdownDocument(abs)
+	return a.renderMarkdownDocument(abs)
+}
+
+func (a *App) OpenWorkspaceDocument(path string) (*Document, error) {
+	abs, err := a.workspacePath(path)
+	if err != nil {
+		return nil, err
+	}
+	return a.OpenDocument(abs)
 }
 
 func (a *App) isWithinWorkspace(path string) bool {
@@ -212,6 +225,64 @@ func (a *App) isWithinWorkspace(path string) bool {
 		return false
 	}
 	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
+}
+
+func (a *App) workspacePath(path string) (string, error) {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" {
+		return "", errors.New("workspace is not open")
+	}
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("empty workspace path")
+	}
+	localPath := filepath.Clean(filepath.FromSlash(path))
+	if filepath.IsAbs(localPath) || localPath == ".." || strings.HasPrefix(localPath, ".."+string(filepath.Separator)) {
+		return "", errors.New("workspace path is outside the current workspace")
+	}
+	return filepath.Join(root, localPath), nil
+}
+
+func (a *App) workspaceRelativePath(path string) (string, bool) {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" {
+		return "", false
+	}
+	rel, err := filepath.Rel(root, filepath.Clean(path))
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
+}
+
+func (a *App) assetHandler() http.Handler {
+	return workspaceAssetHandler{app: a}
+}
+
+func (h workspaceAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/kern-asset" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	target, err := h.app.workspacePath(r.URL.Query().Get("path"))
+	if err != nil || !h.app.isWithinWorkspace(target) || !isImageFile(target) {
+		http.NotFound(w, r)
+		return
+	}
+	info, err := os.Stat(target)
+	if err != nil || info.IsDir() {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	http.ServeFile(w, r, target)
 }
 
 func normalizeLocale(locale string) string {
@@ -414,4 +485,13 @@ func shouldSkipEntry(name string, isDir bool) bool {
 func isMarkdownFile(name string) bool {
 	ext := strings.ToLower(filepath.Ext(name))
 	return ext == ".md" || ext == ".markdown" || ext == ".mdown"
+}
+
+func isImageFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif":
+		return true
+	default:
+		return false
+	}
 }

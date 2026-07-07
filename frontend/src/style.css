@@ -377,6 +377,14 @@ a {
     text-decoration: underline;
 }
 
+.markdown-body img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 16px 0;
+    border-radius: 6px;
+}
+
 .markdown-body blockquote {
     padding-left: 12px;
     border-left: 3px solid var(--border-input);

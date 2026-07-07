@@ -26,7 +26,8 @@ func main() {
 		MinHeight: 620,
 		Frameless: true,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:  assets,
+			Handler: app.assetHandler(),
 		},
 		BackgroundColour:         &options.RGBA{R: 15, G: 15, B: 17, A: 1},
 		OnStartup:                app.startup,

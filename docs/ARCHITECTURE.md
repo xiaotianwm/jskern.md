@@ -38,6 +38,8 @@ workspace folder
 -> Go reads Markdown file
 -> Go parses with goldmark
 -> Go sanitizes HTML / structured document data
+-> Go rewrites safe local images to controlled asset URLs
+-> Go rewrites relative Markdown links to workspace-relative document actions
 -> React renders reading view
 -> Shiki highlights code blocks
 ```
@@ -60,10 +62,10 @@ Supported initial locales: `zh-CN`, `en`.
 - `ScanWorkspace(path)`
 - `RestoreWorkspace()`
 - `OpenDocument(path)`
+- `OpenWorkspaceDocument(path)`
 
 Planned APIs:
 
-- `ResolveAsset(path)`
 - `GetOutline(path)`
 - `SearchWorkspace(query)`
 - `SwitchLanguage(locale)`
@@ -93,3 +95,15 @@ jskernmd/
 ```
 
 `settings.json` stores `storage_version` and `last_workspace`. Startup calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
+
+## Local Resources
+
+Markdown rendering rewrites local bitmap images to:
+
+```text
+/kern-asset?path=<workspace-relative-path>
+```
+
+The Wails asset server forwards this path to a Go handler. The handler resolves the path against the current workspace, validates the real path is still inside the workspace, and streams only supported bitmap image files.
+
+Relative Markdown document links are rendered with `data-kern-document` and opened through `OpenWorkspaceDocument(path)`. React does not resolve filesystem paths; it only forwards the workspace-relative path back to Go.
