@@ -14,4 +14,6 @@ export function RestoreWorkspace():Promise<main.WorkspaceTree>;
 
 export function ScanWorkspace(arg1:string):Promise<main.WorkspaceTree>;
 
+export function SearchWorkspace(arg1:string):Promise<Array<main.SearchResult>>;
+
 export function StatDocument(arg1:string,arg2:number,arg3:number):Promise<main.DocumentStatus>;

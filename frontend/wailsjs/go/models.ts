@@ -175,6 +175,26 @@ export namespace main {
 	
 	
 	
+	export class SearchResult {
+	    path: string;
+	    name: string;
+	    relativePath: string;
+	    kind: string;
+	    snippet: string;
+
+	    static createFrom(source: any = {}) {
+	        return new SearchResult(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.relativePath = source["relativePath"];
+	        this.kind = source["kind"];
+	        this.snippet = source["snippet"];
+	    }
+	}
 	export class TreeNode {
 	    name: string;
 	    path: string;
@@ -243,4 +263,3 @@ export namespace main {
 	}
 
 }
-

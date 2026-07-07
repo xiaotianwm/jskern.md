@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, StatDocument} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -9,6 +9,7 @@ type Bootstrap = main.Bootstrap;
 type Document = main.Document;
 type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
+type SearchResult = main.SearchResult;
 
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
@@ -21,8 +22,17 @@ function App() {
     const [documentError, setDocumentError] = useState('');
     const [staleStatus, setStaleStatus] = useState<DocumentStatus | null>(null);
     const [dismissedStatusKey, setDismissedStatusKey] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [searchBusy, setSearchBusy] = useState(false);
+    const [searchError, setSearchError] = useState('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
+    const searchRequestRef = useRef(0);
+    const shell = bootstrap?.shellLocale ?? {};
+    const text = bootstrap?.businessLocale ?? {};
+    const product = bootstrap?.product;
+    const brand = product?.brandParts;
 
     useEffect(() => {
         let cancelled = false;
@@ -95,10 +105,43 @@ function App() {
         };
     }, [dismissedStatusKey, document, documentBusy]);
 
-    const shell = bootstrap?.shellLocale ?? {};
-    const text = bootstrap?.businessLocale ?? {};
-    const product = bootstrap?.product;
-    const brand = product?.brandParts;
+    useEffect(() => {
+        const query = searchQuery.trim();
+        const requestId = searchRequestRef.current + 1;
+        searchRequestRef.current = requestId;
+        if (!tree || Array.from(query).length < 2) {
+            setSearchResults([]);
+            setSearchBusy(false);
+            setSearchError('');
+            return;
+        }
+
+        const timeoutId = window.setTimeout(() => {
+            setSearchBusy(true);
+            setSearchError('');
+            void SearchWorkspace(query)
+                .then(results => {
+                    if (searchRequestRef.current === requestId) {
+                        setSearchResults(results ?? []);
+                    }
+                })
+                .catch(error => {
+                    if (searchRequestRef.current === requestId) {
+                        setSearchResults([]);
+                        setSearchError(errorMessage(error, text['search.error']));
+                    }
+                })
+                .finally(() => {
+                    if (searchRequestRef.current === requestId) {
+                        setSearchBusy(false);
+                    }
+                });
+        }, 180);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [searchQuery, text, tree]);
 
     async function openWorkspace() {
         if (busy) {
@@ -114,6 +157,9 @@ function App() {
                 setDocumentError('');
                 setStaleStatus(null);
                 setDismissedStatusKey('');
+                setSearchQuery('');
+                setSearchResults([]);
+                setSearchError('');
                 setExpandedPaths(new Set([result.root.path]));
             }
         } finally {
@@ -209,6 +255,25 @@ function App() {
         setStaleStatus(null);
     }
 
+    async function openSearchResult(result: SearchResult) {
+        await openDocument(result.path);
+        setSearchQuery('');
+        setSearchResults([]);
+        setSearchError('');
+    }
+
+    function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (event.key === 'Enter' && searchResults.length > 0) {
+            event.preventDefault();
+            void openSearchResult(searchResults[0]);
+        }
+        if (event.key === 'Escape') {
+            setSearchQuery('');
+            setSearchResults([]);
+            setSearchError('');
+        }
+    }
+
     function scheduleReaderPosition(heading = '') {
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -236,6 +301,7 @@ function App() {
     }
 
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
+    const showSearchPanel = searchQuery.trim().length >= 2 && hasWorkspace;
 
     if (!bootstrap) {
         return <div className="boot-frame"/>;
@@ -263,6 +329,49 @@ function App() {
                 <button type="button" className="primary-action" onClick={openWorkspace} disabled={busy}>
                     {text['action.open_workspace']}
                 </button>
+                <div className="search-box">
+                    <input
+                        className="search-input"
+                        type="text"
+                        value={searchQuery}
+                        placeholder={text['search.placeholder']}
+                        aria-label={text['search.placeholder']}
+                        disabled={!hasWorkspace}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        onChange={event => setSearchQuery(event.currentTarget.value)}
+                        onKeyDown={handleSearchKeyDown}
+                    />
+                    {showSearchPanel ? (
+                        <div className="search-results">
+                            {searchBusy ? (
+                                <div className="search-state">{text['search.loading']}</div>
+                            ) : searchError ? (
+                                <div className="search-state error-text">{searchError}</div>
+                            ) : searchResults.length ? (
+                                searchResults.map((result, index) => (
+                                    <button
+                                        type="button"
+                                        key={`${result.kind}-${result.path}-${index}`}
+                                        className="search-result-row"
+                                        onClick={() => openSearchResult(result)}
+                                    >
+                                        <span className="search-result-kind">{text[`search.${result.kind}`]}</span>
+                                        <span className="search-result-main">
+                                            <span className="search-result-name">{result.name}</span>
+                                            <span className="search-result-path">{result.relativePath}</span>
+                                            {result.snippet ? <span className="search-result-snippet">{result.snippet}</span> : null}
+                                        </span>
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="search-state">{text['search.empty']}</div>
+                            )}
+                        </div>
+                    ) : null}
+                </div>
                 <span className="status-line">{text['status.reader_first']}</span>
             </section>
 

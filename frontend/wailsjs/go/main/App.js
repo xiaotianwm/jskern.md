@@ -26,6 +26,10 @@ export function ScanWorkspace(arg1) {
   return window['go']['main']['App']['ScanWorkspace'](arg1);
 }
 
+export function SearchWorkspace(arg1) {
+  return window['go']['main']['App']['SearchWorkspace'](arg1);
+}
+
 export function StatDocument(arg1, arg2, arg3) {
   return window['go']['main']['App']['StatDocument'](arg1, arg2, arg3);
 }

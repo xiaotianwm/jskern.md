@@ -69,11 +69,11 @@ Supported initial locales: `zh-CN`, `en`.
 - `OpenDocument(path)`
 - `OpenWorkspaceDocument(path)`
 - `StatDocument(path, knownModifiedAt, knownSize)`
+- `SearchWorkspace(query)`
 
 Planned APIs:
 
 - `GetOutline(path)`
-- `SearchWorkspace(query)`
 - `SwitchLanguage(locale)`
 - `SwitchTheme(mode)`
 

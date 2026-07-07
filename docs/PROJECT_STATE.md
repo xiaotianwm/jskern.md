@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, Shiki code highlighting, product app icon assets, and document status notices.
+Readable Markdown document MVP loop with persisted workspace restore, workspace search, local relative resource support, Shiki code highlighting, product app icon assets, and document status notices.
 
 ## Done
 
@@ -51,15 +51,20 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
 - The external-change reminder lets the user reload the current document or dismiss the current changed snapshot.
 - External-change reminders now float at the bottom of the center reader area so they remain visible at any document scroll position.
 - Opening a document from the tree or reloading it now resets the center reader position instantly, without visible scroll animation.
+- Added `SearchWorkspace(query)` as a Go-owned Wails API for Markdown file-name, relative-path, and body-text search.
+- Workspace search is bounded, skips hidden/heavy folders, caps results at 50, and returns lightweight result metadata plus snippets.
+- Toolbar search now calls Go through Wails with debounce and stale-response protection; Enter opens the first result and Escape clears the search.
+- Search UI text is localized through Go-owned `zh-CN` and `en` dictionaries.
 
 ## Next
 
 - Add theme and language switching APIs.
-- Add search across the current workspace.
+- Add in-document find for the currently opened Markdown file.
 
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
+- Workspace search is currently an on-demand scan rather than an indexed search database.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
@@ -130,5 +135,12 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
   - `go test ./...` passed.
   - `npm.cmd run build` passed.
   - Initial `npm.cmd audit --audit-level=moderate` hit an npm registry `ECONNRESET`; retrying through `127.0.0.1:10808` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after workspace search:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

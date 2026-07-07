@@ -9,6 +9,12 @@
   "business": {
     "app.subtitle": "桌面端 Markdown 阅读器",
     "action.open_workspace": "打开文件夹",
+    "search.placeholder": "搜索当前工作区",
+    "search.loading": "正在搜索",
+    "search.empty": "没有找到匹配的文档",
+    "search.file": "文件",
+    "search.content": "正文",
+    "search.error": "搜索失败",
     "panel.workspace": "工作区",
     "panel.outline": "大纲",
     "empty.workspace": "打开一个包含 Markdown 的文件夹开始阅读",

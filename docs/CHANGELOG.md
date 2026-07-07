@@ -2,6 +2,35 @@
 
 ## 2026-07-07
 
+### Added
+
+- Added `SearchWorkspace(query)` as a Go-owned Wails API for workspace Markdown search.
+- Added bounded on-demand Markdown search across the current workspace:
+  - matches Markdown file names and workspace-relative paths
+  - matches document body text and returns a compact snippet
+  - skips hidden entries and heavy folders such as `node_modules`, `dist`, `build`, and `vendor`
+  - keeps search results capped at 50 items
+- Added Go tests for file-name hits, content hits, skipped folders, and searching without an open workspace.
+- Added a toolbar search input with debounced Wails calls, stale-response protection, keyboard Enter/Escape handling, and click-to-open results.
+- Added localized search UI text in `zh-CN` and `en`.
+- Regenerated Wails frontend bindings for the new `SearchResult` model and `SearchWorkspace` API.
+
+### Changed
+
+- Moved `SearchWorkspace(query)` from planned architecture work into the implemented Wails API surface.
+
+### Validation
+
+- Workspace search:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ### Changed
 
 - Reader position changes are now direct offset assignments instead of browser scroll animations.

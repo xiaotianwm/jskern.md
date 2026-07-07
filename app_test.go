@@ -217,6 +217,58 @@ func TestStatDocumentRejectsOutsideWorkspace(t *testing.T) {
 	}
 }
 
+func TestSearchWorkspaceFindsFileNamesAndContent(t *testing.T) {
+	dir := t.TempDir()
+	docs := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(docs, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# Home\n\nNeedle in the haystack.\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docs, "guide.md"), []byte("# Guide\n\nPlain content.\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	skipped := filepath.Join(dir, "node_modules")
+	if err := os.MkdirAll(skipped, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skipped, "needle.md"), []byte("# Should Skip\nNeedle\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	results, err := app.SearchWorkspace("needle")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 || results[0].Kind != "content" || results[0].Name != "README.md" {
+		t.Fatalf("expected one content hit in README.md, got %+v", results)
+	}
+	if strings.Contains(results[0].RelativePath, "node_modules") {
+		t.Fatalf("expected skipped directories to stay out of search results, got %+v", results)
+	}
+
+	results, err = app.SearchWorkspace("guide")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) == 0 || results[0].Kind != "file" || results[0].RelativePath != "docs/guide.md" {
+		t.Fatalf("expected file-name hit for docs/guide.md, got %+v", results)
+	}
+}
+
+func TestSearchWorkspaceRequiresOpenWorkspace(t *testing.T) {
+	app := NewApp()
+	if _, err := app.SearchWorkspace("readme"); err == nil {
+		t.Fatal("expected search without workspace to fail")
+	}
+}
+
 func TestAssetHandlerServesOnlyWorkspaceImages(t *testing.T) {
 	dir := t.TempDir()
 	imagePath := filepath.Join(dir, "pic.png")
