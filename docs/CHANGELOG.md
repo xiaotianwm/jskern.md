@@ -24,6 +24,8 @@
   - center reader surface
   - right outline panel
 - Added frontend desktop guards for context menu, refresh, find, zoom, F12, dragstart, and Ctrl-wheel behavior.
+- Initialized the local Git repository on `main`.
+- Created and pushed the public GitHub repository: `https://github.com/xiaotianwm/jskern.md`.
 
 ### Changed
 
@@ -49,3 +51,4 @@
 - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
 - `wails build` passed and produced `build/bin/jskernmd.exe`.
 - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- GitHub push to `origin/main` completed.

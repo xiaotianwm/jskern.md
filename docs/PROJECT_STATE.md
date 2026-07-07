@@ -18,6 +18,8 @@ Initial Wails skeleton and durable project memory.
 - Project memory documents added.
 - Frontend toolchain upgraded from the old Wails template versions to current Vite / TypeScript / React plugin dependencies.
 - npm audit now reports 0 vulnerabilities.
+- Git repository initialized on `main`.
+- Public GitHub repository created: `https://github.com/xiaotianwm/jskern.md`.
 
 ## Next
 
@@ -43,3 +45,4 @@ Initial Wails skeleton and durable project memory.
 - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
 - `wails build` passed and produced `build/bin/jskernmd.exe`.
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Initial code pushed to GitHub remote `origin`.
