@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,5 +55,84 @@ func TestOpenDocumentRejectsOutsideWorkspace(t *testing.T) {
 	}
 	if _, err := app.OpenDocument(outside); err == nil {
 		t.Fatal("expected outside workspace document to be rejected")
+	}
+}
+
+func TestWorkspacePathPersistsAndRestoresFromAppData(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	if err := os.WriteFile(filepath.Join(workspace, "README.md"), []byte("# Saved\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsBytes, err := os.ReadFile(filepath.Join(appDataRoot, "config", "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings Settings
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if settings.StorageVersion != currentSettingsVersion {
+		t.Fatalf("expected settings version %d, got %d", currentSettingsVersion, settings.StorageVersion)
+	}
+	if settings.LastWorkspace != filepath.Clean(workspace) {
+		t.Fatalf("expected last workspace %q, got %q", workspace, settings.LastWorkspace)
+	}
+
+	nextApp := NewApp()
+	if err := nextApp.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := nextApp.RestoreWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored == nil || restored.Root.Path != filepath.Clean(workspace) {
+		t.Fatalf("expected restored workspace %q, got %+v", workspace, restored)
+	}
+}
+
+func TestInitAppDataCreatesStoreLayoutAndBacksUpBadSettings(t *testing.T) {
+	appDataRoot := t.TempDir()
+	configDir := filepath.Join(appDataRoot, "config")
+	if err := os.MkdirAll(configDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(configDir, "settings.json")
+	if err := os.WriteFile(settingsPath, []byte("{bad json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"config", "data", "logs", "cache", "temp", "runtime", "crash"} {
+		info, err := os.Stat(filepath.Join(appDataRoot, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !info.IsDir() {
+			t.Fatalf("expected %s to be a directory", name)
+		}
+	}
+	backups, err := filepath.Glob(settingsPath + ".bad-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 1 {
+		t.Fatalf("expected one bad settings backup, got %d", len(backups))
+	}
+	if app.settings.StorageVersion != currentSettingsVersion || app.settings.LastWorkspace != "" {
+		t.Fatalf("expected default settings after bad file, got %+v", app.settings)
 	}
 }

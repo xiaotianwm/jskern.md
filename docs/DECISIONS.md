@@ -23,3 +23,9 @@ Consequence: Go owns filesystem, parsing, persistence, app config, and locale di
 Reason: Chat memory drifts during long development. Repository files are versioned and visible to every future session.
 
 Consequence: `PROJECT_STATE.md`, `DECISIONS.md`, and `CHANGELOG.md` must be updated as part of done.
+
+## 2026-07-07: Persist Workspace State In AppData
+
+Reason: A directory-tree reader should reopen the last reading workspace automatically instead of making the user choose the same folder every launch.
+
+Consequence: Go owns `%APPDATA%\jskernmd` on Windows and the equivalent system config directory on other platforms. `settings.json` must remain versioned and store `last_workspace`; React must not use browser storage for this durable path state.

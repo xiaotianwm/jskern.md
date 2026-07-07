@@ -10,8 +10,14 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+)
+
+const (
+	appSlug                = "jskernmd"
+	currentSettingsVersion = 1
 )
 
 //go:embed internal/i18n/locales/*.json
@@ -23,6 +29,9 @@ type App struct {
 	mu                sync.RWMutex
 	workspaceRoot     string
 	workspaceRootReal string
+	appDataRoot       string
+	settingsPath      string
+	settings          Settings
 }
 
 type ProductInfo struct {
@@ -45,6 +54,11 @@ type Bootstrap struct {
 	CurrentLocale  string            `json:"currentLocale"`
 	ShellLocale    map[string]string `json:"shellLocale"`
 	BusinessLocale map[string]string `json:"businessLocale"`
+}
+
+type Settings struct {
+	StorageVersion int    `json:"storage_version"`
+	LastWorkspace  string `json:"last_workspace"`
 }
 
 type WorkspaceTree struct {
@@ -74,13 +88,14 @@ type Heading struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	return &App{settings: defaultSettings()}
 }
 
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	_ = a.initAppData("")
 }
 
 func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
@@ -123,6 +138,20 @@ func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
 	return a.ScanWorkspace(dir)
 }
 
+func (a *App) RestoreWorkspace() (*WorkspaceTree, error) {
+	a.mu.RLock()
+	lastWorkspace := a.settings.LastWorkspace
+	a.mu.RUnlock()
+	if lastWorkspace == "" {
+		return nil, nil
+	}
+	info, err := os.Stat(lastWorkspace)
+	if err != nil || !info.IsDir() {
+		return nil, nil
+	}
+	return a.ScanWorkspace(lastWorkspace)
+}
+
 func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -140,6 +169,7 @@ func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 	a.workspaceRoot = filepath.Clean(abs)
 	a.workspaceRootReal = filepath.Clean(realRoot)
 	a.mu.Unlock()
+	a.setLastWorkspace(abs)
 	return &WorkspaceTree{Root: node}, nil
 }
 
@@ -201,6 +231,117 @@ func loadLocale(locale string) (map[string]map[string]string, error) {
 	var messages map[string]map[string]string
 	err = json.Unmarshal(data, &messages)
 	return messages, err
+}
+
+func (a *App) initAppData(root string) error {
+	if root == "" {
+		configDir, err := os.UserConfigDir()
+		if err != nil {
+			return err
+		}
+		root = filepath.Join(configDir, appSlug)
+	}
+	for _, name := range []string{"config", "data", "logs", "cache", "temp", "runtime", "crash"} {
+		if err := os.MkdirAll(filepath.Join(root, name), 0o700); err != nil {
+			return err
+		}
+	}
+	settingsPath := filepath.Join(root, "config", "settings.json")
+	settings, err := loadSettings(settingsPath)
+	if err != nil {
+		return err
+	}
+	if err := saveSettings(settingsPath, settings); err != nil {
+		return err
+	}
+	a.mu.Lock()
+	a.appDataRoot = root
+	a.settingsPath = settingsPath
+	a.settings = settings
+	a.mu.Unlock()
+	return nil
+}
+
+func (a *App) setLastWorkspace(path string) {
+	a.mu.Lock()
+	if a.settings.StorageVersion == 0 {
+		a.settings = defaultSettings()
+	}
+	a.settings.LastWorkspace = filepath.Clean(path)
+	settingsPath := a.settingsPath
+	settings := a.settings
+	a.mu.Unlock()
+	if settingsPath == "" {
+		return
+	}
+	_ = saveSettings(settingsPath, settings)
+}
+
+func defaultSettings() Settings {
+	return Settings{StorageVersion: currentSettingsVersion}
+}
+
+func loadSettings(path string) (Settings, error) {
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return defaultSettings(), nil
+	}
+	if err != nil {
+		return Settings{}, err
+	}
+	settings := defaultSettings()
+	if err := json.Unmarshal(data, &settings); err != nil {
+		if backupErr := backupBadFile(path); backupErr != nil {
+			return Settings{}, backupErr
+		}
+		return defaultSettings(), nil
+	}
+	if settings.StorageVersion == 0 {
+		settings.StorageVersion = currentSettingsVersion
+	}
+	return settings, nil
+}
+
+func saveSettings(path string, settings Settings) error {
+	settings.StorageVersion = currentSettingsVersion
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(settings, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	dir := filepath.Dir(path)
+	temp, err := os.CreateTemp(dir, "settings-*.tmp")
+	if err != nil {
+		return err
+	}
+	tempPath := temp.Name()
+	defer func() {
+		_ = os.Remove(tempPath)
+	}()
+	if _, err := temp.Write(data); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Sync(); err != nil {
+		_ = temp.Close()
+		return err
+	}
+	if err := temp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tempPath, path)
+}
+
+func backupBadFile(path string) error {
+	stamp := time.Now().UTC().Format("20060102T150405Z")
+	backupPath := path + ".bad-" + stamp
+	if _, err := os.Stat(backupPath); err == nil {
+		backupPath = path + ".bad-" + stamp + "-" + strings.ReplaceAll(time.Now().UTC().Format("150405.000000000"), ".", "")
+	}
+	return os.Rename(path, backupPath)
 }
 
 func scanNode(path string, depth int) (TreeNode, error) {

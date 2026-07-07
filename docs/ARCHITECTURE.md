@@ -58,12 +58,38 @@ Supported initial locales: `zh-CN`, `en`.
 - `GetBootstrap(locale)`
 - `OpenWorkspace()`
 - `ScanWorkspace(path)`
+- `RestoreWorkspace()`
+- `OpenDocument(path)`
 
 Planned APIs:
 
-- `OpenDocument(path)`
 - `ResolveAsset(path)`
 - `GetOutline(path)`
 - `SearchWorkspace(query)`
 - `SwitchLanguage(locale)`
 - `SwitchTheme(mode)`
+
+## AppData Storage
+
+Go creates and owns the app data root for `jskernmd`.
+
+On Windows the active path is:
+
+```text
+%APPDATA%\jskernmd
+```
+
+The required layout is:
+
+```text
+jskernmd/
+  config/settings.json
+  data/
+  logs/
+  cache/
+  temp/
+  runtime/
+  crash/
+```
+
+`settings.json` stores `storage_version` and `last_workspace`. Startup calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.

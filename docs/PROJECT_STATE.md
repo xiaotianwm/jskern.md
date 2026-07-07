@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop.
+Readable Markdown document MVP loop with persisted workspace restore.
 
 ## Done
 
@@ -31,6 +31,11 @@ Readable Markdown document MVP loop.
 - Directory tree now supports expand/collapse.
 - Workspace root opens expanded, while child directories start collapsed by default.
 - Left workspace tree now scrolls inside its panel instead of overflowing the app shell.
+- Go now creates the `jskernmd` app data root with `config`, `data`, `logs`, `cache`, `temp`, `runtime`, and `crash` directories.
+- `config/settings.json` now stores `storage_version` and `last_workspace`.
+- Opening a workspace persists the directory path through Go-managed settings.
+- Startup now restores the last valid workspace directory tree without expanding child directories.
+- Invalid `settings.json` files are backed up as `.bad-*` before default settings are restored.
 
 ## Next
 
@@ -67,3 +72,11 @@ Readable Markdown document MVP loop.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after AppData workspace persistence:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+  - AppData smoke check passed: `C:\Users\cool\AppData\Roaming\jskernmd\config\settings.json` was created with `storage_version: 1`.

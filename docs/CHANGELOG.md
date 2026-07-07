@@ -4,6 +4,43 @@
 
 ### Added
 
+- Added Go-managed AppData initialization for the `jskernmd` data root.
+- Added the required local storage layout:
+  - `config/`
+  - `data/`
+  - `logs/`
+  - `cache/`
+  - `temp/`
+  - `runtime/`
+  - `crash/`
+- Added versioned `config/settings.json` with `storage_version` and `last_workspace`.
+- Added atomic settings writes through a temporary file and rename.
+- Added `.bad-*` backup behavior for invalid JSON settings files before falling back to defaults.
+- Added `RestoreWorkspace()` Wails API.
+- Added startup restore in the frontend so the last valid workspace tree reappears automatically.
+- Added Go tests for AppData layout creation, settings persistence, workspace restore, and bad settings backup.
+
+### Changed
+
+- `ScanWorkspace(path)` now persists the successfully opened workspace directory.
+- Startup workspace restoration keeps the root directory expanded while child directories remain collapsed by default.
+- Project constraints, architecture notes, and decision log now record that directory-tree workspace state belongs in Go-managed AppData, not frontend storage.
+
+### Validation
+
+- AppData workspace persistence:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+  - AppData smoke check passed: `C:\Users\cool\AppData\Roaming\jskernmd\config\settings.json` was created with `storage_version: 1`.
+
+---
+
+### Added
+
 - Added expand/collapse behavior to the workspace tree.
 - Added root-only default expansion: the workspace root opens, child directories start collapsed.
 - Added an internal scroll region for the left workspace tree panel.

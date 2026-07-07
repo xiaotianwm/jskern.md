@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace, RestoreWorkspace} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
 type TreeNode = main.TreeNode;
@@ -18,7 +18,23 @@ function App() {
     const [documentBusy, setDocumentBusy] = useState(false);
 
     useEffect(() => {
-        GetBootstrap('zh-CN').then(setBootstrap);
+        let cancelled = false;
+        async function boot() {
+            const data = await GetBootstrap('zh-CN');
+            if (cancelled) {
+                return;
+            }
+            setBootstrap(data);
+            const restored = await RestoreWorkspace();
+            if (!cancelled && restored?.root) {
+                setTree(restored.root);
+                setExpandedPaths(new Set([restored.root.path]));
+            }
+        }
+        boot();
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const shell = bootstrap?.shellLocale ?? {};

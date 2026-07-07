@@ -14,6 +14,10 @@ export function OpenWorkspace() {
   return window['go']['main']['App']['OpenWorkspace']();
 }
 
+export function RestoreWorkspace() {
+  return window['go']['main']['App']['RestoreWorkspace']();
+}
+
 export function ScanWorkspace(arg1) {
   return window['go']['main']['App']['ScanWorkspace'](arg1);
 }
