@@ -22,6 +22,7 @@ function App() {
     const [staleStatus, setStaleStatus] = useState<DocumentStatus | null>(null);
     const [dismissedStatusKey, setDismissedStatusKey] = useState('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
+    const readerScrollRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -133,6 +134,7 @@ function App() {
             const result = await OpenDocument(path);
             setDocument(result);
             setSelectedPath(result.path);
+            scheduleReaderPosition();
         } catch (error) {
             setDocument(null);
             setDocumentError(errorMessage(error, text['document.error_unknown']));
@@ -153,11 +155,7 @@ function App() {
             const result = await OpenWorkspaceDocument(path);
             setSelectedPath(result.path);
             setDocument(result);
-            if (heading) {
-                window.requestAnimationFrame(() => {
-                    globalThis.document.getElementById(heading)?.scrollIntoView({block: 'start'});
-                });
-            }
+            scheduleReaderPosition(heading);
         } catch (error) {
             setDocument(null);
             setSelectedPath('');
@@ -211,6 +209,18 @@ function App() {
         setStaleStatus(null);
     }
 
+    function scheduleReaderPosition(heading = '') {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                if (heading) {
+                    globalThis.document.getElementById(heading)?.scrollIntoView({block: 'start'});
+                    return;
+                }
+                readerScrollRef.current?.scrollTo({top: 0, left: 0, behavior: 'auto'});
+            });
+        });
+    }
+
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
 
     if (!bootstrap) {
@@ -262,50 +272,54 @@ function App() {
                 </aside>
 
                 <article className="reader-surface">
-                    {documentError ? (
-                        <div className="document-message error-message">
-                            <div className="message-title">{text['document.error_title']}</div>
-                            <div className="message-body">
-                                {text['document.error_open_failed']} <span className="selectable-data">{documentError}</span>
+                    <div className="reader-scroll" ref={readerScrollRef}>
+                        {documentError ? (
+                            <div className="document-message error-message">
+                                <div className="message-title">{text['document.error_title']}</div>
+                                <div className="message-body">
+                                    {text['document.error_open_failed']} <span className="selectable-data">{documentError}</span>
+                                </div>
+                            </div>
+                        ) : document ? (
+                            <div className="document-view">
+                                <header className="document-header">
+                                    <h1>{document.title}</h1>
+                                    <div className="document-path selectable-data">{document.path}</div>
+                                </header>
+                                <div
+                                    ref={markdownBodyRef}
+                                    className="markdown-body"
+                                    onClick={handleMarkdownClick}
+                                    dangerouslySetInnerHTML={{__html: document.html}}
+                                />
+                            </div>
+                        ) : (
+                            <div className="reader-placeholder" aria-busy={documentBusy}>
+                                <div className="document-mark"/>
+                                <div className="line wide"/>
+                                <div className="line"/>
+                                <div className="line short"/>
+                            </div>
+                        )}
+                    </div>
+                    {staleStatus && document && !documentError ? (
+                        <div className="reader-status-bar">
+                            <div className="document-message changed-message">
+                                <div>
+                                    <div className="message-title">{text['document.changed_title']}</div>
+                                    <div className="message-body">{text['document.changed_body']}</div>
+                                </div>
+                                <div className="message-actions">
+                                    <button type="button" onClick={() => openDocument(document.path)} disabled={documentBusy}>
+                                        {text['document.reload']}
+                                    </button>
+                                    <button type="button" onClick={dismissDocumentChange}>
+                                        {text['document.dismiss']}
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    ) : document ? (
-                        <div className="document-view">
-                            <header className="document-header">
-                                <h1>{document.title}</h1>
-                                <div className="document-path selectable-data">{document.path}</div>
-                            </header>
-                            {staleStatus ? (
-                                <div className="document-message changed-message">
-                                    <div>
-                                        <div className="message-title">{text['document.changed_title']}</div>
-                                        <div className="message-body">{text['document.changed_body']}</div>
-                                    </div>
-                                    <div className="message-actions">
-                                        <button type="button" onClick={() => openDocument(document.path)} disabled={documentBusy}>
-                                            {text['document.reload']}
-                                        </button>
-                                        <button type="button" onClick={dismissDocumentChange}>
-                                            {text['document.dismiss']}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : null}
-                            <div
-                                ref={markdownBodyRef}
-                                className="markdown-body"
-                                onClick={handleMarkdownClick}
-                                dangerouslySetInnerHTML={{__html: document.html}}
-                            />
-                        </div>
-                    ) : (
-                        <div className="reader-placeholder" aria-busy={documentBusy}>
-                            <div className="document-mark"/>
-                            <div className="line wide"/>
-                            <div className="line"/>
-                            <div className="line short"/>
-                        </div>
-                    )}
+                    ) : null}
                 </article>
 
                 <aside className="outline-panel">

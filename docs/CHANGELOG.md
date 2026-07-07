@@ -2,6 +2,24 @@
 
 ## 2026-07-07
 
+### Changed
+
+- Moved the external document-change reminder out of the Markdown document flow and into a bottom overlay inside the center reader area.
+- Split the reader surface into a fixed shell plus an internal scroll container so status reminders stay visible regardless of document scroll position.
+- Opening or reloading a document from the workspace tree now resets the center reader scroll position to the top instead of inheriting the previous document's scroll offset.
+- Workspace-relative Markdown links with heading fragments still navigate to their requested heading after the new document renders.
+
+### Validation
+
+- Reader status banner and scroll reset:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ### Added
 
 - Added Go-provided document freshness metadata:

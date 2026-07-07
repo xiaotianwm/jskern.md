@@ -265,9 +265,16 @@ a {
 }
 
 .reader-surface {
+    position: relative;
     min-width: 0;
-    overflow: auto;
+    min-height: 0;
+    overflow: hidden;
     background: color-mix(in srgb, var(--bg) 86%, transparent);
+}
+
+.reader-scroll {
+    height: 100%;
+    overflow: auto;
     scroll-behavior: smooth;
 }
 
@@ -302,7 +309,7 @@ a {
 .document-view {
     width: min(820px, calc(100% - 56px));
     margin: 0 auto;
-    padding: 34px 0 72px;
+    padding: 34px 0 112px;
 }
 
 .document-message {
@@ -313,15 +320,25 @@ a {
     background: var(--bg-card);
 }
 
-.document-view .document-message {
-    width: 100%;
-    margin: 16px 0 4px;
-}
-
 .error-message {
     margin: 42px auto;
     border-color: color-mix(in srgb, var(--error) 38%, var(--border));
     background: var(--error-bg);
+}
+
+.reader-status-bar {
+    position: absolute;
+    right: 0;
+    bottom: 16px;
+    left: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.reader-status-bar .document-message {
+    margin: 0 auto;
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--text) 12%, transparent);
+    pointer-events: auto;
 }
 
 .changed-message {
