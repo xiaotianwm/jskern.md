@@ -4,10 +4,12 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -17,7 +19,10 @@ var localeFiles embed.FS
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx               context.Context
+	mu                sync.RWMutex
+	workspaceRoot     string
+	workspaceRootReal string
 }
 
 type ProductInfo struct {
@@ -51,6 +56,20 @@ type TreeNode struct {
 	Path     string     `json:"path"`
 	Type     string     `json:"type"`
 	Children []TreeNode `json:"children,omitempty"`
+}
+
+type Document struct {
+	Path    string    `json:"path"`
+	Name    string    `json:"name"`
+	Title   string    `json:"title"`
+	HTML    string    `json:"html"`
+	Outline []Heading `json:"outline"`
+}
+
+type Heading struct {
+	ID    string `json:"id"`
+	Level int    `json:"level"`
+	Text  string `json:"text"`
 }
 
 // NewApp creates a new App application struct
@@ -113,7 +132,56 @@ func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 	if err != nil {
 		return nil, err
 	}
+	realRoot, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	a.workspaceRoot = filepath.Clean(abs)
+	a.workspaceRootReal = filepath.Clean(realRoot)
+	a.mu.Unlock()
 	return &WorkspaceTree{Root: node}, nil
+}
+
+func (a *App) OpenDocument(path string) (*Document, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if !isMarkdownFile(abs) {
+		return nil, errors.New("not a markdown document")
+	}
+	if !a.isWithinWorkspace(abs) {
+		return nil, errors.New("document is outside the current workspace")
+	}
+	return renderMarkdownDocument(abs)
+}
+
+func (a *App) isWithinWorkspace(path string) bool {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	realRoot := a.workspaceRootReal
+	a.mu.RUnlock()
+	if root == "" || realRoot == "" {
+		return false
+	}
+	cleanPath := filepath.Clean(path)
+	rel, err := filepath.Rel(root, cleanPath)
+	if err != nil {
+		return false
+	}
+	if rel != "." && (strings.HasPrefix(rel, "..") || filepath.IsAbs(rel)) {
+		return false
+	}
+	realPath, err := filepath.EvalSymlinks(cleanPath)
+	if err != nil {
+		return false
+	}
+	realRel, err := filepath.Rel(realRoot, filepath.Clean(realPath))
+	if err != nil {
+		return false
+	}
+	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
 }
 
 func normalizeLocale(locale string) string {

@@ -6,6 +6,10 @@ export function GetBootstrap(arg1) {
   return window['go']['main']['App']['GetBootstrap'](arg1);
 }
 
+export function OpenDocument(arg1) {
+  return window['go']['main']['App']['OpenDocument'](arg1);
+}
+
 export function OpenWorkspace() {
   return window['go']['main']['App']['OpenWorkspace']();
 }

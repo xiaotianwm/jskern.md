@@ -1,15 +1,20 @@
 import {useEffect, useMemo, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenWorkspace} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 
 type TreeNode = main.TreeNode;
 type Bootstrap = main.Bootstrap;
+type Document = main.Document;
+type Heading = main.Heading;
 
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
     const [tree, setTree] = useState<TreeNode | null>(null);
+    const [document, setDocument] = useState<Document | null>(null);
+    const [selectedPath, setSelectedPath] = useState<string>('');
     const [busy, setBusy] = useState(false);
+    const [documentBusy, setDocumentBusy] = useState(false);
 
     useEffect(() => {
         GetBootstrap('zh-CN').then(setBootstrap);
@@ -29,10 +34,33 @@ function App() {
             const result = await OpenWorkspace();
             if (result?.root) {
                 setTree(result.root);
+                setDocument(null);
+                setSelectedPath('');
             }
         } finally {
             setBusy(false);
         }
+    }
+
+    async function openDocument(path: string) {
+        if (documentBusy) {
+            return;
+        }
+        setSelectedPath(path);
+        setDocumentBusy(true);
+        try {
+            const result = await OpenDocument(path);
+            setDocument(result);
+        } finally {
+            setDocumentBusy(false);
+        }
+    }
+
+    function scrollToHeading(heading: Heading) {
+        if (!heading.id) {
+            return;
+        }
+        globalThis.document.getElementById(heading.id)?.scrollIntoView({block: 'start'});
     }
 
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
@@ -70,42 +98,90 @@ function App() {
                 <aside className="sidebar">
                     <div className="panel-heading">{text['panel.workspace']}</div>
                     {hasWorkspace && tree ? (
-                        <TreeView node={tree} depth={0}/>
+                        <TreeView node={tree} depth={0} selectedPath={selectedPath} onOpenDocument={openDocument}/>
                     ) : (
                         <div className="empty-state">{text['empty.workspace']}</div>
                     )}
                 </aside>
 
                 <article className="reader-surface">
-                    <div className="reader-placeholder">
-                        <div className="document-mark"/>
-                        <div className="line wide"/>
-                        <div className="line"/>
-                        <div className="line short"/>
-                    </div>
+                    {document ? (
+                        <div className="document-view">
+                            <header className="document-header">
+                                <h1>{document.title}</h1>
+                                <div className="document-path selectable-data">{document.path}</div>
+                            </header>
+                            <div className="markdown-body" dangerouslySetInnerHTML={{__html: document.html}}/>
+                        </div>
+                    ) : (
+                        <div className="reader-placeholder" aria-busy={documentBusy}>
+                            <div className="document-mark"/>
+                            <div className="line wide"/>
+                            <div className="line"/>
+                            <div className="line short"/>
+                        </div>
+                    )}
                 </article>
 
                 <aside className="outline-panel">
                     <div className="panel-heading">{text['panel.outline']}</div>
-                    <div className="empty-state">{text['empty.outline']}</div>
+                    {document?.outline?.length ? (
+                        <div className="outline-list">
+                            {document.outline.map((heading, index) => (
+                                <button
+                                    type="button"
+                                    key={`${heading.id}-${index}`}
+                                    className="outline-row"
+                                    style={{'--level': heading.level} as React.CSSProperties}
+                                    onClick={() => scrollToHeading(heading)}
+                                >
+                                    {heading.text}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="empty-state">{text['empty.outline']}</div>
+                    )}
                 </aside>
             </section>
         </main>
     );
 }
 
-function TreeView({node, depth}: { node: TreeNode; depth: number }) {
+function TreeView({
+    node,
+    depth,
+    selectedPath,
+    onOpenDocument
+}: {
+    node: TreeNode;
+    depth: number;
+    selectedPath: string;
+    onOpenDocument: (path: string) => void;
+}) {
     const isDirectory = node.type === 'directory';
+    const isSelected = node.path === selectedPath;
     return (
         <div className="tree-node" style={{'--depth': depth} as React.CSSProperties}>
-            <div className={`tree-row ${isDirectory ? 'directory' : 'file'}`}>
+            <button
+                type="button"
+                className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
+                onClick={() => !isDirectory && onOpenDocument(node.path)}
+                disabled={isDirectory}
+            >
                 <span className="tree-glyph">{isDirectory ? '▸' : '•'}</span>
                 <span className="tree-name" title={node.path}>{node.name}</span>
-            </div>
+            </button>
             {isDirectory && node.children?.length ? (
                 <div className="tree-children">
                     {node.children.map(child => (
-                        <TreeView key={child.path} node={child} depth={depth + 1}/>
+                        <TreeView
+                            key={child.path}
+                            node={child}
+                            depth={depth + 1}
+                            selectedPath={selectedPath}
+                            onOpenDocument={onOpenDocument}
+                        />
                     ))}
                 </div>
             ) : null}

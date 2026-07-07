@@ -223,16 +223,26 @@ a {
     display: grid;
     grid-template-columns: 16px minmax(0, 1fr);
     align-items: center;
+    width: 100%;
     height: 26px;
+    border: 0;
     padding-left: calc(10px + var(--depth) * 14px);
     padding-right: 8px;
     color: var(--text-muted);
+    background: transparent;
     font-size: 12px;
+    font: inherit;
+    text-align: left;
 }
 
-.tree-row:hover {
+.tree-row:hover:not(:disabled),
+.tree-row.selected {
     color: var(--text);
     background: var(--bg-hover);
+}
+
+.tree-row:disabled {
+    cursor: default;
 }
 
 .tree-row.file {
@@ -254,6 +264,7 @@ a {
     min-width: 0;
     overflow: auto;
     background: color-mix(in srgb, var(--bg) 86%, transparent);
+    scroll-behavior: smooth;
 }
 
 .reader-placeholder {
@@ -282,6 +293,147 @@ a {
 
 .line.short {
     width: 54%;
+}
+
+.document-view {
+    width: min(820px, calc(100% - 56px));
+    margin: 0 auto;
+    padding: 34px 0 72px;
+}
+
+.document-header {
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.document-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    line-height: 1.2;
+    letter-spacing: 0;
+}
+
+.document-path {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.selectable-data,
+.markdown-body,
+.markdown-body * {
+    user-select: text;
+    -webkit-user-select: text;
+}
+
+.markdown-body {
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+    margin: 28px 0 12px;
+    line-height: 1.25;
+    letter-spacing: 0;
+}
+
+.markdown-body h1 {
+    font-size: 26px;
+}
+
+.markdown-body h2 {
+    font-size: 22px;
+}
+
+.markdown-body h3 {
+    font-size: 18px;
+}
+
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body pre,
+.markdown-body table {
+    margin: 14px 0;
+}
+
+.markdown-body a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.markdown-body a:hover {
+    text-decoration: underline;
+}
+
+.markdown-body blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--border-input);
+    color: var(--text-muted);
+}
+
+.markdown-body code {
+    border-radius: 4px;
+    padding: 2px 5px;
+    background: var(--bg-input);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 0.92em;
+}
+
+.markdown-body pre {
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    background: var(--bg-card);
+}
+
+.markdown-body pre code {
+    padding: 0;
+    background: transparent;
+}
+
+.markdown-body table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.markdown-body th,
+.markdown-body td {
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+}
+
+.outline-list {
+    padding: 4px 0;
+}
+
+.outline-row {
+    display: block;
+    width: 100%;
+    min-height: 26px;
+    border: 0;
+    padding: 4px 10px 4px calc(10px + (var(--level) - 1) * 10px);
+    overflow: hidden;
+    color: var(--text-muted);
+    background: transparent;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.outline-row:hover {
+    color: var(--text);
+    background: var(--bg-hover);
 }
 
 ::-webkit-scrollbar {

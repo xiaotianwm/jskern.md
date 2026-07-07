@@ -4,6 +4,8 @@ import {main} from '../models';
 
 export function GetBootstrap(arg1:string):Promise<main.Bootstrap>;
 
+export function OpenDocument(arg1:string):Promise<main.Document>;
+
 export function OpenWorkspace():Promise<main.WorkspaceTree>;
 
 export function ScanWorkspace(arg1:string):Promise<main.WorkspaceTree>;
