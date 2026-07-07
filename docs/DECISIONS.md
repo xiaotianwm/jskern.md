@@ -46,4 +46,4 @@ Consequence: Go preserves safe `language-*` classes on `pre` and `code`; React a
 
 Reason: End users should download a normal desktop installer instead of a raw build executable, and artifact names need to stay stable across releases.
 
-Consequence: Windows GitHub Release uploads use `jskernmd-v<version>-windows-amd64-setup.exe` plus `SHA256SUMS.txt`. The release staging script is `scripts/package-windows.ps1`; `build/bin/jskernmd.exe` is kept as a local validation output only.
+Consequence: Windows GitHub Release uploads use `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`. The release staging script is `scripts/package-windows.ps1`; `build/bin/jskernmd.exe` is kept as a local validation output only.

@@ -121,7 +121,7 @@ Windows releases are packaged with Wails NSIS through `scripts/package-windows.p
 The canonical GitHub Release installer name is:
 
 ```text
-jskernmd-v<version>-windows-amd64-setup.exe
+JSKernMD-Setup-<version>-x64.exe
 ```
 
 The staged release directory must also contain `SHA256SUMS.txt`. Raw Wails executable builds remain local validation artifacts and are not the primary downloadable release package.

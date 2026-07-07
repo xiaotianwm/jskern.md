@@ -60,7 +60,7 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Added Wails APIs for `SwitchLanguage(locale)` and `SwitchTheme(theme)`.
 - Added toolbar language and theme controls backed by Go settings and Go-owned locale strings.
 - Added Windows installer staging through `scripts/package-windows.ps1`.
-- GitHub Release artifact naming is standardized as `jskernmd-v<version>-windows-amd64-setup.exe` plus `SHA256SUMS.txt`.
+- GitHub Release artifact naming is standardized as `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`.
 - GitHub Release `v0.1.0` now publishes the Windows installer and checksum file as the user-facing assets.
 
 ## Next
@@ -162,3 +162,7 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `SHA256SUMS.txt` was generated with SHA256 `3cbbca75ffbbf8561f12599ab575a031c2e79e5530746af42801be8544ddf2c0`.
   - GitHub Release `v0.1.0` contains `jskernmd-v0.1.0-windows-amd64-setup.exe` and `SHA256SUMS.txt`; the previous raw exe asset was removed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after installer naming correction:
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/JSKernMD-Setup-0.1.0-x64.exe`.
+  - `SHA256SUMS.txt` was regenerated with SHA256 `f591d4b676e4cb5b05184e4c9c71ccbab5c869f7029f43225be51d8a898d0bfb`.
+  - GitHub Release `v0.1.0` was updated to use `JSKernMD-Setup-0.1.0-x64.exe`.

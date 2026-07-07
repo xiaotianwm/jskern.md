@@ -6,8 +6,7 @@ $manifestPath = Join-Path $repoRoot "product.manifest.json"
 $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
 
 $version = [string]$manifest.version
-$binaryName = [string]$manifest.binary_name
-$artifactName = "$binaryName-v$version-windows-amd64-setup.exe"
+$artifactName = "JSKernMD-Setup-$version-x64.exe"
 $releaseDir = Join-Path $repoRoot "dist\releases\v$version"
 
 $makensis = Get-Command makensis -ErrorAction SilentlyContinue

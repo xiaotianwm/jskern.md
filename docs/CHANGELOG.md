@@ -17,10 +17,11 @@
 - Startup bootstrap now calls `GetBootstrap("")` so Go settings choose the current locale and theme instead of hardcoding `zh-CN` in React.
 - `settings.json` now preserves locale/theme defaults while keeping existing workspace persistence behavior.
 - GitHub Release packaging policy now treats installers as the primary user-facing artifact and reserves raw `jskernmd.exe` for local validation.
+- Windows installer naming was corrected to the user-facing `JSKernMD-Setup-<version>-x64.exe` pattern instead of the internal binary-style name.
 
 ### Release Packaging
 
-- Windows installer artifact name: `jskernmd-v<version>-windows-amd64-setup.exe`.
+- Windows installer artifact name: `JSKernMD-Setup-<version>-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
 
 ### Validation
@@ -36,6 +37,10 @@
   - `SHA256SUMS.txt` was generated with SHA256 `3cbbca75ffbbf8561f12599ab575a031c2e79e5530746af42801be8544ddf2c0`.
   - GitHub Release `v0.1.0` now contains the installer and checksum file; the previous raw exe asset was removed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Installer rename correction:
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/JSKernMD-Setup-0.1.0-x64.exe`.
+  - `SHA256SUMS.txt` was regenerated with SHA256 `f591d4b676e4cb5b05184e4c9c71ccbab5c869f7029f43225be51d8a898d0bfb`.
+  - GitHub Release `v0.1.0` was updated to use `JSKernMD-Setup-0.1.0-x64.exe`.
 
 ---
 

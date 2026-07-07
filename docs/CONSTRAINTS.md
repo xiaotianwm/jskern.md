@@ -71,7 +71,7 @@
 ## Release Packaging
 
 - GitHub Releases must publish installer packages, not raw development executables.
-- Windows release artifacts must use the naming pattern `jskernmd-v<version>-windows-amd64-setup.exe`.
+- Windows release artifacts must use the user-facing naming pattern `JSKernMD-Setup-<version>-x64.exe`.
 - Each release upload must include `SHA256SUMS.txt` for the published installer.
 - The raw `build/bin/jskernmd.exe` is a local build output only and must not be the primary GitHub Release download.
 - Windows installer staging is produced by `scripts/package-windows.ps1`, which wraps Wails NSIS packaging and copies the installer into `dist/releases/v<version>/`.
