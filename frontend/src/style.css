@@ -194,6 +194,8 @@ a {
 }
 
 .sidebar {
+    display: grid;
+    grid-template-rows: 34px minmax(0, 1fr);
     border-right: 1px solid var(--border);
 }
 
@@ -213,6 +215,12 @@ a {
 .empty-state {
     padding: 12px;
     line-height: 1.6;
+}
+
+.tree-scroll {
+    min-height: 0;
+    overflow: auto;
+    padding: 2px 0 8px;
 }
 
 .tree-node {
@@ -239,10 +247,6 @@ a {
 .tree-row.selected {
     color: var(--text);
     background: var(--bg-hover);
-}
-
-.tree-row:disabled {
-    cursor: default;
 }
 
 .tree-row.file {

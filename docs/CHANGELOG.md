@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added expand/collapse behavior to the workspace tree.
+- Added root-only default expansion: the workspace root opens, child directories start collapsed.
+- Added an internal scroll region for the left workspace tree panel.
 - Added `goldmark` Markdown parsing and GFM support in the Go backend.
 - Added `bluemonday` sanitization for rendered Markdown HTML.
 - Added `OpenDocument(path)` Wails API.
@@ -19,11 +22,18 @@
 
 ### Changed
 
+- Directory rows now act as toggles instead of disabled labels.
 - The reader shell now clears the selected document when a new workspace is opened.
 - The Markdown body and document path explicitly allow text selection while the rest of the shell remains anti-web.
 
 ### Validation
 
+- Directory tree collapse/scroll update:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - `go test ./...` passed.
 - `npm.cmd run build` passed.
 - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.

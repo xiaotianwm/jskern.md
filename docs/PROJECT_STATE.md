@@ -28,19 +28,20 @@ Readable Markdown document MVP loop.
 - Added Go tests for Markdown rendering, sanitization, heading IDs, and workspace boundary rejection.
 - Frontend directory-tree file clicks now open and render Markdown documents.
 - Reader surface now shows document title, path, rendered Markdown body, and outline navigation.
+- Directory tree now supports expand/collapse.
+- Workspace root opens expanded, while child directories start collapsed by default.
+- Left workspace tree now scrolls inside its panel instead of overflowing the app shell.
 
 ## Next
 
 - Add local image and relative link resolver.
 - Add Shiki code highlighting.
 - Add theme and language switching APIs.
-- Add directory expand/collapse state.
 - Add user-visible error display for failed document loads.
 
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
-- Directory tree has no expand/collapse state yet.
 - Local relative images and links are not resolved through a Go asset endpoint yet.
 - Code blocks render as plain code until Shiki is integrated.
 - Failed document opens currently keep the previous document without a visible error panel.
@@ -55,6 +56,12 @@ Readable Markdown document MVP loop.
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
 - Initial code pushed to GitHub remote `origin`.
 - Latest validation after Markdown reading loop:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after directory tree collapse/scroll update:
   - `go test ./...` passed.
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.

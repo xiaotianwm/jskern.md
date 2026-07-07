@@ -13,6 +13,7 @@ function App() {
     const [tree, setTree] = useState<TreeNode | null>(null);
     const [document, setDocument] = useState<Document | null>(null);
     const [selectedPath, setSelectedPath] = useState<string>('');
+    const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
     const [documentBusy, setDocumentBusy] = useState(false);
 
@@ -36,6 +37,7 @@ function App() {
                 setTree(result.root);
                 setDocument(null);
                 setSelectedPath('');
+                setExpandedPaths(new Set([result.root.path]));
             }
         } finally {
             setBusy(false);
@@ -61,6 +63,18 @@ function App() {
             return;
         }
         globalThis.document.getElementById(heading.id)?.scrollIntoView({block: 'start'});
+    }
+
+    function toggleDirectory(path: string) {
+        setExpandedPaths(current => {
+            const next = new Set(current);
+            if (next.has(path)) {
+                next.delete(path);
+            } else {
+                next.add(path);
+            }
+            return next;
+        });
     }
 
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
@@ -97,11 +111,20 @@ function App() {
             <section className="workspace-layout">
                 <aside className="sidebar">
                     <div className="panel-heading">{text['panel.workspace']}</div>
-                    {hasWorkspace && tree ? (
-                        <TreeView node={tree} depth={0} selectedPath={selectedPath} onOpenDocument={openDocument}/>
-                    ) : (
-                        <div className="empty-state">{text['empty.workspace']}</div>
-                    )}
+                    <div className="tree-scroll">
+                        {hasWorkspace && tree ? (
+                            <TreeView
+                                node={tree}
+                                depth={0}
+                                selectedPath={selectedPath}
+                                expandedPaths={expandedPaths}
+                                onToggleDirectory={toggleDirectory}
+                                onOpenDocument={openDocument}
+                            />
+                        ) : (
+                            <div className="empty-state">{text['empty.workspace']}</div>
+                        )}
+                    </div>
                 </aside>
 
                 <article className="reader-surface">
@@ -152,27 +175,32 @@ function TreeView({
     node,
     depth,
     selectedPath,
+    expandedPaths,
+    onToggleDirectory,
     onOpenDocument
 }: {
     node: TreeNode;
     depth: number;
     selectedPath: string;
+    expandedPaths: Set<string>;
+    onToggleDirectory: (path: string) => void;
     onOpenDocument: (path: string) => void;
 }) {
     const isDirectory = node.type === 'directory';
     const isSelected = node.path === selectedPath;
+    const isExpanded = isDirectory && expandedPaths.has(node.path);
     return (
         <div className="tree-node" style={{'--depth': depth} as React.CSSProperties}>
             <button
                 type="button"
                 className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
-                onClick={() => !isDirectory && onOpenDocument(node.path)}
-                disabled={isDirectory}
+                onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
+                aria-expanded={isDirectory ? isExpanded : undefined}
             >
-                <span className="tree-glyph">{isDirectory ? '▸' : '•'}</span>
+                <span className="tree-glyph">{isDirectory ? (isExpanded ? '▾' : '▸') : '•'}</span>
                 <span className="tree-name" title={node.path}>{node.name}</span>
             </button>
-            {isDirectory && node.children?.length ? (
+            {isExpanded && node.children?.length ? (
                 <div className="tree-children">
                     {node.children.map(child => (
                         <TreeView
@@ -180,6 +208,8 @@ function TreeView({
                             node={child}
                             depth={depth + 1}
                             selectedPath={selectedPath}
+                            expandedPaths={expandedPaths}
+                            onToggleDirectory={onToggleDirectory}
                             onOpenDocument={onOpenDocument}
                         />
                     ))}
