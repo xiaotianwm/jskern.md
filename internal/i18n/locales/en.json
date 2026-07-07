@@ -4,7 +4,10 @@
     "window.maximize": "Maximize",
     "window.close": "Close",
     "menu.language": "Language",
-    "menu.theme": "Theme"
+    "menu.theme": "Theme",
+    "theme.system": "System",
+    "theme.light": "Light",
+    "theme.dark": "Dark"
   },
   "business": {
     "app.subtitle": "Desktop Markdown reader",

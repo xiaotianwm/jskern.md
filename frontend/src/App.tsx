@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -33,11 +33,12 @@ function App() {
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
     const brand = product?.brandParts;
+    const currentTheme = bootstrap?.currentTheme ?? 'system';
 
     useEffect(() => {
         let cancelled = false;
         async function boot() {
-            const data = await GetBootstrap('zh-CN');
+            const data = await GetBootstrap('');
             if (cancelled) {
                 return;
             }
@@ -53,6 +54,19 @@ function App() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const applyTheme = () => {
+            const useDark = currentTheme === 'dark' || (currentTheme === 'system' && media.matches);
+            globalThis.document.documentElement.classList.toggle('dark', useDark);
+        };
+        applyTheme();
+        media.addEventListener('change', applyTheme);
+        return () => {
+            media.removeEventListener('change', applyTheme);
+        };
+    }, [currentTheme]);
 
     useEffect(() => {
         const root = markdownBodyRef.current;
@@ -262,6 +276,16 @@ function App() {
         setSearchError('');
     }
 
+    async function switchLanguage(locale: string) {
+        const data = await SwitchLanguage(locale);
+        setBootstrap(data);
+    }
+
+    async function switchTheme(theme: string) {
+        const data = await SwitchTheme(theme);
+        setBootstrap(data);
+    }
+
     function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
         if (event.key === 'Enter' && searchResults.length > 0) {
             event.preventDefault();
@@ -373,6 +397,31 @@ function App() {
                     ) : null}
                 </div>
                 <span className="status-line">{text['status.reader_first']}</span>
+                <div className="toolbar-spacer"/>
+                <label className="toolbar-select">
+                    <span>{shell['menu.language']}</span>
+                    <select
+                        value={bootstrap.currentLocale}
+                        aria-label={shell['menu.language']}
+                        onChange={event => void switchLanguage(event.currentTarget.value)}
+                    >
+                        {product?.languages?.map(language => (
+                            <option key={language.code} value={language.code}>{language.label}</option>
+                        ))}
+                    </select>
+                </label>
+                <label className="toolbar-select">
+                    <span>{shell['menu.theme']}</span>
+                    <select
+                        value={currentTheme}
+                        aria-label={shell['menu.theme']}
+                        onChange={event => void switchTheme(event.currentTarget.value)}
+                    >
+                        <option value="system">{shell['theme.system']}</option>
+                        <option value="light">{shell['theme.light']}</option>
+                        <option value="dark">{shell['theme.dark']}</option>
+                    </select>
+                </label>
             </section>
 
             <section className="workspace-layout">

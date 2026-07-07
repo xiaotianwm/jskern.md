@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-08
+
+### Added
+
+- Added Go-managed persistent `locale` and `theme` settings under AppData `config/settings.json`.
+- Added `SwitchLanguage(locale)` and `SwitchTheme(theme)` Wails APIs.
+- Added toolbar language and theme controls that call Go APIs and consume Go-owned locale strings.
+- Added system/light/dark theme support using existing CSS variables and a `prefers-color-scheme` listener for system mode.
+- Added localized shell labels for system, light, and dark theme options.
+- Added Go tests for persisted language/theme switching and normalization.
+- Added `scripts/package-windows.ps1` to build a Wails NSIS installer, stage it under `dist/releases/v<version>/`, and generate `SHA256SUMS.txt`.
+
+### Changed
+
+- Startup bootstrap now calls `GetBootstrap("")` so Go settings choose the current locale and theme instead of hardcoding `zh-CN` in React.
+- `settings.json` now preserves locale/theme defaults while keeping existing workspace persistence behavior.
+- GitHub Release packaging policy now treats installers as the primary user-facing artifact and reserves raw `jskernmd.exe` for local validation.
+
+### Release Packaging
+
+- Windows installer artifact name: `jskernmd-v<version>-windows-amd64-setup.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+
+### Validation
+
+- Language/theme settings and installer staging:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Initial `scripts/package-windows.ps1` run built `build/bin/jskernmd.exe` but could not create the NSIS installer because `makensis` was missing.
+  - Installed `NSIS.NSIS` through `winget` and updated `scripts/package-windows.ps1` to detect common NSIS install paths when PATH is not refreshed.
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/jskernmd-v0.1.0-windows-amd64-setup.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `3cbbca75ffbbf8561f12599ab575a031c2e79e5530746af42801be8544ddf2c0`.
+  - GitHub Release `v0.1.0` now contains the installer and checksum file; the previous raw exe asset was removed.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-07
 
 ### Added

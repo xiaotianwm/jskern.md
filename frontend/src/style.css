@@ -162,6 +162,38 @@ a {
     border-bottom: 1px solid var(--border);
 }
 
+.toolbar-spacer {
+    flex: 1 1 auto;
+}
+
+.toolbar-select {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--text-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    -webkit-app-region: no-drag;
+}
+
+.toolbar-select select {
+    height: 28px;
+    min-width: 92px;
+    border: 1px solid var(--border-input);
+    border-radius: 6px;
+    padding: 0 26px 0 8px;
+    color: var(--text);
+    background: var(--bg-input);
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+}
+
+.toolbar-select select:focus {
+    border-color: color-mix(in srgb, var(--ring) 58%, var(--border-input));
+}
+
 .primary-action {
     height: 28px;
     padding: 0 12px;

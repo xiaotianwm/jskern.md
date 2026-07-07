@@ -100,7 +100,7 @@ jskernmd/
   crash/
 ```
 
-`settings.json` stores `storage_version` and `last_workspace`. Startup calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
+`settings.json` stores `storage_version`, `last_workspace`, `locale`, and `theme`. Startup calls `GetBootstrap("")` to read Go-owned locale/theme preferences, then calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
 
 ## Local Resources
 
@@ -113,3 +113,15 @@ Markdown rendering rewrites local bitmap images to:
 The Wails asset server forwards this path to a Go handler. The handler resolves the path against the current workspace, validates the real path is still inside the workspace, and streams only supported bitmap image files.
 
 Relative Markdown document links are rendered with `data-kern-document` and opened through `OpenWorkspaceDocument(path)`. React does not resolve filesystem paths; it only forwards the workspace-relative path back to Go.
+
+## Release Artifacts
+
+Windows releases are packaged with Wails NSIS through `scripts/package-windows.ps1`.
+
+The canonical GitHub Release installer name is:
+
+```text
+jskernmd-v<version>-windows-amd64-setup.exe
+```
+
+The staged release directory must also contain `SHA256SUMS.txt`. Raw Wails executable builds remain local validation artifacts and are not the primary downloadable release package.

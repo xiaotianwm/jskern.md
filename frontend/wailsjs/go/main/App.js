@@ -33,3 +33,11 @@ export function SearchWorkspace(arg1) {
 export function StatDocument(arg1, arg2, arg3) {
   return window['go']['main']['App']['StatDocument'](arg1, arg2, arg3);
 }
+
+export function SwitchLanguage(arg1) {
+  return window['go']['main']['App']['SwitchLanguage'](arg1);
+}
+
+export function SwitchTheme(arg1) {
+  return window['go']['main']['App']['SwitchTheme'](arg1);
+}

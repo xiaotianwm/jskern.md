@@ -41,3 +41,9 @@ Consequence: Markdown rendering rewrites local bitmap images to a Go-controlled 
 Reason: Code blocks need TextMate-quality highlighting, but Markdown parsing, sanitization, and durable document semantics must remain Go-owned.
 
 Consequence: Go preserves safe `language-*` classes on `pre` and `code`; React applies Shiki after rendering sanitized HTML. If Shiki fails or the language is unsupported, the original plain code block remains visible.
+
+## 2026-07-08: Publish Installers To GitHub Releases
+
+Reason: End users should download a normal desktop installer instead of a raw build executable, and artifact names need to stay stable across releases.
+
+Consequence: Windows GitHub Release uploads use `jskernmd-v<version>-windows-amd64-setup.exe` plus `SHA256SUMS.txt`. The release staging script is `scripts/package-windows.ps1`; `build/bin/jskernmd.exe` is kept as a local validation output only.

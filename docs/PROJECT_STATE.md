@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, workspace search, local relative resource support, Shiki code highlighting, product app icon assets, and document status notices.
+Readable Markdown document MVP loop with persisted workspace restore, workspace search, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and installer-based release staging.
 
 ## Done
 
@@ -55,11 +55,18 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Workspace search is bounded, skips hidden/heavy folders, caps results at 50, and returns lightweight result metadata plus snippets.
 - Toolbar search now calls Go through Wails with debounce and stale-response protection; Enter opens the first result and Escape clears the search.
 - Search UI text is localized through Go-owned `zh-CN` and `en` dictionaries.
+- Settings now persist `locale` and `theme` in Go-managed AppData.
+- Startup bootstrap now reads locale/theme preferences from Go settings instead of hardcoding a frontend locale.
+- Added Wails APIs for `SwitchLanguage(locale)` and `SwitchTheme(theme)`.
+- Added toolbar language and theme controls backed by Go settings and Go-owned locale strings.
+- Added Windows installer staging through `scripts/package-windows.ps1`.
+- GitHub Release artifact naming is standardized as `jskernmd-v<version>-windows-amd64-setup.exe` plus `SHA256SUMS.txt`.
+- GitHub Release `v0.1.0` now publishes the Windows installer and checksum file as the user-facing assets.
 
 ## Next
 
-- Add theme and language switching APIs.
 - Add in-document find for the currently opened Markdown file.
+- Add update-check/download UI against the control-plane latest-version API when the control-plane release path is ready for this app.
 
 ## Known Issues
 
@@ -143,4 +150,15 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after persisted language/theme settings and installer staging:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Initial installer staging failed because `makensis` was missing from the machine.
+  - Installed `NSIS.NSIS` through `winget`.
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/jskernmd-v0.1.0-windows-amd64-setup.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `3cbbca75ffbbf8561f12599ab575a031c2e79e5530746af42801be8544ddf2c0`.
+  - GitHub Release `v0.1.0` contains `jskernmd-v0.1.0-windows-amd64-setup.exe` and `SHA256SUMS.txt`; the previous raw exe asset was removed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

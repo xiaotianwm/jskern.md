@@ -57,6 +57,7 @@ type LocaleOption struct {
 type Bootstrap struct {
 	Product        ProductInfo       `json:"product"`
 	CurrentLocale  string            `json:"currentLocale"`
+	CurrentTheme   string            `json:"currentTheme"`
 	ShellLocale    map[string]string `json:"shellLocale"`
 	BusinessLocale map[string]string `json:"businessLocale"`
 }
@@ -64,6 +65,8 @@ type Bootstrap struct {
 type Settings struct {
 	StorageVersion int    `json:"storage_version"`
 	LastWorkspace  string `json:"last_workspace"`
+	Locale         string `json:"locale"`
+	Theme          string `json:"theme"`
 }
 
 type WorkspaceTree struct {
@@ -115,6 +118,13 @@ func (a *App) startup(ctx context.Context) {
 }
 
 func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
+	a.mu.RLock()
+	settingsLocale := a.settings.Locale
+	theme := normalizeTheme(a.settings.Theme)
+	a.mu.RUnlock()
+	if strings.TrimSpace(locale) == "" {
+		locale = settingsLocale
+	}
 	locale = normalizeLocale(locale)
 	messages, err := loadLocale(locale)
 	if err != nil {
@@ -139,9 +149,26 @@ func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
 			},
 		},
 		CurrentLocale:  locale,
+		CurrentTheme:   theme,
 		ShellLocale:    messages["shell"],
 		BusinessLocale: messages["business"],
 	}, nil
+}
+
+func (a *App) SwitchLanguage(locale string) (Bootstrap, error) {
+	locale = normalizeLocale(locale)
+	a.updateSettings(func(settings *Settings) {
+		settings.Locale = locale
+	})
+	return a.GetBootstrap("")
+}
+
+func (a *App) SwitchTheme(theme string) (Bootstrap, error) {
+	theme = normalizeTheme(theme)
+	a.updateSettings(func(settings *Settings) {
+		settings.Theme = theme
+	})
+	return a.GetBootstrap("")
 }
 
 func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
@@ -359,6 +386,15 @@ func normalizeLocale(locale string) string {
 	}
 }
 
+func normalizeTheme(theme string) string {
+	switch theme {
+	case "light", "dark":
+		return theme
+	default:
+		return "system"
+	}
+}
+
 func loadLocale(locale string) (map[string]map[string]string, error) {
 	data, err := localeFiles.ReadFile("internal/i18n/locales/" + locale + ".json")
 	if err != nil {
@@ -399,11 +435,19 @@ func (a *App) initAppData(root string) error {
 }
 
 func (a *App) setLastWorkspace(path string) {
+	a.updateSettings(func(settings *Settings) {
+		settings.LastWorkspace = filepath.Clean(path)
+	})
+}
+
+func (a *App) updateSettings(mutator func(*Settings)) {
 	a.mu.Lock()
 	if a.settings.StorageVersion == 0 {
 		a.settings = defaultSettings()
 	}
-	a.settings.LastWorkspace = filepath.Clean(path)
+	mutator(&a.settings)
+	a.settings.Locale = normalizeLocale(a.settings.Locale)
+	a.settings.Theme = normalizeTheme(a.settings.Theme)
 	settingsPath := a.settingsPath
 	settings := a.settings
 	a.mu.Unlock()
@@ -414,7 +458,11 @@ func (a *App) setLastWorkspace(path string) {
 }
 
 func defaultSettings() Settings {
-	return Settings{StorageVersion: currentSettingsVersion}
+	return Settings{
+		StorageVersion: currentSettingsVersion,
+		Locale:         "zh-CN",
+		Theme:          "system",
+	}
 }
 
 func loadSettings(path string) (Settings, error) {
@@ -435,6 +483,8 @@ func loadSettings(path string) (Settings, error) {
 	if settings.StorageVersion == 0 {
 		settings.StorageVersion = currentSettingsVersion
 	}
+	settings.Locale = normalizeLocale(settings.Locale)
+	settings.Theme = normalizeTheme(settings.Theme)
 	return settings, nil
 }
 

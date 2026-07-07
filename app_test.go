@@ -332,6 +332,9 @@ func TestWorkspacePathPersistsAndRestoresFromAppData(t *testing.T) {
 	if settings.LastWorkspace != filepath.Clean(workspace) {
 		t.Fatalf("expected last workspace %q, got %q", workspace, settings.LastWorkspace)
 	}
+	if settings.Locale != "zh-CN" || settings.Theme != "system" {
+		t.Fatalf("expected default locale/theme, got %+v", settings)
+	}
 
 	nextApp := NewApp()
 	if err := nextApp.initAppData(appDataRoot); err != nil {
@@ -377,7 +380,59 @@ func TestInitAppDataCreatesStoreLayoutAndBacksUpBadSettings(t *testing.T) {
 	if len(backups) != 1 {
 		t.Fatalf("expected one bad settings backup, got %d", len(backups))
 	}
-	if app.settings.StorageVersion != currentSettingsVersion || app.settings.LastWorkspace != "" {
+	if app.settings.StorageVersion != currentSettingsVersion || app.settings.LastWorkspace != "" || app.settings.Locale != "zh-CN" || app.settings.Theme != "system" {
 		t.Fatalf("expected default settings after bad file, got %+v", app.settings)
+	}
+}
+
+func TestSwitchLanguageAndThemePersistSettings(t *testing.T) {
+	appDataRoot := t.TempDir()
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	bootstrap, err := app.SwitchLanguage("en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bootstrap.CurrentLocale != "en" {
+		t.Fatalf("expected English bootstrap, got %q", bootstrap.CurrentLocale)
+	}
+
+	bootstrap, err = app.SwitchTheme("dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bootstrap.CurrentLocale != "en" || bootstrap.CurrentTheme != "dark" {
+		t.Fatalf("expected persisted English dark bootstrap, got %+v", bootstrap)
+	}
+
+	settingsBytes, err := os.ReadFile(filepath.Join(appDataRoot, "config", "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings Settings
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if settings.Locale != "en" || settings.Theme != "dark" {
+		t.Fatalf("expected persisted locale/theme, got %+v", settings)
+	}
+
+	bootstrap, err = app.SwitchLanguage("unknown")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bootstrap.CurrentLocale != "zh-CN" {
+		t.Fatalf("expected unsupported language to normalize to zh-CN, got %q", bootstrap.CurrentLocale)
+	}
+
+	bootstrap, err = app.SwitchTheme("neon")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bootstrap.CurrentTheme != "system" {
+		t.Fatalf("expected unsupported theme to normalize to system, got %q", bootstrap.CurrentTheme)
 	}
 }

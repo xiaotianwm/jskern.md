@@ -59,6 +59,7 @@ export namespace main {
 	export class Bootstrap {
 	    product: ProductInfo;
 	    currentLocale: string;
+	    currentTheme: string;
 	    shellLocale: Record<string, string>;
 	    businessLocale: Record<string, string>;
 	
@@ -70,6 +71,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.product = this.convertValues(source["product"], ProductInfo);
 	        this.currentLocale = source["currentLocale"];
+	        this.currentTheme = source["currentTheme"];
 	        this.shellLocale = source["shellLocale"];
 	        this.businessLocale = source["businessLocale"];
 	    }
