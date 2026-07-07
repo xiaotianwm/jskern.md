@@ -154,6 +154,69 @@ func TestOpenWorkspaceDocumentUsesWorkspaceRelativePath(t *testing.T) {
 	}
 }
 
+func TestStatDocumentDetectsChangesAndDeletion(t *testing.T) {
+	dir := t.TempDir()
+	docPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(docPath, []byte("# One\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := app.OpenDocument(docPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	status, err := app.StatDocument(docPath, doc.ModifiedAt, doc.Size)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Exists || !status.IsDocument || status.Changed {
+		t.Fatalf("expected unchanged existing document, got %+v", status)
+	}
+
+	if err := os.WriteFile(docPath, []byte("# One\n\nchanged\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	status, err = app.StatDocument(docPath, doc.ModifiedAt, doc.Size)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Exists || !status.Changed {
+		t.Fatalf("expected changed existing document, got %+v", status)
+	}
+
+	if err := os.Remove(docPath); err != nil {
+		t.Fatal(err)
+	}
+	status, err = app.StatDocument(docPath, doc.ModifiedAt, doc.Size)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Exists || !status.Changed {
+		t.Fatalf("expected deleted document to be reported as changed, got %+v", status)
+	}
+}
+
+func TestStatDocumentRejectsOutsideWorkspace(t *testing.T) {
+	workspace := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.StatDocument(outside, 0, 0); err == nil {
+		t.Fatal("expected outside workspace stat to be rejected")
+	}
+}
+
 func TestAssetHandlerServesOnlyWorkspaceImages(t *testing.T) {
 	dir := t.TempDir()
 	imagePath := filepath.Join(dir, "pic.png")

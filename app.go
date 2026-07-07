@@ -78,11 +78,22 @@ type TreeNode struct {
 }
 
 type Document struct {
-	Path    string    `json:"path"`
-	Name    string    `json:"name"`
-	Title   string    `json:"title"`
-	HTML    string    `json:"html"`
-	Outline []Heading `json:"outline"`
+	Path       string    `json:"path"`
+	Name       string    `json:"name"`
+	Title      string    `json:"title"`
+	HTML       string    `json:"html"`
+	Outline    []Heading `json:"outline"`
+	ModifiedAt int64     `json:"modifiedAt"`
+	Size       int64     `json:"size"`
+}
+
+type DocumentStatus struct {
+	Path       string `json:"path"`
+	Exists     bool   `json:"exists"`
+	IsDocument bool   `json:"isDocument"`
+	Changed    bool   `json:"changed"`
+	ModifiedAt int64  `json:"modifiedAt"`
+	Size       int64  `json:"size"`
 }
 
 type Heading struct {
@@ -200,6 +211,46 @@ func (a *App) OpenWorkspaceDocument(path string) (*Document, error) {
 	return a.OpenDocument(abs)
 }
 
+func (a *App) StatDocument(path string, knownModifiedAt int64, knownSize int64) (*DocumentStatus, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+	if !isMarkdownFile(abs) {
+		return nil, errors.New("not a markdown document")
+	}
+	if !a.isLexicallyWithinWorkspace(abs) {
+		return nil, errors.New("document is outside the current workspace")
+	}
+
+	info, err := os.Stat(abs)
+	if errors.Is(err, os.ErrNotExist) {
+		return &DocumentStatus{
+			Path:    filepath.Clean(abs),
+			Exists:  false,
+			Changed: true,
+		}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !a.isWithinWorkspace(abs) {
+		return nil, errors.New("document is outside the current workspace")
+	}
+
+	modifiedAt := info.ModTime().UnixMilli()
+	size := info.Size()
+	isDocument := !info.IsDir() && isMarkdownFile(abs)
+	return &DocumentStatus{
+		Path:       filepath.Clean(abs),
+		Exists:     true,
+		IsDocument: isDocument,
+		Changed:    !isDocument || modifiedAt != knownModifiedAt || size != knownSize,
+		ModifiedAt: modifiedAt,
+		Size:       size,
+	}, nil
+}
+
 func (a *App) isWithinWorkspace(path string) bool {
 	a.mu.RLock()
 	root := a.workspaceRoot
@@ -225,6 +276,20 @@ func (a *App) isWithinWorkspace(path string) bool {
 		return false
 	}
 	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
+}
+
+func (a *App) isLexicallyWithinWorkspace(path string) bool {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" {
+		return false
+	}
+	rel, err := filepath.Rel(root, filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
 }
 
 func (a *App) workspacePath(path string) (string, error) {

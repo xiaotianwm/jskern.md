@@ -13,3 +13,5 @@ export function OpenWorkspaceDocument(arg1:string):Promise<main.Document>;
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
 
 export function ScanWorkspace(arg1:string):Promise<main.WorkspaceTree>;
+
+export function StatDocument(arg1:string,arg2:number,arg3:number):Promise<main.DocumentStatus>;

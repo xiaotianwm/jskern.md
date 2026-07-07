@@ -114,6 +114,8 @@ export namespace main {
 	    title: string;
 	    html: string;
 	    outline: Heading[];
+	    modifiedAt: number;
+	    size: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Document(source);
@@ -126,6 +128,8 @@ export namespace main {
 	        this.title = source["title"];
 	        this.html = source["html"];
 	        this.outline = this.convertValues(source["outline"], Heading);
+	        this.modifiedAt = source["modifiedAt"];
+	        this.size = source["size"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -145,6 +149,28 @@ export namespace main {
 		    }
 		    return a;
 		}
+	}
+	export class DocumentStatus {
+	    path: string;
+	    exists: boolean;
+	    isDocument: boolean;
+	    changed: boolean;
+	    modifiedAt: number;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DocumentStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.exists = source["exists"];
+	        this.isDocument = source["isDocument"];
+	        this.changed = source["changed"];
+	        this.modifiedAt = source["modifiedAt"];
+	        this.size = source["size"];
+	    }
 	}
 	
 	

@@ -1,12 +1,13 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace} from '../wailsjs/go/main/App';
+import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, StatDocument} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
 type TreeNode = main.TreeNode;
 type Bootstrap = main.Bootstrap;
 type Document = main.Document;
+type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
 
 function App() {
@@ -17,6 +18,9 @@ function App() {
     const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
     const [documentBusy, setDocumentBusy] = useState(false);
+    const [documentError, setDocumentError] = useState('');
+    const [staleStatus, setStaleStatus] = useState<DocumentStatus | null>(null);
+    const [dismissedStatusKey, setDismissedStatusKey] = useState('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -53,6 +57,43 @@ function App() {
         };
     }, [document?.html]);
 
+    useEffect(() => {
+        if (!document || documentBusy) {
+            return;
+        }
+        const currentDocument = document;
+        let cancelled = false;
+
+        async function checkDocumentStatus() {
+            try {
+                const status = await StatDocument(currentDocument.path, currentDocument.modifiedAt, currentDocument.size);
+                if (cancelled) {
+                    return;
+                }
+                const statusKey = documentStatusKey(status);
+                if (status.changed && statusKey !== dismissedStatusKey) {
+                    setStaleStatus(status);
+                    return;
+                }
+                if (!status.changed) {
+                    setStaleStatus(null);
+                    setDismissedStatusKey('');
+                }
+            } catch {
+                // Keep this reminder weak; document reload will surface concrete errors.
+            }
+        }
+
+        const intervalId = window.setInterval(() => {
+            void checkDocumentStatus();
+        }, 5000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [dismissedStatusKey, document, documentBusy]);
+
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -69,6 +110,9 @@ function App() {
                 setTree(result.root);
                 setDocument(null);
                 setSelectedPath('');
+                setDocumentError('');
+                setStaleStatus(null);
+                setDismissedStatusKey('');
                 setExpandedPaths(new Set([result.root.path]));
             }
         } finally {
@@ -82,9 +126,16 @@ function App() {
         }
         setSelectedPath(path);
         setDocumentBusy(true);
+        setDocumentError('');
+        setStaleStatus(null);
+        setDismissedStatusKey('');
         try {
             const result = await OpenDocument(path);
             setDocument(result);
+            setSelectedPath(result.path);
+        } catch (error) {
+            setDocument(null);
+            setDocumentError(errorMessage(error, text['document.error_unknown']));
         } finally {
             setDocumentBusy(false);
         }
@@ -95,6 +146,9 @@ function App() {
             return;
         }
         setDocumentBusy(true);
+        setDocumentError('');
+        setStaleStatus(null);
+        setDismissedStatusKey('');
         try {
             const result = await OpenWorkspaceDocument(path);
             setSelectedPath(result.path);
@@ -104,6 +158,10 @@ function App() {
                     globalThis.document.getElementById(heading)?.scrollIntoView({block: 'start'});
                 });
             }
+        } catch (error) {
+            setDocument(null);
+            setSelectedPath('');
+            setDocumentError(errorMessage(error, text['document.error_unknown']));
         } finally {
             setDocumentBusy(false);
         }
@@ -143,6 +201,14 @@ function App() {
             }
             return next;
         });
+    }
+
+    function dismissDocumentChange() {
+        if (!staleStatus) {
+            return;
+        }
+        setDismissedStatusKey(documentStatusKey(staleStatus));
+        setStaleStatus(null);
     }
 
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
@@ -196,12 +262,35 @@ function App() {
                 </aside>
 
                 <article className="reader-surface">
-                    {document ? (
+                    {documentError ? (
+                        <div className="document-message error-message">
+                            <div className="message-title">{text['document.error_title']}</div>
+                            <div className="message-body">
+                                {text['document.error_open_failed']} <span className="selectable-data">{documentError}</span>
+                            </div>
+                        </div>
+                    ) : document ? (
                         <div className="document-view">
                             <header className="document-header">
                                 <h1>{document.title}</h1>
                                 <div className="document-path selectable-data">{document.path}</div>
                             </header>
+                            {staleStatus ? (
+                                <div className="document-message changed-message">
+                                    <div>
+                                        <div className="message-title">{text['document.changed_title']}</div>
+                                        <div className="message-body">{text['document.changed_body']}</div>
+                                    </div>
+                                    <div className="message-actions">
+                                        <button type="button" onClick={() => openDocument(document.path)} disabled={documentBusy}>
+                                            {text['document.reload']}
+                                        </button>
+                                        <button type="button" onClick={dismissDocumentChange}>
+                                            {text['document.dismiss']}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : null}
                             <div
                                 ref={markdownBodyRef}
                                 className="markdown-body"
@@ -242,6 +331,20 @@ function App() {
             </section>
         </main>
     );
+}
+
+function documentStatusKey(status: DocumentStatus) {
+    return `${status.exists}:${status.isDocument}:${status.modifiedAt}:${status.size}`;
+}
+
+function errorMessage(error: unknown, fallback: string) {
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+    if (typeof error === 'string' && error) {
+        return error;
+    }
+    return fallback;
 }
 
 function TreeView({

@@ -15,6 +15,13 @@
     "empty.outline": "选择文档后显示标题结构",
     "status.reader_first": "目录树是核心能力，不是附加功能",
     "tree.directory": "目录",
-    "tree.file": "文档"
+    "tree.file": "文档",
+    "document.error_title": "文档打开失败",
+    "document.error_open_failed": "无法打开所选文档。",
+    "document.error_unknown": "未知错误",
+    "document.changed_title": "当前文档已在磁盘上发生变化",
+    "document.changed_body": "可以重新加载以查看最新内容，或暂时忽略这次提醒。",
+    "document.reload": "重新加载",
+    "document.dismiss": "忽略"
   }
 }

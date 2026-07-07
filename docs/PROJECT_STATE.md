@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, Shiki code highlighting, and product app icon assets.
+Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, Shiki code highlighting, product app icon assets, and document status notices.
 
 ## Done
 
@@ -44,17 +44,20 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
 - Shiki is bundled with a small explicit language/theme set instead of the full language catalog.
 - Root `markdown-reader-icon.svg` is now the source icon artwork.
 - Wails build assets now use the converted app icon at `build/appicon.png` and `build/windows/icon.ico`.
+- Opened documents now carry Go-provided `modifiedAt` and `size` metadata for freshness checks.
+- Added `StatDocument(path, knownModifiedAt, knownSize)` so Go can validate and report whether the current document changed, disappeared, or stayed current.
+- Failed document opens now clear stale content and show a visible localized error panel in the reader surface.
+- The current document is now polled for external disk changes and shows a weak non-modal reload reminder.
+- The external-change reminder lets the user reload the current document or dismiss the current changed snapshot.
 
 ## Next
 
 - Add theme and language switching APIs.
-- Add user-visible error display for failed document loads.
 - Add search across the current workspace.
 
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
-- Failed document opens currently keep the previous document without a visible error panel.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
@@ -104,6 +107,13 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
   - SVG source rendered to a 1024x1024 alpha PNG at `build/appicon.png`.
   - Wails regenerated `build/windows/icon.ico` from the new app icon.
   - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after document status notices:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.

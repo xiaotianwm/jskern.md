@@ -305,6 +305,69 @@ a {
     padding: 34px 0 72px;
 }
 
+.document-message {
+    width: min(820px, calc(100% - 56px));
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    background: var(--bg-card);
+}
+
+.document-view .document-message {
+    width: 100%;
+    margin: 16px 0 4px;
+}
+
+.error-message {
+    margin: 42px auto;
+    border-color: color-mix(in srgb, var(--error) 38%, var(--border));
+    background: var(--error-bg);
+}
+
+.changed-message {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.message-title {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.message-body {
+    margin-top: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.message-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 6px;
+}
+
+.message-actions button {
+    height: 26px;
+    border: 1px solid var(--border-input);
+    border-radius: 6px;
+    padding: 0 9px;
+    color: var(--text);
+    background: var(--bg-input);
+    cursor: default;
+}
+
+.message-actions button:hover {
+    background: var(--bg-hover);
+}
+
+.message-actions button:disabled {
+    opacity: 0.58;
+}
+
 .document-header {
     padding-bottom: 18px;
     border-bottom: 1px solid var(--border);

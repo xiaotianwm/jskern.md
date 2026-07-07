@@ -15,6 +15,13 @@
     "empty.outline": "Select a document to show its heading structure",
     "status.reader_first": "The directory tree is a core capability, not an add-on",
     "tree.directory": "Folder",
-    "tree.file": "Document"
+    "tree.file": "Document",
+    "document.error_title": "Document could not be opened",
+    "document.error_open_failed": "The selected document could not be opened.",
+    "document.error_unknown": "Unknown error",
+    "document.changed_title": "This document changed on disk",
+    "document.changed_body": "Reload it to view the latest content, or dismiss this reminder for now.",
+    "document.reload": "Reload",
+    "document.dismiss": "Dismiss"
   }
 }

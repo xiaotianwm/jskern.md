@@ -42,6 +42,9 @@ workspace folder
 -> Go rewrites relative Markdown links to workspace-relative document actions
 -> React renders reading view
 -> Shiki highlights code blocks
+-> React asks Go for current document status while the document is open
+-> Go validates the path and reports whether the file changed on disk
+-> React shows a weak reload reminder without taking ownership of filesystem state
 ```
 
 Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.
@@ -65,6 +68,7 @@ Supported initial locales: `zh-CN`, `en`.
 - `RestoreWorkspace()`
 - `OpenDocument(path)`
 - `OpenWorkspaceDocument(path)`
+- `StatDocument(path, knownModifiedAt, knownSize)`
 
 Planned APIs:
 

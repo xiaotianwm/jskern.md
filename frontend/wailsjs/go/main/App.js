@@ -25,3 +25,7 @@ export function RestoreWorkspace() {
 export function ScanWorkspace(arg1) {
   return window['go']['main']['App']['ScanWorkspace'](arg1);
 }
+
+export function StatDocument(arg1, arg2, arg3) {
+  return window['go']['main']['App']['StatDocument'](arg1, arg2, arg3);
+}

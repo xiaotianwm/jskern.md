@@ -66,11 +66,13 @@ func (a *App) renderMarkdownDocument(path string) (*Document, error) {
 	}
 
 	return &Document{
-		Path:    path,
-		Name:    filepath.Base(path),
-		Title:   title,
-		HTML:    string(safeHTML),
-		Outline: outline,
+		Path:       path,
+		Name:       filepath.Base(path),
+		Title:      title,
+		HTML:       string(safeHTML),
+		Outline:    outline,
+		ModifiedAt: info.ModTime().UnixMilli(),
+		Size:       info.Size(),
 	}, nil
 }
 

@@ -4,6 +4,36 @@
 
 ### Added
 
+- Added Go-provided document freshness metadata:
+  - `modifiedAt`
+  - `size`
+- Added `StatDocument(path, knownModifiedAt, knownSize)` as the Go-owned document status check API.
+- Added Go tests for unchanged, changed, deleted, and outside-workspace document status checks.
+- Added localized reader-surface error copy for document open failures.
+- Added localized weak external-change reminder copy with reload and dismiss actions.
+
+### Changed
+
+- Failed document opens now clear stale reader content and show a visible error panel instead of silently leaving the previous document onscreen.
+- The current document now polls Go for disk freshness and shows a non-modal reminder when the file changes externally.
+- Reloading from the reminder reuses the existing document open path, so workspace boundary validation and Markdown rendering stay Go-owned.
+- Dismissing an external-change reminder suppresses only that exact changed snapshot; a later file change can surface a new reminder.
+- Wails frontend bindings were regenerated for the new `DocumentStatus` model and `StatDocument` API.
+
+### Validation
+
+- Document status notices:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
+### Added
+
 - Added `markdown-reader-icon.svg` as the product app icon source artwork.
 - Added a converted 1024x1024 alpha PNG app icon at `build/appicon.png`.
 - Added a regenerated Windows ICO at `build/windows/icon.ico` so Wails embeds the new icon into `jskernmd.exe`.
