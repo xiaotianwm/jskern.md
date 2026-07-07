@@ -28,6 +28,7 @@ var markdownPolicy = func() *bluemonday.Policy {
 	policy.AllowRelativeURLs(true)
 	policy.AllowAttrs("id").OnElements("h1", "h2", "h3", "h4", "h5", "h6")
 	policy.AllowAttrs("data-kern-document", "data-kern-heading").OnElements("a")
+	policy.AllowAttrs("class").OnElements("pre", "code")
 	return policy
 }()
 

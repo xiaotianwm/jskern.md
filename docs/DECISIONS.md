@@ -35,3 +35,9 @@ Consequence: Go owns `%APPDATA%\jskernmd` on Windows and the equivalent system c
 Reason: Folder-based Markdown libraries commonly use relative images and cross-document links, but React must not read local files or trust relative paths.
 
 Consequence: Markdown rendering rewrites local bitmap images to a Go-controlled `/kern-asset` URL and rewrites relative Markdown links to workspace-relative document actions. Go validates every resolved path against the current workspace before serving or opening it.
+
+## 2026-07-07: Keep Shiki As A Frontend Display Enhancement
+
+Reason: Code blocks need TextMate-quality highlighting, but Markdown parsing, sanitization, and durable document semantics must remain Go-owned.
+
+Consequence: Go preserves safe `language-*` classes on `pre` and `code`; React applies Shiki after rendering sanitized HTML. If Shiki fails or the language is unsupported, the original plain code block remains visible.

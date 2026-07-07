@@ -44,6 +44,27 @@ func TestOpenDocumentRendersAndSanitizesMarkdown(t *testing.T) {
 	}
 }
 
+func TestOpenDocumentPreservesCodeLanguageClass(t *testing.T) {
+	dir := t.TempDir()
+	docPath := filepath.Join(dir, "README.md")
+	source := "# Code\n\n```go\nfmt.Println(\"hi\")\n```\n"
+	if err := os.WriteFile(docPath, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := app.OpenDocument(docPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(doc.HTML, `class="language-go"`) {
+		t.Fatalf("expected code language class for Shiki, got %q", doc.HTML)
+	}
+}
+
 func TestOpenDocumentRejectsOutsideWorkspace(t *testing.T) {
 	workspace := t.TempDir()
 	outside := filepath.Join(t.TempDir(), "outside.md")

@@ -1,7 +1,8 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
 import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
+import {highlightCodeBlocks} from './codeHighlighter';
 
 type TreeNode = main.TreeNode;
 type Bootstrap = main.Bootstrap;
@@ -16,6 +17,7 @@ function App() {
     const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
     const [documentBusy, setDocumentBusy] = useState(false);
+    const markdownBodyRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         let cancelled = false;
@@ -36,6 +38,20 @@ function App() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        const root = markdownBodyRef.current;
+        if (!root || !document?.html) {
+            return;
+        }
+        const controller = new AbortController();
+        void highlightCodeBlocks(root, controller.signal).catch(() => {
+            // Keep Go-rendered plain code blocks if Shiki cannot initialize.
+        });
+        return () => {
+            controller.abort();
+        };
+    }, [document?.html]);
 
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
@@ -186,7 +202,12 @@ function App() {
                                 <h1>{document.title}</h1>
                                 <div className="document-path selectable-data">{document.path}</div>
                             </header>
-                            <div className="markdown-body" onClick={handleMarkdownClick} dangerouslySetInnerHTML={{__html: document.html}}/>
+                            <div
+                                ref={markdownBodyRef}
+                                className="markdown-body"
+                                onClick={handleMarkdownClick}
+                                dangerouslySetInnerHTML={{__html: document.html}}
+                            />
                         </div>
                     ) : (
                         <div className="reader-placeholder" aria-busy={documentBusy}>

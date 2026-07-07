@@ -4,6 +4,31 @@
 
 ### Added
 
+- Added Shiki-based syntax highlighting for rendered Markdown code blocks.
+- Added a focused frontend highlighter module that scans Go-sanitized Markdown HTML after document render.
+- Added explicit language alias handling for common Markdown fence labels such as `js`, `ts`, `sh`, `ps1`, and `yml`.
+- Added a Go sanitizer allowance for `class` attributes on `pre` and `code` elements so fenced code language markers survive into the renderer.
+- Added a Go test proving fenced code blocks preserve `language-*` classes for the Shiki handoff.
+
+### Changed
+
+- Code highlighting now remains a frontend display enhancement while Markdown parsing, HTML rendering, and sanitization stay in Go.
+- Shiki now uses a fine-grained bundled language/theme set instead of importing the full Shiki language catalog.
+- Unsupported or unlabeled code blocks intentionally fall back to the existing plain code-block rendering.
+
+### Validation
+
+- Shiki code highlighting:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
+### Added
+
 - Added a Go-controlled `/kern-asset` endpoint through the Wails asset server for local Markdown images.
 - Added Markdown AST rewriting for workspace-local bitmap image references.
 - Added Markdown AST rewriting for relative Markdown document links.

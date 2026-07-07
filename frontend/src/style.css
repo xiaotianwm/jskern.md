@@ -412,6 +412,17 @@ a {
     background: transparent;
 }
 
+.markdown-body pre.shiki {
+    border-color: color-mix(in srgb, var(--border) 66%, transparent);
+    padding: 14px;
+    line-height: 1.6;
+}
+
+.markdown-body pre.shiki code {
+    display: block;
+    min-width: max-content;
+}
+
 .markdown-body table {
     width: 100%;
     border-collapse: collapse;

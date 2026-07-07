@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore and local relative resource support.
+Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, and Shiki code highlighting.
 
 ## Done
 
@@ -39,20 +39,23 @@ Readable Markdown document MVP loop with persisted workspace restore and local r
 - Local relative Markdown images now render through a Go-controlled `/kern-asset` endpoint.
 - Relative Markdown document links now open through `OpenWorkspaceDocument(path)`.
 - Local image and Markdown link resolution remains restricted to the current workspace and rejects path escapes.
+- Fenced Markdown code blocks now preserve language classes through Go sanitization.
+- Frontend now highlights supported code blocks with Shiki after rendering Go-sanitized Markdown HTML.
+- Shiki is bundled with a small explicit language/theme set instead of the full language catalog.
 
 ## Next
 
-- Add Shiki code highlighting.
 - Add theme and language switching APIs.
 - Add user-visible error display for failed document loads.
+- Add search across the current workspace.
 
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
-- Code blocks render as plain code until Shiki is integrated.
 - Failed document opens currently keep the previous document without a visible error panel.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
+- Code blocks without a supported language marker intentionally remain plain.
 
 ## Validation
 
@@ -89,3 +92,9 @@ Readable Markdown document MVP loop with persisted workspace restore and local r
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
+- Latest validation after Shiki code highlighting:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

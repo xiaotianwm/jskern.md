@@ -44,6 +44,8 @@ workspace folder
 -> Shiki highlights code blocks
 ```
 
+Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.
+
 ## i18n Flow
 
 ```text
