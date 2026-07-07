@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and installer-based release staging.
+Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and GitHub installer releases.
 
 ## Done
 
@@ -67,6 +67,10 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - GitHub Release artifact naming is standardized as `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`.
 - GitHub Release asset labels must match their filenames exactly.
 - GitHub Release `v0.1.0` now publishes the Windows installer and checksum file as the user-facing assets.
+- Product version advanced to `0.1.1` for the current-document find release.
+- Windows installer `JSKernMD-Setup-0.1.1-x64.exe` was staged under `dist/releases/v0.1.1/`.
+- `SHA256SUMS.txt` was generated for the `0.1.1` installer with SHA256 `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
+- GitHub Release `v0.1.1` is the user-facing installer release for current-document find.
 
 ## Next
 
@@ -180,4 +184,13 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `go test ./...` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after `v0.1.1` installer release:
+  - Product version sources were updated to `0.1.1`.
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Direct script execution was blocked by PowerShell execution policy; rerunning the same script with process-local `-ExecutionPolicy Bypass` succeeded.
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.1/JSKernMD-Setup-0.1.1-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

@@ -18,6 +18,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
+	appVersion             = "0.1.1"
 	currentSettingsVersion = 1
 )
 
@@ -136,7 +137,7 @@ func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
 			AppID:       "js.kern-md",
 			AppSlug:     "jskernmd",
 			DisplayName: "JS Kern.md",
-			Version:     "0.1.0",
+			Version:     appVersion,
 			Repository:  "jskern.md",
 			BrandParts: map[string]string{
 				"prefix": "js",

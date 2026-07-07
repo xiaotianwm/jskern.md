@@ -18,6 +18,7 @@
 
 ### Changed
 
+- Advanced the product version to `0.1.1` for the current-document find release.
 - Switching documents now clears transient current-document find state and removes match highlights.
 - Closing the find bar now removes all current-document highlights from the rendered Markdown DOM.
 - Architecture notes now record current-document find as transient React-owned UI state and move language/theme switching into the implemented API list.
@@ -31,9 +32,20 @@
 
 - Windows installer artifact name: `JSKernMD-Setup-<version>-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
+- Published release target: `v0.1.1`.
+- Windows installer artifact: `JSKernMD-Setup-0.1.1-x64.exe`.
+- Installer SHA256: `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
 
 ### Validation
 
+- `v0.1.1` installer release:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Direct `scripts\package-windows.ps1` execution was blocked by PowerShell policy; rerunning with process-local `-ExecutionPolicy Bypass` succeeded.
+  - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.1/JSKernMD-Setup-0.1.1-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - Current-document find:
   - `npm.cmd run build` passed from `frontend/`.
   - `go test ./...` passed.
