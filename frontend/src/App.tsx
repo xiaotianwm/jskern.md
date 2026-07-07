@@ -186,7 +186,7 @@ function App() {
         if (!heading.id) {
             return;
         }
-        globalThis.document.getElementById(heading.id)?.scrollIntoView({block: 'start'});
+        setReaderPosition(heading.id);
     }
 
     function toggleDirectory(path: string) {
@@ -212,13 +212,27 @@ function App() {
     function scheduleReaderPosition(heading = '') {
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
-                if (heading) {
-                    globalThis.document.getElementById(heading)?.scrollIntoView({block: 'start'});
-                    return;
-                }
-                readerScrollRef.current?.scrollTo({top: 0, left: 0, behavior: 'auto'});
+                setReaderPosition(heading);
             });
         });
+    }
+
+    function setReaderPosition(heading = '') {
+        const reader = readerScrollRef.current;
+        if (!reader) {
+            return;
+        }
+        if (heading) {
+            const target = globalThis.document.getElementById(heading);
+            if (target) {
+                const targetTop = target.getBoundingClientRect().top - reader.getBoundingClientRect().top + reader.scrollTop;
+                reader.scrollTop = Math.max(0, targetTop);
+                reader.scrollLeft = 0;
+                return;
+            }
+        }
+        reader.scrollTop = 0;
+        reader.scrollLeft = 0;
     }
 
     const hasWorkspace = useMemo(() => Boolean(tree), [tree]);

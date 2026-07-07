@@ -50,7 +50,7 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
 - The current document is now polled for external disk changes and shows a weak non-modal reload reminder.
 - The external-change reminder lets the user reload the current document or dismiss the current changed snapshot.
 - External-change reminders now float at the bottom of the center reader area so they remain visible at any document scroll position.
-- Opening a document from the tree or reloading it now resets the center reader scroll position to the top.
+- Opening a document from the tree or reloading it now resets the center reader position instantly, without visible scroll animation.
 
 ## Next
 
@@ -124,5 +124,11 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
   - `go test ./...` passed.
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after instant reader positioning:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - Initial `npm.cmd audit --audit-level=moderate` hit an npm registry `ECONNRESET`; retrying through `127.0.0.1:10808` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

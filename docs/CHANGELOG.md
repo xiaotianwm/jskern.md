@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Reader position changes are now direct offset assignments instead of browser scroll animations.
+- Removed smooth scrolling from the reader container so newly opened documents appear at the top immediately.
 - Moved the external document-change reminder out of the Markdown document flow and into a bottom overlay inside the center reader area.
 - Split the reader surface into a fixed shell plus an internal scroll container so status reminders stay visible regardless of document scroll position.
 - Opening or reloading a document from the workspace tree now resets the center reader scroll position to the top instead of inheriting the previous document's scroll offset.
@@ -11,6 +13,12 @@
 
 ### Validation
 
+- Instant reader positioning:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - Initial `npm.cmd audit --audit-level=moderate` hit an npm registry `ECONNRESET`; retrying through `127.0.0.1:10808` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - Reader status banner and scroll reset:
   - `go test ./...` passed.
   - `npm.cmd run build` passed.
