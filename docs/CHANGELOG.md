@@ -4,6 +4,10 @@
 
 ### Added
 
+- Added app-owned current-document find for the active Markdown document.
+- Added a `Ctrl/Cmd+F` handoff from the desktop guard layer to the reader find UI, keeping browser default find blocked.
+- Added rendered Markdown match highlighting with current-match emphasis and previous/next navigation.
+- Added localized current-document find labels for Chinese and English through Go-owned locale dictionaries.
 - Added Go-managed persistent `locale` and `theme` settings under AppData `config/settings.json`.
 - Added `SwitchLanguage(locale)` and `SwitchTheme(theme)` Wails APIs.
 - Added toolbar language and theme controls that call Go APIs and consume Go-owned locale strings.
@@ -14,6 +18,9 @@
 
 ### Changed
 
+- Switching documents now clears transient current-document find state and removes match highlights.
+- Closing the find bar now removes all current-document highlights from the rendered Markdown DOM.
+- Architecture notes now record current-document find as transient React-owned UI state and move language/theme switching into the implemented API list.
 - Startup bootstrap now calls `GetBootstrap("")` so Go settings choose the current locale and theme instead of hardcoding `zh-CN` in React.
 - `settings.json` now preserves locale/theme defaults while keeping existing workspace persistence behavior.
 - GitHub Release packaging policy now treats installers as the primary user-facing artifact and reserves raw `jskernmd.exe` for local validation.
@@ -27,6 +34,12 @@
 
 ### Validation
 
+- Current-document find:
+  - `npm.cmd run build` passed from `frontend/`.
+  - `go test ./...` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - Language/theme settings and installer staging:
   - `go test ./...` passed.
   - `wails generate module` passed.

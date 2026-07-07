@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, workspace search, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and installer-based release staging.
+Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and installer-based release staging.
 
 ## Done
 
@@ -55,6 +55,10 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Workspace search is bounded, skips hidden/heavy folders, caps results at 50, and returns lightweight result metadata plus snippets.
 - Toolbar search now calls Go through Wails with debounce and stale-response protection; Enter opens the first result and Escape clears the search.
 - Search UI text is localized through Go-owned `zh-CN` and `en` dictionaries.
+- App-owned `Ctrl/Cmd+F` now opens a current-document find bar instead of browser find.
+- Current-document find highlights matches inside the rendered Markdown body and supports previous/next navigation.
+- Closing find clears transient highlights; switching documents resets find state.
+- Current-document find UI text is localized through Go-owned `zh-CN` and `en` dictionaries.
 - Settings now persist `locale` and `theme` in Go-managed AppData.
 - Startup bootstrap now reads locale/theme preferences from Go settings instead of hardcoding a frontend locale.
 - Added Wails APIs for `SwitchLanguage(locale)` and `SwitchTheme(theme)`.
@@ -66,13 +70,14 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 
 ## Next
 
-- Add in-document find for the currently opened Markdown file.
 - Add update-check/download UI against the control-plane latest-version API when the control-plane release path is ready for this app.
+- Add lazy or incremental directory scanning if large workspaces become visibly slow.
 
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
 - Workspace search is currently an on-demand scan rather than an indexed search database.
+- Current-document find is DOM-based and does not match text split across separate inline elements.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
@@ -170,3 +175,9 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Latest validation after Release asset label correction:
   - GitHub Release asset label for `JSKernMD-Setup-0.1.0-x64.exe` now matches the filename exactly.
   - GitHub Release asset label for `SHA256SUMS.txt` now matches the filename exactly.
+- Latest validation after current-document find:
+  - `npm.cmd run build` passed from `frontend/`.
+  - `go test ./...` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.

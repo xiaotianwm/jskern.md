@@ -23,7 +23,7 @@ React owns:
 - Directory tree UI.
 - Markdown view rendering from Go-provided document data.
 - Outline panel rendering.
-- Short-lived UI interaction state such as hover, focus, pending buttons, and selection.
+- Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
 
 React must not directly access the filesystem, maintain translation dictionaries, parse durable business state, or persist business data.
 
@@ -45,6 +45,7 @@ workspace folder
 -> React asks Go for current document status while the document is open
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
+-> React may run transient in-document find highlighting over the already-rendered Markdown DOM
 ```
 
 Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.
@@ -70,10 +71,6 @@ Supported initial locales: `zh-CN`, `en`.
 - `OpenWorkspaceDocument(path)`
 - `StatDocument(path, knownModifiedAt, knownSize)`
 - `SearchWorkspace(query)`
-
-Planned APIs:
-
-- `GetOutline(path)`
 - `SwitchLanguage(locale)`
 - `SwitchTheme(mode)`
 

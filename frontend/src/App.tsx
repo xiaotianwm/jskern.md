@@ -11,6 +11,9 @@ type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
 type SearchResult = main.SearchResult;
 
+const FIND_MATCH_CLASS = 'kern-find-match';
+const FIND_CURRENT_CLASS = 'kern-find-current';
+
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
     const [tree, setTree] = useState<TreeNode | null>(null);
@@ -26,8 +29,13 @@ function App() {
     const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
     const [searchBusy, setSearchBusy] = useState(false);
     const [searchError, setSearchError] = useState('');
+    const [findOpen, setFindOpen] = useState(false);
+    const [findQuery, setFindQuery] = useState('');
+    const [findMatches, setFindMatches] = useState<HTMLElement[]>([]);
+    const [findIndex, setFindIndex] = useState(0);
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
+    const findInputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestRef = useRef(0);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
@@ -81,6 +89,64 @@ function App() {
             controller.abort();
         };
     }, [document?.html]);
+
+    useEffect(() => {
+        const openFind = () => {
+            if (!document) {
+                return;
+            }
+            setFindOpen(true);
+            window.requestAnimationFrame(() => {
+                findInputRef.current?.focus();
+                findInputRef.current?.select();
+            });
+        };
+        window.addEventListener('kern:find', openFind);
+        return () => {
+            window.removeEventListener('kern:find', openFind);
+        };
+    }, [document]);
+
+    useEffect(() => {
+        setFindOpen(false);
+        setFindQuery('');
+        setFindMatches([]);
+        setFindIndex(0);
+        const root = markdownBodyRef.current;
+        if (root) {
+            clearFindMarks(root);
+        }
+    }, [document?.path]);
+
+    useEffect(() => {
+        const root = markdownBodyRef.current;
+        if (!root) {
+            setFindMatches([]);
+            setFindIndex(0);
+            return;
+        }
+        clearFindMarks(root);
+        const query = findQuery.trim();
+        if (!query) {
+            setFindMatches([]);
+            setFindIndex(0);
+            return;
+        }
+        const matches = applyFindMarks(root, query);
+        setFindMatches(matches);
+        setFindIndex(0);
+    }, [document?.html, findQuery]);
+
+    useEffect(() => {
+        updateCurrentFindMatch(findMatches, findIndex);
+        const current = findMatches[findIndex];
+        const reader = readerScrollRef.current;
+        if (!current || !reader) {
+            return;
+        }
+        const targetTop = current.getBoundingClientRect().top - reader.getBoundingClientRect().top + reader.scrollTop - 80;
+        reader.scrollTop = Math.max(0, targetTop);
+    }, [findIndex, findMatches]);
 
     useEffect(() => {
         if (!document || documentBusy) {
@@ -298,6 +364,35 @@ function App() {
         }
     }
 
+    function closeFind() {
+        setFindOpen(false);
+        setFindQuery('');
+        setFindMatches([]);
+        setFindIndex(0);
+        const root = markdownBodyRef.current;
+        if (root) {
+            clearFindMarks(root);
+        }
+    }
+
+    function moveFindMatch(direction: 1 | -1) {
+        if (!findMatches.length) {
+            return;
+        }
+        setFindIndex(current => (current + direction + findMatches.length) % findMatches.length);
+    }
+
+    function handleFindKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            moveFindMatch(event.shiftKey ? -1 : 1);
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closeFind();
+        }
+    }
+
     function scheduleReaderPosition(heading = '') {
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -444,6 +539,36 @@ function App() {
                 </aside>
 
                 <article className="reader-surface">
+                    {findOpen && document ? (
+                        <div className="find-bar">
+                            <input
+                                ref={findInputRef}
+                                className="find-input"
+                                type="text"
+                                value={findQuery}
+                                placeholder={text['find.placeholder']}
+                                aria-label={text['find.placeholder']}
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck={false}
+                                onChange={event => setFindQuery(event.currentTarget.value)}
+                                onKeyDown={handleFindKeyDown}
+                            />
+                            <span className={`find-counter ${findQuery.trim() && !findMatches.length ? 'empty' : ''}`}>
+                                {findQuery.trim() && !findMatches.length ? text['find.no_matches'] : `${findMatches.length ? findIndex + 1 : 0}/${findMatches.length}`}
+                            </span>
+                            <button type="button" className="find-nav" title={text['find.previous']} aria-label={text['find.previous']} onClick={() => moveFindMatch(-1)} disabled={!findMatches.length}>
+                                ↑
+                            </button>
+                            <button type="button" className="find-nav" title={text['find.next']} aria-label={text['find.next']} onClick={() => moveFindMatch(1)} disabled={!findMatches.length}>
+                                ↓
+                            </button>
+                            <button type="button" className="find-close" title={text['find.close']} aria-label={text['find.close']} onClick={closeFind}>
+                                ×
+                            </button>
+                        </div>
+                    ) : null}
                     <div className="reader-scroll" ref={readerScrollRef}>
                         {documentError ? (
                             <div className="document-message error-message">
@@ -531,6 +656,69 @@ function errorMessage(error: unknown, fallback: string) {
         return error;
     }
     return fallback;
+}
+
+function clearFindMarks(root: HTMLElement) {
+    const marks = Array.from(root.querySelectorAll(`mark.${FIND_MATCH_CLASS}`));
+    for (const mark of marks) {
+        const parent = mark.parentNode;
+        if (!parent) {
+            continue;
+        }
+        parent.replaceChild(globalThis.document.createTextNode(mark.textContent ?? ''), mark);
+        parent.normalize();
+    }
+}
+
+function applyFindMarks(root: HTMLElement, query: string) {
+    const needle = query.toLocaleLowerCase();
+    const textNodes: Text[] = [];
+    const walker = globalThis.document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+            const parent = node.parentElement;
+            if (!parent || parent.closest(`mark.${FIND_MATCH_CLASS}, script, style, input, textarea`)) {
+                return NodeFilter.FILTER_REJECT;
+            }
+            return (node.nodeValue ?? '').toLocaleLowerCase().includes(needle)
+                ? NodeFilter.FILTER_ACCEPT
+                : NodeFilter.FILTER_REJECT;
+        }
+    });
+    while (walker.nextNode()) {
+        textNodes.push(walker.currentNode as Text);
+    }
+
+    const marks: HTMLElement[] = [];
+    for (const node of textNodes) {
+        const value = node.nodeValue ?? '';
+        const lower = value.toLocaleLowerCase();
+        const fragment = globalThis.document.createDocumentFragment();
+        let cursor = 0;
+        let matchIndex = lower.indexOf(needle);
+        while (matchIndex >= 0) {
+            if (matchIndex > cursor) {
+                fragment.append(value.slice(cursor, matchIndex));
+            }
+            const mark = globalThis.document.createElement('mark');
+            mark.className = FIND_MATCH_CLASS;
+            mark.textContent = value.slice(matchIndex, matchIndex + query.length);
+            fragment.append(mark);
+            marks.push(mark);
+            cursor = matchIndex + query.length;
+            matchIndex = lower.indexOf(needle, cursor);
+        }
+        if (cursor < value.length) {
+            fragment.append(value.slice(cursor));
+        }
+        node.replaceWith(fragment);
+    }
+    return marks;
+}
+
+function updateCurrentFindMatch(matches: HTMLElement[], index: number) {
+    matches.forEach((match, matchIndex) => {
+        match.classList.toggle(FIND_CURRENT_CLASS, matchIndex === index);
+    });
 }
 
 function TreeView({
