@@ -4,6 +4,29 @@
 
 ### Added
 
+- Added `markdown-reader-icon.svg` as the product app icon source artwork.
+- Added a converted 1024x1024 alpha PNG app icon at `build/appicon.png`.
+- Added a regenerated Windows ICO at `build/windows/icon.ico` so Wails embeds the new icon into `jskernmd.exe`.
+
+### Changed
+
+- Replaced the default Wails application icon with the JS Kern.md Markdown reader icon.
+
+### Validation
+
+- App icon integration:
+  - Rendered `markdown-reader-icon.svg` to `build/appicon.png` with transparent corners.
+  - Regenerated `build/windows/icon.ico` from the new PNG through Wails.
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
+### Added
+
 - Added Shiki-based syntax highlighting for rendered Markdown code blocks.
 - Added a focused frontend highlighter module that scans Go-sanitized Markdown HTML after document render.
 - Added explicit language alias handling for common Markdown fence labels such as `js`, `ts`, `sh`, `ps1`, and `yml`.

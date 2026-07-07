@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, and Shiki code highlighting.
+Readable Markdown document MVP loop with persisted workspace restore, local relative resource support, Shiki code highlighting, and product app icon assets.
 
 ## Done
 
@@ -42,6 +42,8 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
 - Fenced Markdown code blocks now preserve language classes through Go sanitization.
 - Frontend now highlights supported code blocks with Shiki after rendering Go-sanitized Markdown HTML.
 - Shiki is bundled with a small explicit language/theme set instead of the full language catalog.
+- Root `markdown-reader-icon.svg` is now the source icon artwork.
+- Wails build assets now use the converted app icon at `build/appicon.png` and `build/windows/icon.ico`.
 
 ## Next
 
@@ -93,6 +95,14 @@ Readable Markdown document MVP loop with persisted workspace restore, local rela
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
 - Latest validation after Shiki code highlighting:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after app icon integration:
+  - SVG source rendered to a 1024x1024 alpha PNG at `build/appicon.png`.
+  - Wails regenerated `build/windows/icon.ico` from the new app icon.
   - `go test ./...` passed.
   - `npm.cmd run build` passed.
   - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
