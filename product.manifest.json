@@ -1,0 +1,28 @@
+{
+  "app_id": "js.kern-md",
+  "app_slug": "jskernmd",
+  "repository": "jskern.md",
+  "product_name": "JS Kern.md",
+  "binary_name": "jskernmd",
+  "version": "0.1.0",
+  "bundle_id": "com.jslabs.jskernmd",
+  "author": "Linpo Wu",
+  "company": "JS Labs",
+  "languages": [
+    {
+      "code": "zh-CN",
+      "label": "中文"
+    },
+    {
+      "code": "en",
+      "label": "English"
+    }
+  ],
+  "core": {
+    "desktop_runtime": "Wails v2",
+    "backend": "Go",
+    "frontend": "React + TypeScript + Vite",
+    "markdown_parser": "goldmark",
+    "code_highlighter": "Shiki"
+  }
+}

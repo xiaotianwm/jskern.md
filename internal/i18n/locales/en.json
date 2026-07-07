@@ -1,0 +1,20 @@
+{
+  "shell": {
+    "window.minimize": "Minimize",
+    "window.maximize": "Maximize",
+    "window.close": "Close",
+    "menu.language": "Language",
+    "menu.theme": "Theme"
+  },
+  "business": {
+    "app.subtitle": "Desktop Markdown reader",
+    "action.open_workspace": "Open Folder",
+    "panel.workspace": "Workspace",
+    "panel.outline": "Outline",
+    "empty.workspace": "Open a folder containing Markdown files to start reading",
+    "empty.outline": "Select a document to show its heading structure",
+    "status.reader_first": "The directory tree is a core capability, not an add-on",
+    "tree.directory": "Folder",
+    "tree.file": "Document"
+  }
+}

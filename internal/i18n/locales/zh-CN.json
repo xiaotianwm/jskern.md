@@ -1,0 +1,20 @@
+{
+  "shell": {
+    "window.minimize": "最小化",
+    "window.maximize": "最大化",
+    "window.close": "关闭",
+    "menu.language": "语言",
+    "menu.theme": "主题"
+  },
+  "business": {
+    "app.subtitle": "桌面端 Markdown 阅读器",
+    "action.open_workspace": "打开文件夹",
+    "panel.workspace": "工作区",
+    "panel.outline": "大纲",
+    "empty.workspace": "打开一个包含 Markdown 的文件夹开始阅读",
+    "empty.outline": "选择文档后显示标题结构",
+    "status.reader_first": "目录树是核心能力，不是附加功能",
+    "tree.directory": "目录",
+    "tree.file": "文档"
+  }
+}

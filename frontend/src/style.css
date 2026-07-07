@@ -1,0 +1,295 @@
+:root {
+    --bg: #f4f4f5;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: rgba(0, 0, 0, 0.04);
+    --border: #e4e4e7;
+    --border-input: #d4d4d8;
+    --text: #09090b;
+    --text-muted: #71717a;
+    --primary: #2563eb;
+    --primary-hv: #1d4ed8;
+    --primary-fg: #ffffff;
+    --error: #dc2626;
+    --error-bg: #fef2f2;
+    --ring: #2563eb;
+    --titlebar-h: 38px;
+}
+
+.dark {
+    --bg: #0f0f11;
+    --bg-card: #18181b;
+    --bg-input: #1c1c1f;
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --border: #27272a;
+    --border-input: #3f3f46;
+    --text: #fafafa;
+    --text-muted: #71717a;
+    --primary: #4f86f7;
+    --primary-hv: #3b72e6;
+    --primary-fg: #ffffff;
+    --error: #f87171;
+    --error-bg: rgba(248, 113, 113, 0.08);
+    --ring: #4f86f7;
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body {
+    color: var(--text);
+    background: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+button {
+    font: inherit;
+}
+
+img,
+a {
+    -webkit-user-drag: none;
+}
+
+.boot-frame,
+.app-shell {
+    width: 100%;
+    height: 100%;
+    background: color-mix(in srgb, var(--bg-card) 92%, transparent);
+}
+
+.app-shell {
+    display: grid;
+    grid-template-rows: var(--titlebar-h) 42px minmax(0, 1fr);
+}
+
+.titlebar {
+    --wails-draggable: drag;
+    -webkit-app-region: drag;
+    display: grid;
+    grid-template-columns: 220px 1fr 138px;
+    align-items: center;
+    height: var(--titlebar-h);
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-card) 88%, transparent);
+}
+
+.brand-lockup {
+    padding-left: 16px;
+    letter-spacing: 0;
+    line-height: 1;
+}
+
+.brand-prefix {
+    color: #666;
+    font-weight: 300;
+}
+
+.brand-core,
+.brand-suffix {
+    font-weight: 700;
+}
+
+.brand-core {
+    color: var(--text);
+}
+
+.brand-suffix {
+    color: var(--primary);
+}
+
+.titlebar-center {
+    min-width: 0;
+    text-align: center;
+}
+
+.subtitle,
+.status-line,
+.empty-state {
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.window-controls {
+    -webkit-app-region: no-drag;
+    display: grid;
+    grid-template-columns: repeat(3, 46px);
+    height: 100%;
+}
+
+.window-controls button {
+    height: 100%;
+    border: 0;
+    color: var(--text-muted);
+    background: transparent;
+    cursor: default;
+}
+
+.window-controls button:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+}
+
+.window-controls .close:hover {
+    color: #fff;
+    background: #e4443a;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.primary-action {
+    height: 28px;
+    padding: 0 12px;
+    border: 1px solid color-mix(in srgb, var(--primary) 72%, var(--border));
+    border-radius: 6px;
+    color: var(--primary-fg);
+    background: var(--primary);
+    cursor: default;
+}
+
+.primary-action:hover {
+    background: var(--primary-hv);
+}
+
+.primary-action:disabled {
+    opacity: 0.58;
+}
+
+.workspace-layout {
+    display: grid;
+    grid-template-columns: 264px minmax(0, 1fr) 220px;
+    min-height: 0;
+}
+
+.sidebar,
+.outline-panel {
+    min-width: 0;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bg-card) 78%, transparent);
+}
+
+.sidebar {
+    border-right: 1px solid var(--border);
+}
+
+.outline-panel {
+    border-left: 1px solid var(--border);
+}
+
+.panel-heading {
+    height: 34px;
+    padding: 10px 12px 0;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 650;
+    text-transform: uppercase;
+}
+
+.empty-state {
+    padding: 12px;
+    line-height: 1.6;
+}
+
+.tree-node {
+    min-width: 0;
+}
+
+.tree-row {
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    align-items: center;
+    height: 26px;
+    padding-left: calc(10px + var(--depth) * 14px);
+    padding-right: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+}
+
+.tree-row:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+}
+
+.tree-row.file {
+    color: var(--text);
+}
+
+.tree-glyph {
+    font-size: 10px;
+}
+
+.tree-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.reader-surface {
+    min-width: 0;
+    overflow: auto;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+}
+
+.reader-placeholder {
+    width: min(760px, calc(100% - 48px));
+    margin: 42px auto;
+}
+
+.document-mark {
+    width: 120px;
+    height: 14px;
+    margin-bottom: 28px;
+    border-radius: 4px;
+    background: var(--primary);
+}
+
+.line {
+    height: 12px;
+    margin: 16px 0;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--text-muted) 28%, transparent);
+}
+
+.line.wide {
+    width: 94%;
+}
+
+.line.short {
+    width: 54%;
+}
+
+::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-muted) 28%, transparent);
+}
