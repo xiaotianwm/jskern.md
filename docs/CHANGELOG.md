@@ -18,6 +18,7 @@
 - `settings.json` now preserves locale/theme defaults while keeping existing workspace persistence behavior.
 - GitHub Release packaging policy now treats installers as the primary user-facing artifact and reserves raw `jskernmd.exe` for local validation.
 - Windows installer naming was corrected to the user-facing `JSKernMD-Setup-<version>-x64.exe` pattern instead of the internal binary-style name.
+- GitHub Release asset labels now match their filenames exactly so the download list is readable.
 
 ### Release Packaging
 
@@ -41,6 +42,9 @@
   - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/JSKernMD-Setup-0.1.0-x64.exe`.
   - `SHA256SUMS.txt` was regenerated with SHA256 `f591d4b676e4cb5b05184e4c9c71ccbab5c869f7029f43225be51d8a898d0bfb`.
   - GitHub Release `v0.1.0` was updated to use `JSKernMD-Setup-0.1.0-x64.exe`.
+- Release asset label correction:
+  - `JSKernMD-Setup-0.1.0-x64.exe` label now matches the filename.
+  - `SHA256SUMS.txt` label now matches the filename.
 
 ---
 

@@ -61,6 +61,7 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Added toolbar language and theme controls backed by Go settings and Go-owned locale strings.
 - Added Windows installer staging through `scripts/package-windows.ps1`.
 - GitHub Release artifact naming is standardized as `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`.
+- GitHub Release asset labels must match their filenames exactly.
 - GitHub Release `v0.1.0` now publishes the Windows installer and checksum file as the user-facing assets.
 
 ## Next
@@ -166,3 +167,6 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.0/JSKernMD-Setup-0.1.0-x64.exe`.
   - `SHA256SUMS.txt` was regenerated with SHA256 `f591d4b676e4cb5b05184e4c9c71ccbab5c869f7029f43225be51d8a898d0bfb`.
   - GitHub Release `v0.1.0` was updated to use `JSKernMD-Setup-0.1.0-x64.exe`.
+- Latest validation after Release asset label correction:
+  - GitHub Release asset label for `JSKernMD-Setup-0.1.0-x64.exe` now matches the filename exactly.
+  - GitHub Release asset label for `SHA256SUMS.txt` now matches the filename exactly.

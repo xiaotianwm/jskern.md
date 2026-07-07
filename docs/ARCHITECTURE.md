@@ -125,3 +125,5 @@ JSKernMD-Setup-<version>-x64.exe
 ```
 
 The staged release directory must also contain `SHA256SUMS.txt`. Raw Wails executable builds remain local validation artifacts and are not the primary downloadable release package.
+
+GitHub Release asset labels must match the uploaded filenames exactly so the public download list is self-explanatory.
