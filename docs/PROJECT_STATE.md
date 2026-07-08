@@ -127,6 +127,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Product version advanced to `0.1.7` for the installer locale and upgrade-path release.
 - Windows installer `JSKernMD-Setup-0.1.7-x64.exe` was staged under `dist/releases/v0.1.7/`.
 - `SHA256SUMS.txt` was generated for the `0.1.7` installer with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
+- GitHub Release `v0.1.7` publishes `JSKernMD-Setup-0.1.7-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
@@ -327,5 +328,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
   - `SHA256SUMS.txt` was generated with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
   - Installer version resource verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.7`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
   - Initial NSIS validation failed when Chinese custom strings were placed directly in `project.nsi`; the final ASCII-only NSIS template packaged successfully.
+  - GitHub Release `v0.1.7` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.7`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.7-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
   - `git diff --check` passed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.

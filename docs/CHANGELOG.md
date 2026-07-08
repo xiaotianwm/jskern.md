@@ -22,6 +22,8 @@
 - Windows installer artifact name: `JSKernMD-Setup-0.1.7-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
 - Installer SHA256: `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
+- Published release target: `v0.1.7`.
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.7`.
 
 ### Validation
 
@@ -33,6 +35,8 @@
 - Initial NSIS validation failed when Chinese custom strings were placed directly in `project.nsi`; the final ASCII-only NSIS template packaged successfully.
 - `SHA256SUMS.txt` was generated with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
 - Installer version resource verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.7`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+- GitHub Release `v0.1.7` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.7`.
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.7-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
 - `git diff --check` passed.
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 
