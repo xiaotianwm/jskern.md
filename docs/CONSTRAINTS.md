@@ -3,6 +3,7 @@
 ## Hard Product Constraints
 
 - The product is a desktop Markdown reader.
+- The product is an independent desktop app and does not use the shared Cloudflare/control-plane release system.
 - The MVP must be folder-first and directory-tree based.
 - Directory tree support is mandatory in the first usable version.
 - Single-file mode is secondary and must not replace workspace mode.
@@ -73,6 +74,7 @@
 
 ## Release Packaging
 
+- JS Kern.md releases use GitHub Releases directly; do not require `DEVELOPER_KEY`, Cloudflare Workers, D1, R2, or the shared control-plane publish API.
 - GitHub Releases must publish installer packages, not raw development executables.
 - Windows release artifacts must use the user-facing naming pattern `JSKernMD-Setup-<version>-x64.exe`.
 - GitHub Release asset labels must match their filenames exactly; do not use vague labels such as `Windows x64 installer`.

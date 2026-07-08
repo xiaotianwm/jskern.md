@@ -82,7 +82,7 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 
 ## Next
 
-- Move the update source from GitHub Releases to the control-plane latest-version API when that release path is ready for this app.
+- Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 

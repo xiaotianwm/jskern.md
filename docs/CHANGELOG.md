@@ -26,6 +26,8 @@
 
 ### Changed
 
+- Clarified that JS Kern.md is an independent desktop app and must not use the shared Cloudflare/control-plane release system.
+- Replaced the previous control-plane update-source follow-up with a GitHub Releases-only product boundary.
 - Advanced the product version to `0.1.2` for the update-check and find-focus release.
 - `Ctrl/Cmd+F` now focuses and selects the current-document find input after the find bar is mounted, fixing the previous timing race.
 - `settings.json` storage advanced to version 2 for the ignored update version field.

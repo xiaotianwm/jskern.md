@@ -47,3 +47,9 @@ Consequence: Go preserves safe `language-*` classes on `pre` and `code`; React a
 Reason: End users should download a normal desktop installer instead of a raw build executable, and artifact names need to stay stable across releases.
 
 Consequence: Windows GitHub Release uploads use `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`. The release staging script is `scripts/package-windows.ps1`; `build/bin/jskernmd.exe` is kept as a local validation output only.
+
+## 2026-07-08: Keep JS Kern.md Independent From The Shared Control Plane
+
+Reason: JS Kern.md is an independent Markdown reader, not part of the shared Cloudflare/control-plane software suite.
+
+Consequence: Do not require `DEVELOPER_KEY`, Cloudflare Workers, D1, R2, or the shared control-plane publish/latest APIs for JS Kern.md releases or update checks. GitHub Releases remain the product's release and update source unless this product boundary is explicitly changed.

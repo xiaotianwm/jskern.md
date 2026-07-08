@@ -108,13 +108,15 @@ jskernmd/
 
 ## Update Flow
 
-The current desktop update source is the GitHub Releases API for `xiaotianwm/jskern.md`, using only release assets that match the canonical installer name:
+JS Kern.md is an independent desktop app. Its desktop update source is the GitHub Releases API for `xiaotianwm/jskern.md`, using only release assets that match the canonical installer name:
 
 ```text
 JSKernMD-Setup-<version>-x64.exe
 ```
 
 Go checks for newer non-draft releases, returns the latest usable installer metadata to React, downloads installers into AppData `temp/update/`, verifies SHA256 when GitHub provides a digest, and opens the local installer only after the user clicks install. React only renders the weak reminder, download/install buttons, release notes, and transient busy/error state.
+
+Do not add Cloudflare Workers, D1, R2, `DEVELOPER_KEY`, or the shared control-plane latest/update APIs to this product unless the product boundary is explicitly changed later.
 
 ## Local Resources
 
