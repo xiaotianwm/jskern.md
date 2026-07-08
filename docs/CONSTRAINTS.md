@@ -90,6 +90,10 @@
 - Every meaningful product update must be packaged and synchronized to GitHub Releases in the same development session unless the user explicitly pauses release work.
 - GitHub Releases must publish installer packages, not raw development executables.
 - Windows release artifacts must use the user-facing naming pattern `JSKernMD-Setup-<version>-x64.exe`.
+- Windows installer UI must support English and Simplified Chinese and choose the visible installer language from the current Windows UI language without asking the user to pick.
+- Windows NSIS project templates must stay ASCII unless the build command explicitly configures a UTF-8 input charset; rely on NSIS built-in language tables for localized wizard text.
+- Windows installer upgrades must default to the previously installed directory by reading the app uninstall registry entry; new installs must write `InstallLocation`, and upgrades from older installers must fall back to deriving the directory from the previous `UninstallString`.
+- Windows installer metadata in `wails.json.info` must be synchronized from `product.manifest.json` before packaging so the installer and uninstall entry stay aligned with the product identity.
 - GitHub Release asset labels must match their filenames exactly; do not use vague labels such as `Windows x64 installer`.
 - Each release upload must include `SHA256SUMS.txt` for the published installer.
 - The raw `build/bin/jskernmd.exe` is a local build output only and must not be the primary GitHub Release download.

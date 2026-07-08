@@ -78,3 +78,9 @@ Consequence: Open tabs and the active document are persisted by Go in the worksp
 Reason: Directory-tree and tab context menus should feel native, but revealing local files is still a filesystem action that must not drift into React.
 
 Consequence: React may render transient app-owned context menus, copy Go-provided paths, and call existing reader actions. Any system file-manager reveal action must call a Go Wails API that validates the target is an existing file or directory inside the current workspace before launching the platform file manager.
+
+## 2026-07-08: Make Windows Installer Upgrades Directory-Aware
+
+Reason: Users expect an installer update to reuse the directory where the app is already installed, and the installer should speak the user's system language without adding another choice step.
+
+Consequence: The Windows NSIS installer selects English or Simplified Chinese from the Windows UI language, writes `InstallLocation` to the uninstall registry entry, and reuses that path on future installs. Older installs that lack `InstallLocation` are handled by deriving the path from `UninstallString` when possible.

@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-07-08 - v0.1.7 Installer Locale And Upgrade Path
+
+### Added
+
+- Added English and Simplified Chinese NSIS Modern UI language support to the Windows installer.
+- Added installer and uninstaller startup language selection based on the current Windows UI language, without adding a language picker step.
+- Added Windows upgrade directory detection that reads `InstallLocation` from the app uninstall registry entry before the directory page is shown.
+- Added compatibility fallback for older installers by deriving the previous install directory from the quoted `UninstallString` path when `InstallLocation` is missing.
+- Added installer registry writes for `InstallLocation` and `InstallerLanguage`.
+
+### Changed
+
+- Advanced the product version to `0.1.7` for the installer locale and upgrade-path release.
+- `scripts/package-windows.ps1` now synchronizes `wails.json.info` from `product.manifest.json` before invoking Wails NSIS packaging, keeping installer metadata aligned with the product manifest.
+- `scripts/package-windows.ps1` now writes generated JSON and checksum text as UTF-8 with LF line endings to avoid Windows formatting churn.
+- Kept `project.nsi` ASCII-only after validation showed `makensis` reads the script as ACP by default; localized wizard text now relies on NSIS built-in language tables.
+
+### Release Packaging
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.7-x64.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+- Installer SHA256: `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
+
+### Validation
+
+- `go test ./...` passed.
+- `npm.cmd run build` passed from `frontend/`.
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+- `wails build` passed and produced `build/bin/jskernmd.exe`.
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.7/JSKernMD-Setup-0.1.7-x64.exe`.
+- Initial NSIS validation failed when Chinese custom strings were placed directly in `project.nsi`; the final ASCII-only NSIS template packaged successfully.
+- `SHA256SUMS.txt` was generated with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
+- Installer version resource verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.7`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+- `git diff --check` passed.
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-08 - v0.1.6 Directory Tree And Tab Context Menus
 
 ### Added

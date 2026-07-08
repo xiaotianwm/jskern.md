@@ -172,3 +172,9 @@ The staged release directory must also contain `SHA256SUMS.txt`. Raw Wails execu
 
 GitHub Release asset labels must match the uploaded filenames exactly so the public download list is self-explanatory.
 Every meaningful product update must end with a synchronized GitHub Release installer and checksum unless release work is explicitly paused by the user.
+
+The Windows NSIS installer is localized through the native Modern UI language tables for English and Simplified Chinese. Installer startup reads the current Windows UI language and sets the installer/uninstaller language automatically, rather than showing a language picker.
+
+The Windows installer writes `InstallLocation` to the HKLM uninstall registry entry and reads it during later installs so upgrades default to the user's existing install directory. For compatibility with older releases that did not write `InstallLocation`, installer startup also derives the prior directory from the quoted `UninstallString` path when possible.
+
+Before packaging, `scripts/package-windows.ps1` synchronizes `wails.json.info` from `product.manifest.json`, keeping Wails installer metadata aligned with the manifest-driven product identity.

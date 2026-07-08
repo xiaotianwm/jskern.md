@@ -118,6 +118,15 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - `SHA256SUMS.txt` was generated for the `0.1.6` installer with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
 - GitHub Release `v0.1.6` publishes `JSKernMD-Setup-0.1.6-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 - GitHub Release synchronization is now mandatory for every meaningful product update unless the user explicitly pauses release work.
+- Windows installer now supports English and Simplified Chinese NSIS Modern UI language tables.
+- Installer and uninstaller startup now select English or Simplified Chinese from the current Windows UI language without showing a language picker.
+- Windows installer upgrades now default to the previously installed directory by reading `InstallLocation` from the uninstall registry entry.
+- Upgrades from older installers that lack `InstallLocation` now fall back to deriving the previous directory from the quoted `UninstallString`.
+- New installs now write `InstallLocation` and `InstallerLanguage` into the app uninstall registry entry.
+- Windows installer metadata in `wails.json.info` is now synchronized from `product.manifest.json` by `scripts/package-windows.ps1` before packaging.
+- Product version advanced to `0.1.7` for the installer locale and upgrade-path release.
+- Windows installer `JSKernMD-Setup-0.1.7-x64.exe` was staged under `dist/releases/v0.1.7/`.
+- `SHA256SUMS.txt` was generated for the `0.1.7` installer with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
 
 ## Next
 
@@ -139,6 +148,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Code blocks without a supported language marker intentionally remain plain.
 - Reading memory depends on stable generated heading IDs for changed-document heading fallback.
 - Tab-session restore intentionally drops tabs whose files no longer exist or no longer validate inside the current workspace.
+- The raw Wails application executable currently has empty Windows PE version fields even though the installer metadata is productized; handle raw exe PE resource productization separately if Windows file properties or task-manager details become user-facing.
 
 ## Validation
 
@@ -305,5 +315,17 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
   - `SHA256SUMS.txt` was generated with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
   - GitHub Release `v0.1.6` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.6`.
   - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.6-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+  - `git diff --check` passed.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Latest validation after installer locale and upgrade-path packaging:
+  - Product version sources were updated to `0.1.7`.
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.7/JSKernMD-Setup-0.1.7-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
+  - Installer version resource verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.7`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+  - Initial NSIS validation failed when Chinese custom strings were placed directly in `project.nsi`; the final ASCII-only NSIS template packaged successfully.
   - `git diff --check` passed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.

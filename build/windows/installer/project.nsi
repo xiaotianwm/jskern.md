@@ -33,6 +33,7 @@ Unicode true
 ## Include the wails tools
 ####
 !include "wails_tools.nsh"
+!include "LogicLib.nsh"
 
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
@@ -64,7 +65,8 @@ ManifestDPIAware true
 
 !insertmacro MUI_UNPAGE_INSTFILES # Uinstalling page
 
-!insertmacro MUI_LANGUAGE "English" # Set the Language of the installer
+!insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "SimpChinese"
 
 ## The following two statements can be used to sign the installer and the uninstaller. The path to the binaries are provided in %1
 #!uninstfinalize 'signtool --file "%1"'
@@ -76,7 +78,59 @@ InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}" # Default i
 ShowInstDetails show # This will always show the installation details.
 
 Function .onInit
+   Call SelectInstallerLanguage
    !insertmacro wails.checkArchitecture
+   Call ResolvePreviousInstallDir
+FunctionEnd
+
+Function SelectInstallerLanguage
+    System::Call 'kernel32::GetUserDefaultUILanguage() i .r0'
+    IntOp $0 $0 & 0x3ff
+    ${If} $0 == 4
+        StrCpy $LANGUAGE ${LANG_SIMPCHINESE}
+    ${Else}
+        StrCpy $LANGUAGE ${LANG_ENGLISH}
+    ${EndIf}
+FunctionEnd
+
+Function un.onInit
+    System::Call 'kernel32::GetUserDefaultUILanguage() i .r0'
+    IntOp $0 $0 & 0x3ff
+    ${If} $0 == 4
+        StrCpy $LANGUAGE ${LANG_SIMPCHINESE}
+    ${Else}
+        StrCpy $LANGUAGE ${LANG_ENGLISH}
+    ${EndIf}
+FunctionEnd
+
+Function ResolvePreviousInstallDir
+    SetRegView 64
+    ReadRegStr $0 HKLM "${UNINST_KEY}" "InstallLocation"
+    ${If} $0 != ""
+        IfFileExists "$0\*.*" 0 noInstallLocation
+        StrCpy $INSTDIR "$0"
+noInstallLocation:
+        Return
+    ${EndIf}
+
+    ReadRegStr $0 HKLM "${UNINST_KEY}" "UninstallString"
+    ${If} $0 == ""
+        Return
+    ${EndIf}
+
+    StrCpy $1 $0 1
+    ${If} $1 == '"'
+        StrCpy $0 $0 "" 1
+        StrLen $1 $0
+        IntOp $1 $1 - 1
+        StrCpy $0 $0 $1
+    ${EndIf}
+
+    IfFileExists "$0" 0 donePreviousInstallDir
+    ${GetParent} "$0" $1
+    IfFileExists "$1\*.*" 0 donePreviousInstallDir
+    StrCpy $INSTDIR "$1"
+donePreviousInstallDir:
 FunctionEnd
 
 Section
@@ -95,6 +149,9 @@ Section
     !insertmacro wails.associateCustomProtocols
 
     !insertmacro wails.writeUninstaller
+    SetRegView 64
+    WriteRegStr HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
+    WriteRegStr HKLM "${UNINST_KEY}" "InstallerLanguage" "$LANGUAGE"
 SectionEnd
 
 Section "uninstall"

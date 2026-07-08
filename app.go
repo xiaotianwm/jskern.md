@@ -24,7 +24,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.6"
+	appVersion             = "0.1.7"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )

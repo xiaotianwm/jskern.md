@@ -9,5 +9,12 @@
   "author": {
     "name": "Linpo Wu",
     "email": ""
+  },
+  "info": {
+    "companyName": "JS Labs",
+    "productName": "JS Kern.md",
+    "productVersion": "0.1.7",
+    "copyright": "Copyright (c) 2026 JS Labs",
+    "comments": "Built using Wails"
   }
 }
