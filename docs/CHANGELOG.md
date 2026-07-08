@@ -29,6 +29,8 @@
 - Windows installer artifact name: `JSKernMD-Setup-0.1.4-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
 - Installer SHA256: `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
+- Published release target: `v0.1.4`.
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.4`.
 
 ### Validation
 
@@ -39,6 +41,8 @@
 - `wails build` passed and produced `build/bin/jskernmd.exe`.
 - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.4/JSKernMD-Setup-0.1.4-x64.exe`.
 - `SHA256SUMS.txt` was generated with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
+- GitHub Release `v0.1.4` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.4`.
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.4-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 
 ---
