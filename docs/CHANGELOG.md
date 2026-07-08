@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-07-08 - v0.1.5 Multi-Tab Reading Session
+
+### Added
+
+- Added Go-owned workspace tab-session memory stored inside AppData `data/reading-memory.json`.
+- Added `open_tabs` and `active_document` fields to each workspace reading-memory record while keeping the legacy `last_document` field for compatibility.
+- Added `GetReadingSession()` to restore open tabs, active document, and the active document reading position after `RestoreWorkspace()`.
+- Added `SaveOpenTabs(paths, activePath)` so React can report tab order and active tab without owning durable storage.
+- Added startup restoration for the previous workspace's tab strip and active tab.
+- Added a compact center-reader tab bar for open Markdown documents.
+- Added tab close behavior, active-tab fallback to the nearest remaining tab, and empty-tab cleanup.
+- Added `Ctrl/Cmd+W` for closing the current tab and `Ctrl/Cmd+Tab` / `Ctrl/Cmd+Shift+Tab` for tab cycling.
+- Added localized tab accessibility labels for Chinese and English.
+- Added Go tests for tab-session persistence, outside-workspace rejection, and legacy last-document normalization.
+
+### Changed
+
+- Advanced the product version to `0.1.5` for the multi-tab reading-session release.
+- Switching tabs now force-saves the outgoing document's current reading position before opening the target tab.
+- Switching to a previously opened tab now restores that document's own saved reading position instead of jumping to the top.
+- Reloading a changed document from the weak disk-change reminder now preserves the current reader offset using the reloaded document metadata.
+- Updated project constraints, architecture notes, product scope, and decision log to record that tab sessions are Go-owned AppData state.
+
+### Release Packaging
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.5-x64.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+- Installer SHA256: `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
+- Published release target: `v0.1.5`.
+
+### Validation
+
+- `go test ./...` passed.
+- `wails generate module` passed.
+- `npm.cmd run build` passed from `frontend/`.
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+- `wails build` passed and produced `build/bin/jskernmd.exe`.
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.5/JSKernMD-Setup-0.1.5-x64.exe`.
+- `SHA256SUMS.txt` was generated with SHA256 `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-08 - v0.1.4 Reading Memory
 
 ### Added

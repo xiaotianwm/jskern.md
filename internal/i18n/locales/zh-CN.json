@@ -23,6 +23,8 @@
     "find.next": "下一个",
     "find.close": "关闭查找",
     "find.no_matches": "无匹配",
+    "tabs.label": "打开的文档",
+    "tabs.close": "关闭标签页",
     "update.available": "发现新版本",
     "update.version": "版本",
     "update.notes": "更新内容",

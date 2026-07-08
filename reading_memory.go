@@ -14,6 +14,7 @@ import (
 const (
 	currentReadingMemoryVersion = 1
 	maxReadingMemoryDocuments   = 300
+	maxOpenReadingTabs          = 24
 )
 
 type ReadingMemoryStore struct {
@@ -22,9 +23,11 @@ type ReadingMemoryStore struct {
 }
 
 type WorkspaceReadingLog struct {
-	Root         string                          `json:"root"`
-	LastDocument string                          `json:"last_document"`
-	Documents    map[string]DocumentReadingState `json:"documents"`
+	Root           string                          `json:"root"`
+	LastDocument   string                          `json:"last_document"`
+	ActiveDocument string                          `json:"active_document"`
+	OpenTabs       []string                        `json:"open_tabs"`
+	Documents      map[string]DocumentReadingState `json:"documents"`
 }
 
 type DocumentReadingState struct {
@@ -40,6 +43,18 @@ type DocumentReadingState struct {
 type ReadingMemorySnapshot struct {
 	LastDocument string           `json:"lastDocument"`
 	LastPosition *ReadingPosition `json:"lastPosition,omitempty"`
+}
+
+type WorkspaceReadingSession struct {
+	OpenTabs       []ReadingTab     `json:"openTabs"`
+	ActiveDocument string           `json:"activeDocument"`
+	ActivePosition *ReadingPosition `json:"activePosition,omitempty"`
+}
+
+type ReadingTab struct {
+	Path         string `json:"path"`
+	RelativePath string `json:"relativePath"`
+	Name         string `json:"name"`
 }
 
 type ReadingPosition struct {
@@ -65,17 +80,20 @@ func (a *App) GetReadingMemory() (*ReadingMemorySnapshot, error) {
 	root := a.workspaceRoot
 	var relativePath string
 	var state DocumentReadingState
+	var found bool
 	if root != "" {
-		if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil && workspace.LastDocument != "" {
-			relativePath = workspace.LastDocument
-			state = workspace.Documents[workspace.LastDocument]
+		if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil {
+			relativePath = firstNonEmpty(workspace.ActiveDocument, workspace.LastDocument)
+			if relativePath != "" {
+				state, found = workspace.Documents[relativePath]
+			}
 		}
 	}
 	a.mu.RUnlock()
 	if root == "" {
 		return &ReadingMemorySnapshot{}, nil
 	}
-	if relativePath == "" {
+	if relativePath == "" || !found {
 		return &ReadingMemorySnapshot{}, nil
 	}
 	position, err := a.readingPositionFromState(root, relativePath, state)
@@ -85,6 +103,54 @@ func (a *App) GetReadingMemory() (*ReadingMemorySnapshot, error) {
 	return &ReadingMemorySnapshot{
 		LastDocument: position.Path,
 		LastPosition: position,
+	}, nil
+}
+
+func (a *App) GetReadingSession() (*WorkspaceReadingSession, error) {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	var openTabs []string
+	var activeDocument string
+	if root != "" {
+		if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil {
+			openTabs = append(openTabs, workspace.OpenTabs...)
+			activeDocument = firstNonEmpty(workspace.ActiveDocument, workspace.LastDocument)
+		}
+	}
+	a.mu.RUnlock()
+	if root == "" {
+		return &WorkspaceReadingSession{}, nil
+	}
+	if len(openTabs) == 0 && activeDocument != "" {
+		openTabs = []string{activeDocument}
+	}
+
+	tabs := make([]ReadingTab, 0, len(openTabs))
+	for _, relativePath := range openTabs {
+		tab, err := a.readingTabFromRelativePath(root, relativePath)
+		if err == nil {
+			tabs = append(tabs, tab)
+		}
+	}
+	if len(tabs) == 0 {
+		return &WorkspaceReadingSession{}, nil
+	}
+
+	activePath := ""
+	for _, tab := range tabs {
+		if tab.RelativePath == activeDocument {
+			activePath = tab.Path
+			break
+		}
+	}
+	if activePath == "" {
+		activePath = tabs[0].Path
+	}
+	position, _ := a.GetReadingPosition(activePath)
+	return &WorkspaceReadingSession{
+		OpenTabs:       tabs,
+		ActiveDocument: activePath,
+		ActivePosition: position,
 	}, nil
 }
 
@@ -113,6 +179,84 @@ func (a *App) GetReadingPosition(path string) (*ReadingPosition, error) {
 		return nil, nil
 	}
 	return a.readingPositionFromState(root, relativePath, state)
+}
+
+func (a *App) SaveOpenTabs(paths []string, activePath string) error {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" {
+		return errors.New("workspace is not open")
+	}
+
+	openTabs := make([]string, 0, minInt(len(paths), maxOpenReadingTabs))
+	seen := map[string]struct{}{}
+	for _, path := range paths {
+		relativePath, err := a.readingTabRelativePath(path)
+		if err != nil {
+			return err
+		}
+		if _, ok := seen[relativePath]; ok {
+			continue
+		}
+		seen[relativePath] = struct{}{}
+		openTabs = append(openTabs, relativePath)
+		if len(openTabs) >= maxOpenReadingTabs {
+			break
+		}
+	}
+
+	activeDocument := ""
+	if strings.TrimSpace(activePath) != "" {
+		relativePath, err := a.readingTabRelativePath(activePath)
+		if err != nil {
+			return err
+		}
+		activeDocument = relativePath
+		if _, ok := seen[relativePath]; !ok {
+			if len(openTabs) >= maxOpenReadingTabs {
+				openTabs[len(openTabs)-1] = relativePath
+			} else {
+				openTabs = append(openTabs, relativePath)
+			}
+		}
+	}
+	if activeDocument == "" && len(openTabs) > 0 {
+		activeDocument = openTabs[0]
+	}
+
+	a.mu.Lock()
+	if a.readingMemory.StorageVersion == 0 {
+		a.readingMemory = defaultReadingMemory()
+	}
+	if a.readingMemory.Workspaces == nil {
+		a.readingMemory.Workspaces = map[string]*WorkspaceReadingLog{}
+	}
+	key := workspaceMemoryKey(root)
+	workspace := a.readingMemory.Workspaces[key]
+	if workspace == nil {
+		workspace = &WorkspaceReadingLog{
+			Root:      filepath.Clean(root),
+			Documents: map[string]DocumentReadingState{},
+		}
+		a.readingMemory.Workspaces[key] = workspace
+	}
+	if workspace.Documents == nil {
+		workspace.Documents = map[string]DocumentReadingState{}
+	}
+	workspace.Root = filepath.Clean(root)
+	workspace.OpenTabs = openTabs
+	workspace.ActiveDocument = activeDocument
+	workspace.LastDocument = activeDocument
+	pruneReadingDocuments(workspace)
+	memoryPath := a.readingMemoryPath
+	if memoryPath == "" {
+		a.mu.Unlock()
+		return nil
+	}
+	err := saveReadingMemory(memoryPath, a.readingMemory)
+	a.mu.Unlock()
+	return err
 }
 
 func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float64, headingID string, modifiedAt int64, size int64) error {
@@ -166,6 +310,10 @@ func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float6
 	}
 	workspace.Root = filepath.Clean(root)
 	workspace.LastDocument = relativePath
+	workspace.ActiveDocument = relativePath
+	if len(workspace.OpenTabs) == 0 {
+		workspace.OpenTabs = []string{relativePath}
+	}
 	workspace.Documents[relativePath] = DocumentReadingState{
 		RelativePath: relativePath,
 		ScrollTop:    scrollTop,
@@ -184,6 +332,44 @@ func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float6
 	err = saveReadingMemory(memoryPath, a.readingMemory)
 	a.mu.Unlock()
 	return err
+}
+
+func (a *App) readingTabRelativePath(path string) (string, error) {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	if !isMarkdownFile(abs) {
+		return "", errors.New("not a markdown document")
+	}
+	if !a.isWithinWorkspace(abs) {
+		return "", errors.New("document is outside the current workspace")
+	}
+	relativePath, ok := a.workspaceRelativePath(abs)
+	if !ok {
+		return "", errors.New("document is outside the current workspace")
+	}
+	return relativePath, nil
+}
+
+func (a *App) readingTabFromRelativePath(root string, relativePath string) (ReadingTab, error) {
+	relativePath = normalizeMemoryRelativePath(relativePath)
+	if relativePath == "" {
+		return ReadingTab{}, errors.New("empty reading tab path")
+	}
+	abs, err := workspacePathFromRoot(root, relativePath)
+	if err != nil {
+		return ReadingTab{}, err
+	}
+	info, err := os.Stat(abs)
+	if err != nil || info.IsDir() || !isMarkdownFile(abs) || !a.isWithinWorkspace(abs) {
+		return ReadingTab{}, errors.New("reading tab is unavailable")
+	}
+	return ReadingTab{
+		Path:         filepath.Clean(abs),
+		RelativePath: relativePath,
+		Name:         filepath.Base(abs),
+	}, nil
 }
 
 func (a *App) readingPositionFromState(root string, relativePath string, state DocumentReadingState) (*ReadingPosition, error) {
@@ -280,6 +466,7 @@ func normalizeReadingMemory(memory *ReadingMemoryStore) {
 		if workspace.Documents == nil {
 			workspace.Documents = map[string]DocumentReadingState{}
 		}
+		workspace.OpenTabs = normalizeOpenTabs(workspace.OpenTabs)
 		for documentKey, state := range workspace.Documents {
 			relativePath := normalizeMemoryRelativePath(firstNonEmpty(state.RelativePath, documentKey))
 			if relativePath == "" {
@@ -307,6 +494,18 @@ func normalizeReadingMemory(memory *ReadingMemoryStore) {
 				workspace.LastDocument = ""
 			}
 		}
+		workspace.ActiveDocument = normalizeMemoryRelativePath(firstNonEmpty(workspace.ActiveDocument, workspace.LastDocument))
+		if len(workspace.OpenTabs) == 0 && workspace.ActiveDocument != "" {
+			workspace.OpenTabs = []string{workspace.ActiveDocument}
+		}
+		if workspace.ActiveDocument != "" && !containsString(workspace.OpenTabs, workspace.ActiveDocument) {
+			workspace.OpenTabs = append(workspace.OpenTabs, workspace.ActiveDocument)
+			workspace.OpenTabs = normalizeOpenTabs(workspace.OpenTabs)
+		}
+		if workspace.ActiveDocument == "" && len(workspace.OpenTabs) > 0 {
+			workspace.ActiveDocument = workspace.OpenTabs[0]
+		}
+		workspace.LastDocument = workspace.ActiveDocument
 		pruneReadingDocuments(workspace)
 	}
 }
@@ -329,6 +528,12 @@ func pruneReadingDocuments(workspace *WorkspaceReadingLog) {
 	keep := map[string]struct{}{}
 	if workspace.LastDocument != "" {
 		keep[workspace.LastDocument] = struct{}{}
+	}
+	if workspace.ActiveDocument != "" {
+		keep[workspace.ActiveDocument] = struct{}{}
+	}
+	for _, path := range workspace.OpenTabs {
+		keep[path] = struct{}{}
 	}
 	for _, entry := range entries {
 		if len(keep) >= maxReadingMemoryDocuments {
@@ -368,6 +573,42 @@ func normalizeMemoryRelativePath(path string) string {
 		return ""
 	}
 	return filepath.ToSlash(localPath)
+}
+
+func normalizeOpenTabs(paths []string) []string {
+	tabs := make([]string, 0, minInt(len(paths), maxOpenReadingTabs))
+	seen := map[string]struct{}{}
+	for _, path := range paths {
+		relativePath := normalizeMemoryRelativePath(path)
+		if relativePath == "" {
+			continue
+		}
+		if _, ok := seen[relativePath]; ok {
+			continue
+		}
+		seen[relativePath] = struct{}{}
+		tabs = append(tabs, relativePath)
+		if len(tabs) >= maxOpenReadingTabs {
+			break
+		}
+	}
+	return tabs
+}
+
+func containsString(values []string, needle string) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
+}
+
+func minInt(left int, right int) int {
+	if left < right {
+		return left
+	}
+	return right
 }
 
 func firstNonEmpty(values ...string) string {

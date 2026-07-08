@@ -530,6 +530,126 @@ func TestReadingMemoryPersistsAndRestoresLastDocument(t *testing.T) {
 	}
 }
 
+func TestReadingSessionPersistsAndRestoresOpenTabs(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	firstPath := filepath.Join(workspace, "README.md")
+	secondPath := filepath.Join(workspace, "guide.md")
+	if err := os.WriteFile(firstPath, []byte("# First\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(secondPath, []byte("# Guide\n\n## Spot\n\nBody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	firstDoc, err := app.OpenDocument(firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondDoc, err := app.OpenDocument(secondPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveOpenTabs([]string{firstDoc.Path, secondDoc.Path}, secondDoc.Path); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(secondDoc.Path, 320, 0.5, "spot", secondDoc.ModifiedAt, secondDoc.Size); err != nil {
+		t.Fatal(err)
+	}
+
+	nextApp := NewApp()
+	if err := nextApp.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nextApp.RestoreWorkspace(); err != nil {
+		t.Fatal(err)
+	}
+	session, err := nextApp.GetReadingSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(session.OpenTabs) != 2 {
+		t.Fatalf("expected two restored tabs, got %+v", session)
+	}
+	if session.OpenTabs[0].Path != filepath.Clean(firstPath) || session.OpenTabs[1].Path != filepath.Clean(secondPath) {
+		t.Fatalf("expected restored tab order, got %+v", session.OpenTabs)
+	}
+	if session.ActiveDocument != filepath.Clean(secondPath) {
+		t.Fatalf("expected active tab %q, got %+v", secondPath, session)
+	}
+	if session.ActivePosition == nil || session.ActivePosition.ScrollTop != 320 || session.ActivePosition.HeadingID != "spot" {
+		t.Fatalf("expected active reading position, got %+v", session.ActivePosition)
+	}
+}
+
+func TestSaveOpenTabsRejectsOutsideWorkspace(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	inside := filepath.Join(workspace, "README.md")
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(inside, []byte("# Inside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveOpenTabs([]string{inside, outside}, inside); err == nil {
+		t.Fatal("expected outside workspace tab to be rejected")
+	}
+}
+
+func TestReadingSessionNormalizesLegacyLastDocument(t *testing.T) {
+	workspace := t.TempDir()
+	docPath := filepath.Join(workspace, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Legacy\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	app.readingMemory = ReadingMemoryStore{
+		StorageVersion: currentReadingMemoryVersion,
+		Workspaces: map[string]*WorkspaceReadingLog{
+			workspaceMemoryKey(workspace): {
+				Root:         filepath.Clean(workspace),
+				LastDocument: "README.md",
+				Documents: map[string]DocumentReadingState{
+					"README.md": {RelativePath: "README.md", ScrollTop: 12},
+				},
+			},
+		},
+	}
+	normalizeReadingMemory(&app.readingMemory)
+
+	session, err := app.GetReadingSession()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(session.OpenTabs) != 1 || session.OpenTabs[0].Path != filepath.Clean(docPath) {
+		t.Fatalf("expected legacy last document to become a tab, got %+v", session)
+	}
+	if session.ActiveDocument != filepath.Clean(docPath) {
+		t.Fatalf("expected legacy last document to become active, got %+v", session)
+	}
+}
+
 func TestReadingMemoryRejectsOutsideWorkspace(t *testing.T) {
 	appDataRoot := t.TempDir()
 	workspace := t.TempDir()

@@ -4,7 +4,7 @@
   "repository": "jskern.md",
   "product_name": "JS Kern.md",
   "binary_name": "jskernmd",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "bundle_id": "com.jslabs.jskernmd",
   "author": "Linpo Wu",
   "company": "JS Labs",

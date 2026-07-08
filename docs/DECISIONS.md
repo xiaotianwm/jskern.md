@@ -65,3 +65,9 @@ Consequence: Workspace structure refresh uses a Go Wails API and Go-owned struct
 Reason: Reading progress is durable reader state, and long-term development would become confused if scroll positions and last-document memory lived in frontend browser storage.
 
 Consequence: Reading memory is stored by Go under AppData `data/reading-memory.json`, scoped by workspace, and bounded per workspace. React may report transient scroll position and current heading, but it must not own the storage schema or write durable reading memory locally.
+
+## 2026-07-08: Keep Tab Sessions In Reading Memory
+
+Reason: Multi-tab reading is part of the reader session, and users should not lose their open Markdown set or active tab after restarting the app.
+
+Consequence: Open tabs and the active document are persisted by Go in the workspace-scoped reading memory file. React renders the tab strip and reports tab changes, but it must not use frontend storage for tab sessions. Switching tabs must save the outgoing document position and restore the incoming document position; reloading a changed document must preserve the current reader offset.

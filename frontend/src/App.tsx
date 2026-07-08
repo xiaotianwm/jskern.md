@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -9,6 +9,7 @@ type Bootstrap = main.Bootstrap;
 type Document = main.Document;
 type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
+type ReadingTab = main.ReadingTab;
 type ReadingPosition = main.ReadingPosition;
 type SearchResult = main.SearchResult;
 type UpdateInfo = main.UpdateInfo;
@@ -16,10 +17,23 @@ type UpdateInfo = main.UpdateInfo;
 const FIND_MATCH_CLASS = 'kern-find-match';
 const FIND_CURRENT_CLASS = 'kern-find-current';
 
+type DocumentTab = {
+    path: string;
+    name: string;
+};
+
+type OpenDocumentOptions = {
+    tabsOverride?: DocumentTab[];
+    persistTabs?: boolean;
+    savePrevious?: boolean;
+    forceReload?: boolean;
+};
+
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
     const [tree, setTree] = useState<TreeNode | null>(null);
     const [document, setDocument] = useState<Document | null>(null);
+    const [tabs, setTabs] = useState<DocumentTab[]>([]);
     const [selectedPath, setSelectedPath] = useState<string>('');
     const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -64,9 +78,24 @@ function App() {
             if (!cancelled && restored?.root) {
                 setTree(restored.root);
                 setExpandedPaths(new Set([restored.root.path]));
+                const session = await GetReadingSession();
+                const restoredTabs = (session?.openTabs ?? []).map(tabFromReadingSession);
+                if (!cancelled && restoredTabs.length) {
+                    setTabs(restoredTabs);
+                    const activePath = session.activeDocument || restoredTabs[0].path;
+                    await openDocument(activePath, session.activePosition ?? null, {
+                        tabsOverride: restoredTabs,
+                        persistTabs: false,
+                        savePrevious: false
+                    });
+                    return;
+                }
                 const memory = await GetReadingMemory();
                 if (!cancelled && memory?.lastPosition?.path) {
-                    await openDocument(memory.lastPosition.path, memory.lastPosition);
+                    await openDocument(memory.lastPosition.path, memory.lastPosition, {
+                        persistTabs: false,
+                        savePrevious: false
+                    });
                 }
             }
         }
@@ -116,6 +145,29 @@ function App() {
             window.removeEventListener('kern:find', openFind);
         };
     }, [document]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const key = event.key.toLowerCase();
+            const isCommand = event.ctrlKey || event.metaKey;
+            if (!isCommand) {
+                return;
+            }
+            if (key === 'w' && document) {
+                event.preventDefault();
+                void closeTab(document.path);
+                return;
+            }
+            if (key === 'tab' && tabs.length > 1) {
+                event.preventDefault();
+                void cycleTab(event.shiftKey ? -1 : 1);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown, true);
+        };
+    }, [document, tabs, documentBusy]);
 
     useEffect(() => {
         if (findOpen) {
@@ -334,13 +386,14 @@ function App() {
         if (busy) {
             return;
         }
-        void saveCurrentReadingPosition();
+        await saveCurrentReadingPosition(document, true);
         setBusy(true);
         try {
             const result = await OpenWorkspace();
             if (result?.root) {
                 setTree(result.root);
                 setDocument(null);
+                setTabs([]);
                 setSelectedPath('');
                 setDocumentError('');
                 setStaleStatus(null);
@@ -349,18 +402,25 @@ function App() {
                 setSearchResults([]);
                 setSearchError('');
                 setExpandedPaths(new Set([result.root.path]));
+                await SaveOpenTabs([], '').catch(() => {
+                    // Empty tab persistence is a weak startup convenience.
+                });
             }
         } finally {
             setBusy(false);
         }
     }
 
-    async function openDocument(path: string, restorePosition?: ReadingPosition | null) {
+    async function openDocument(path: string, restorePosition?: ReadingPosition | null, options: OpenDocumentOptions = {}) {
         if (documentBusy) {
             return;
         }
-        if (document?.path && document.path !== path) {
-            void saveCurrentReadingPosition();
+        if (!options.forceReload && document?.path === path) {
+            return;
+        }
+        const shouldSavePrevious = options.savePrevious ?? Boolean(document?.path && document.path !== path);
+        if (shouldSavePrevious) {
+            await saveCurrentReadingPosition(document, true);
         }
         setSelectedPath(path);
         setDocumentBusy(true);
@@ -372,6 +432,11 @@ function App() {
             const position = restorePosition === undefined
                 ? await GetReadingPosition(result.path).catch(() => null)
                 : restorePosition;
+            const nextTabs = upsertTab(options.tabsOverride ?? tabs, documentTabFromDocument(result));
+            setTabs(nextTabs);
+            if (options.persistTabs !== false) {
+                await persistOpenTabs(nextTabs, result.path);
+            }
             setDocument(result);
             setSelectedPath(result.path);
             scheduleReaderPosition('', position, result);
@@ -387,19 +452,123 @@ function App() {
         if (documentBusy) {
             return;
         }
-        void saveCurrentReadingPosition();
+        await saveCurrentReadingPosition(document, true);
         setDocumentBusy(true);
         setDocumentError('');
         setStaleStatus(null);
         setDismissedStatusKey('');
         try {
             const result = await OpenWorkspaceDocument(path);
+            const nextTabs = upsertTab(tabs, documentTabFromDocument(result));
+            setTabs(nextTabs);
+            await persistOpenTabs(nextTabs, result.path);
             setSelectedPath(result.path);
             setDocument(result);
             scheduleReaderPosition(heading, null, result);
         } catch (error) {
             setDocument(null);
             setSelectedPath('');
+            setDocumentError(errorMessage(error, text['document.error_unknown']));
+        } finally {
+            setDocumentBusy(false);
+        }
+    }
+
+    async function persistOpenTabs(nextTabs: DocumentTab[], activePath: string) {
+        await SaveOpenTabs(nextTabs.map(tab => tab.path), activePath).catch(() => {
+            // Tab session persistence is a weak convenience; document opens remain the source of visible errors.
+        });
+    }
+
+    async function closeTab(path: string, event?: React.MouseEvent<HTMLButtonElement>) {
+        event?.stopPropagation();
+        if (documentBusy) {
+            return;
+        }
+        const tabIndex = tabs.findIndex(tab => tab.path === path);
+        if (tabIndex < 0) {
+            return;
+        }
+        const nextTabs = tabs.filter(tab => tab.path !== path);
+        const closingActive = document?.path === path;
+        if (closingActive) {
+            await saveCurrentReadingPosition(document, true);
+        }
+        if (!nextTabs.length) {
+            setTabs([]);
+            setDocument(null);
+            setSelectedPath('');
+            setDocumentError('');
+            setStaleStatus(null);
+            setDismissedStatusKey('');
+            await persistOpenTabs([], '');
+            return;
+        }
+        if (!closingActive) {
+            setTabs(nextTabs);
+            await persistOpenTabs(nextTabs, document?.path ?? nextTabs[0].path);
+            return;
+        }
+        const nextIndex = Math.min(tabIndex, nextTabs.length - 1);
+        const nextTab = nextTabs[nextIndex];
+        setTabs(nextTabs);
+        await openDocument(nextTab.path, undefined, {
+            tabsOverride: nextTabs,
+            savePrevious: false
+        });
+    }
+
+    async function cycleTab(direction: 1 | -1) {
+        if (documentBusy || tabs.length < 2) {
+            return;
+        }
+        const currentIndex = Math.max(0, tabs.findIndex(tab => tab.path === document?.path));
+        const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+        await openDocument(tabs[nextIndex].path);
+    }
+
+    async function reloadCurrentDocumentPreservingPosition() {
+        if (!document || documentBusy) {
+            return;
+        }
+        const position = captureCurrentReadingPosition(document);
+        setDocumentBusy(true);
+        setDocumentError('');
+        setStaleStatus(null);
+        setDismissedStatusKey('');
+        try {
+            const result = await OpenDocument(document.path);
+            const restoredPosition = position
+                ? {
+                    ...position,
+                    path: result.path,
+                    modifiedAt: result.modifiedAt,
+                    size: result.size,
+                    updatedAt: Date.now()
+                } as ReadingPosition
+                : null;
+            const nextTabs = upsertTab(tabs, documentTabFromDocument(result));
+            setTabs(nextTabs);
+            await persistOpenTabs(nextTabs, result.path);
+            setDocument(result);
+            setSelectedPath(result.path);
+            scheduleReaderPosition('', restoredPosition, result);
+            if (restoredPosition) {
+                window.setTimeout(() => {
+                    void SaveReadingPosition(
+                        result.path,
+                        restoredPosition.scrollTop,
+                        restoredPosition.scrollRatio,
+                        restoredPosition.headingId,
+                        result.modifiedAt,
+                        result.size
+                    ).catch(() => {
+                        // The next scroll event will retry reading-memory persistence.
+                    });
+                }, 240);
+            }
+        } catch (error) {
+            setDocument(null);
             setDocumentError(errorMessage(error, text['document.error_unknown']));
         } finally {
             setDocumentBusy(false);
@@ -515,20 +684,40 @@ function App() {
         }, 0);
     }
 
-    async function saveCurrentReadingPosition(currentDocument = document) {
+    function captureCurrentReadingPosition(currentDocument = document): ReadingPosition | null {
         const reader = readerScrollRef.current;
-        if (!currentDocument || !reader || Date.now() < readingRestoreUntilRef.current) {
-            return;
+        if (!currentDocument || !reader) {
+            return null;
         }
         const maxScroll = Math.max(1, reader.scrollHeight - reader.clientHeight);
         const scrollTop = Math.max(0, Math.round(reader.scrollTop));
         const scrollRatio = Math.min(1, Math.max(0, scrollTop / maxScroll));
         const headingId = currentHeadingId(reader, markdownBodyRef.current);
-        await SaveReadingPosition(
-            currentDocument.path,
+        return {
+            path: currentDocument.path,
+            relativePath: '',
             scrollTop,
             scrollRatio,
             headingId,
+            modifiedAt: currentDocument.modifiedAt,
+            size: currentDocument.size,
+            updatedAt: Date.now()
+        } as ReadingPosition;
+    }
+
+    async function saveCurrentReadingPosition(currentDocument = document, force = false) {
+        if (!force && Date.now() < readingRestoreUntilRef.current) {
+            return;
+        }
+        const position = captureCurrentReadingPosition(currentDocument);
+        if (!position || !currentDocument) {
+            return;
+        }
+        await SaveReadingPosition(
+            currentDocument.path,
+            position.scrollTop,
+            position.scrollRatio,
+            position.headingId,
             currentDocument.modifiedAt,
             currentDocument.size
         ).catch(() => {
@@ -789,6 +978,36 @@ function App() {
                 </aside>
 
                 <article className="reader-surface">
+                    {tabs.length ? (
+                        <div className="document-tabs" role="tablist" aria-label={text['tabs.label']}>
+                            {tabs.map(tab => {
+                                const active = tab.path === document?.path;
+                                return (
+                                    <div className={`document-tab ${active ? 'active' : ''}`} key={tab.path}>
+                                        <button
+                                            type="button"
+                                            className="document-tab-main"
+                                            role="tab"
+                                            aria-selected={active}
+                                            title={tab.path}
+                                            onClick={() => openDocument(tab.path)}
+                                        >
+                                            <span className="document-tab-name">{tab.name}</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="document-tab-close"
+                                            title={text['tabs.close']}
+                                            aria-label={`${text['tabs.close']} ${tab.name}`}
+                                            onClick={event => closeTab(tab.path, event)}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : null}
                     {findOpen && document ? (
                         <div className="find-bar">
                             <input
@@ -857,7 +1076,7 @@ function App() {
                                     <div className="message-body">{text['document.changed_body']}</div>
                                 </div>
                                 <div className="message-actions">
-                                    <button type="button" onClick={() => openDocument(document.path)} disabled={documentBusy}>
+                                    <button type="button" onClick={reloadCurrentDocumentPreservingPosition} disabled={documentBusy}>
                                         {text['document.reload']}
                                     </button>
                                     <button type="button" onClick={dismissDocumentChange}>
@@ -892,6 +1111,37 @@ function App() {
             </section>
         </main>
     );
+}
+
+function tabFromReadingSession(tab: ReadingTab): DocumentTab {
+    return {
+        path: tab.path,
+        name: tab.name || tabNameFromPath(tab.path)
+    };
+}
+
+function documentTabFromDocument(currentDocument: Document): DocumentTab {
+    return {
+        path: currentDocument.path,
+        name: currentDocument.name || tabNameFromPath(currentDocument.path)
+    };
+}
+
+function upsertTab(currentTabs: DocumentTab[], nextTab: DocumentTab) {
+    if (!nextTab.path) {
+        return currentTabs;
+    }
+    const index = currentTabs.findIndex(tab => tab.path === nextTab.path);
+    if (index < 0) {
+        return [...currentTabs, nextTab];
+    }
+    const nextTabs = [...currentTabs];
+    nextTabs[index] = nextTab;
+    return nextTabs;
+}
+
+function tabNameFromPath(path: string) {
+    return path.split(/[\\/]/).filter(Boolean).pop() || path;
 }
 
 function documentStatusKey(status: DocumentStatus) {

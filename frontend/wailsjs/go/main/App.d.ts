@@ -14,6 +14,8 @@ export function GetReadingMemory():Promise<main.ReadingMemorySnapshot>;
 
 export function GetReadingPosition(arg1:string):Promise<main.ReadingPosition>;
 
+export function GetReadingSession():Promise<main.WorkspaceReadingSession>;
+
 export function OpenDocument(arg1:string):Promise<main.Document>;
 
 export function OpenDownloadedUpdate(arg1:string):Promise<void>;
@@ -25,6 +27,8 @@ export function OpenWorkspaceDocument(arg1:string):Promise<main.Document>;
 export function RefreshWorkspace():Promise<main.WorkspaceRefresh>;
 
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
+
+export function SaveOpenTabs(arg1:Array<string>,arg2:string):Promise<void>;
 
 export function SaveReadingPosition(arg1:string,arg2:number,arg3:number,arg4:string,arg5:number,arg6:number):Promise<void>;
 

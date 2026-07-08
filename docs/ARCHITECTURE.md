@@ -16,6 +16,7 @@ Go owns:
 - Local image and relative link resolution.
 - Document outline extraction.
 - App config, recent workspace state, reading memory, theme, language, and persistence.
+- Open document tab session state, including the active tab for each workspace.
 - Update checks, installer download, checksum verification, ignored update version, and opening the downloaded installer.
 - i18n dictionaries and final dynamic user-visible messages.
 
@@ -23,6 +24,7 @@ React owns:
 
 - Shell rendering.
 - Directory tree UI.
+- Open document tab strip rendering and tab switching interactions.
 - Markdown view rendering from Go-provided document data.
 - Outline panel rendering.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
@@ -46,6 +48,8 @@ workspace folder
 -> Shiki highlights code blocks
 -> React reports debounced reading position and nearest heading to Go
 -> Go persists workspace-scoped reading memory under AppData
+-> React reports open tab order and active tab to Go
+-> Go persists workspace-scoped tab session state with reading memory under AppData
 -> React asks Go for current document status while the document is open
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
@@ -82,7 +86,9 @@ Supported initial locales: `zh-CN`, `en`.
 - `StatDocument(path, knownModifiedAt, knownSize)`
 - `SearchWorkspace(query)`
 - `GetReadingMemory()`
+- `GetReadingSession()`
 - `GetReadingPosition(path)`
+- `SaveOpenTabs(paths, activePath)`
 - `SaveReadingPosition(path, scrollTop, scrollRatio, headingID, modifiedAt, size)`
 - `SwitchLanguage(locale)`
 - `SwitchTheme(mode)`
@@ -116,7 +122,9 @@ jskernmd/
 
 `settings.json` stores `storage_version`, `last_workspace`, `locale`, `theme`, and `ignored_update_version`. Startup calls `GetBootstrap("")` to read Go-owned locale/theme preferences, then calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
 
-`data/reading-memory.json` stores workspace-scoped reading memory with `storage_version`, the last document in each workspace, and bounded per-document reading positions. The saved position includes workspace-relative path, scroll offset, scroll ratio, nearest heading ID, document modified time, document size, and update time. Startup restores the last workspace first, then asks Go for reading memory; if the last document still exists, React opens it. If document metadata still matches, React restores the exact scroll offset. If the file changed, React falls back to the saved heading ID when it still exists, otherwise the document opens from the top.
+`data/reading-memory.json` stores workspace-scoped reading memory with `storage_version`, the open tab list, the active document, the legacy last document field, and bounded per-document reading positions. The saved position includes workspace-relative path, scroll offset, scroll ratio, nearest heading ID, document modified time, document size, and update time. Startup restores the last workspace first, then asks Go for the reading session; if saved tabs still exist in that workspace, React restores the tab strip and opens the active tab. If there is only legacy last-document memory, Go normalizes it into a one-tab session. If document metadata still matches, React restores the exact scroll offset. If the file changed during ordinary document open, React falls back to the saved heading ID when it still exists, otherwise the document opens from the top.
+
+When switching tabs, React force-saves the previous tab's current scroll position through `SaveReadingPosition()` before opening the target tab and reading its own position through `GetReadingPosition()`. When the weak disk-change reminder reloads the current document, React captures the current reader offset before calling `OpenDocument()`, then applies that offset to the newly rendered document metadata so a reload does not jump to the top.
 
 While a workspace is open, React calls `RefreshWorkspace()` on a weak interval. Go owns the actual re-scan and compares only directory and Markdown-file structure; editing the currently open document does not refresh the tree and remains handled by `StatDocument()`. When the tree changes, React keeps expansion state only for directories that still exist and always keeps the workspace root expanded, so newly added child directories start collapsed.
 

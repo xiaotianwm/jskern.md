@@ -23,6 +23,8 @@
     "find.next": "Next",
     "find.close": "Close find",
     "find.no_matches": "No matches",
+    "tabs.label": "Open documents",
+    "tabs.close": "Close tab",
     "update.available": "Update available",
     "update.version": "Version",
     "update.notes": "Release notes",

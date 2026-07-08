@@ -26,6 +26,10 @@ export function GetReadingPosition(arg1) {
   return window['go']['main']['App']['GetReadingPosition'](arg1);
 }
 
+export function GetReadingSession() {
+  return window['go']['main']['App']['GetReadingSession']();
+}
+
 export function OpenDocument(arg1) {
   return window['go']['main']['App']['OpenDocument'](arg1);
 }
@@ -48,6 +52,10 @@ export function RefreshWorkspace() {
 
 export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
+}
+
+export function SaveOpenTabs(arg1, arg2) {
+  return window['go']['main']['App']['SaveOpenTabs'](arg1, arg2);
 }
 
 export function SaveReadingPosition(arg1, arg2, arg3, arg4, arg5, arg6) {

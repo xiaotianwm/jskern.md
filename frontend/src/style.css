@@ -523,20 +523,98 @@ a {
 
 .reader-surface {
     position: relative;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
     min-height: 0;
     overflow: hidden;
     background: color-mix(in srgb, var(--bg) 86%, transparent);
 }
 
-.reader-scroll {
+.document-tabs {
+    display: flex;
+    flex: 0 0 34px;
+    align-items: end;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-bottom: 1px solid var(--border);
+    padding: 4px 8px 0;
+    background: color-mix(in srgb, var(--bg-card) 62%, transparent);
+}
+
+.document-tab {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px;
+    align-items: center;
+    width: 156px;
+    min-width: 112px;
+    max-width: 200px;
+    height: 29px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    color: var(--text-muted);
+    background: transparent;
+}
+
+.document-tab.active {
+    border-color: var(--border);
+    color: var(--text);
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+}
+
+.document-tab:hover {
+    background: var(--bg-hover);
+}
+
+.document-tab-main,
+.document-tab-close {
     height: 100%;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: default;
+}
+
+.document-tab-main {
+    min-width: 0;
+    padding: 0 4px 0 9px;
+    text-align: left;
+}
+
+.document-tab-name {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.document-tab-close {
+    width: 24px;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.document-tab-close:hover {
+    color: var(--text);
+    background: var(--bg-hover);
+}
+
+.reader-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
     overflow: auto;
 }
 
 .find-bar {
     position: absolute;
-    top: 12px;
+    top: 46px;
     right: 18px;
     z-index: 5;
     display: grid;

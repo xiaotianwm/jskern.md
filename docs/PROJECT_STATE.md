@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace and reading-position restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
 
 ## Done
 
@@ -97,6 +97,16 @@ Readable Markdown document MVP loop with persisted workspace and reading-positio
 - Windows installer `JSKernMD-Setup-0.1.4-x64.exe` was staged under `dist/releases/v0.1.4/`.
 - `SHA256SUMS.txt` was generated for the `0.1.4` installer with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
 - GitHub Release `v0.1.4` publishes `JSKernMD-Setup-0.1.4-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Added Go-owned workspace tab-session memory inside AppData `data/reading-memory.json`.
+- Reading memory now stores each workspace's open tabs and active document while keeping legacy last-document compatibility.
+- Added `GetReadingSession()` and `SaveOpenTabs(paths, activePath)` Wails APIs.
+- Startup now restores the previous workspace's open tab strip and active tab when those documents still exist.
+- Switching tabs now force-saves the outgoing document position and restores the target tab's own saved reading position.
+- Reloading a changed document from the weak disk-change reminder now preserves the current reader offset instead of jumping to the top.
+- Added compact center-reader tabs with close buttons and `Ctrl/Cmd+W`, `Ctrl/Cmd+Tab`, and `Ctrl/Cmd+Shift+Tab` handling.
+- Product version advanced to `0.1.5` for the multi-tab reading-session release.
+- Windows installer `JSKernMD-Setup-0.1.5-x64.exe` was staged under `dist/releases/v0.1.5/`.
+- `SHA256SUMS.txt` was generated for the `0.1.5` installer with SHA256 `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
 
 ## Next
 
@@ -104,6 +114,7 @@ Readable Markdown document MVP loop with persisted workspace and reading-positio
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
+- Add drag-reorder for open tabs only if normal reading use shows tab order needs manual adjustment.
 
 ## Known Issues
 
@@ -115,6 +126,7 @@ Readable Markdown document MVP loop with persisted workspace and reading-positio
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
 - Reading memory depends on stable generated heading IDs for changed-document heading fallback.
+- Tab-session restore intentionally drops tabs whose files no longer exist or no longer validate inside the current workspace.
 
 ## Validation
 
@@ -257,4 +269,14 @@ Readable Markdown document MVP loop with persisted workspace and reading-positio
   - `SHA256SUMS.txt` was generated with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
   - GitHub Release `v0.1.4` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.4`.
   - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.4-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Latest validation after multi-tab reading-session release:
+  - Product version sources were updated to `0.1.5`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.5/JSKernMD-Setup-0.1.5-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
