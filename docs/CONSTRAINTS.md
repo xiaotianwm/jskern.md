@@ -33,6 +33,8 @@
 - Relative Markdown document links must be resolved by Go against the current workspace before opening.
 - App configuration and durable reader state must be stored by Go under the system app data root for `jskernmd`; on Windows this is `%APPDATA%\jskernmd`.
 - The last opened workspace directory must be persisted and restored on startup so users do not need to reopen the same folder every launch.
+- Reading memory is Go-owned durable reader state and must be stored under AppData `data/reading-memory.json`, not in frontend `localStorage`.
+- Reading memory must remain workspace-scoped and directory-tree-first: restore the last document inside the restored workspace, and preserve per-document scroll position plus heading fallback when the document still exists.
 - Directory tree refresh and workspace structure change detection are Go-owned responsibilities; React may ask for a refreshed tree but must not inspect the filesystem itself.
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
@@ -44,6 +46,7 @@
 - React is only a rendering and interaction layer.
 - Frontend must not read the filesystem directly.
 - Frontend must not persist business data.
+- Frontend may report transient scroll position and current heading to Go, but must not own the reading-memory storage format or write durable reading state locally.
 - Frontend must not maintain language dictionaries.
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
 - Frontend workspace auto-sync may use a weak polling loop against Go, but the loop must clean up timers, avoid overlapping requests, preserve valid expanded directories, and keep newly discovered directories collapsed by default.

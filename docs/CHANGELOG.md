@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-07-08 - v0.1.4 Reading Memory
+
+### Added
+
+- Added Go-owned reading memory stored at AppData `data/reading-memory.json`.
+- Added versioned reading-memory storage with `.bad-*` backup recovery for invalid JSON.
+- Added workspace-scoped last-document memory so startup can reopen the last read Markdown file after `RestoreWorkspace()`.
+- Added bounded per-workspace document position records capped at 300 documents.
+- Added per-document saved scroll offset, scroll ratio, nearest heading ID, document modified time, document size, and update time.
+- Added `GetReadingMemory()` to return the current workspace's last readable document position.
+- Added `GetReadingPosition(path)` so reopening a document from the tree can restore its own saved position.
+- Added `SaveReadingPosition(path, scrollTop, scrollRatio, headingID, modifiedAt, size)` with workspace boundary validation.
+- Added frontend debounced scroll-position reporting through Go, with cleanup for timers and scroll listeners.
+- Added startup restore that opens the last remembered document after the workspace tree is restored.
+- Added exact scroll restoration when saved document metadata still matches the current file.
+- Added changed-document fallback restoration that targets the saved heading ID when possible and otherwise opens from the top.
+- Added Go tests for reading-memory persistence, restore, outside-workspace rejection, bad-file backup, and pruning.
+
+### Changed
+
+- Advanced the product version to `0.1.4` for the reading memory release.
+- Updated project constraints, architecture notes, product scope, and decision log to record that reading memory is Go-owned AppData state, not frontend storage.
+- Opening a new document no longer inherits the previous reader scroll; it uses that document's own saved memory when present, otherwise starts at the top.
+
+### Release Packaging
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.4-x64.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+- Installer SHA256: `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
+
+### Validation
+
+- `go test ./...` passed.
+- `wails generate module` passed.
+- `npm.cmd run build` passed from `frontend/`.
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+- `wails build` passed and produced `build/bin/jskernmd.exe`.
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.4/JSKernMD-Setup-0.1.4-x64.exe`.
+- `SHA256SUMS.txt` was generated with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-08
 
 ### Added

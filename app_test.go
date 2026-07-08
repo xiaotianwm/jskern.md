@@ -470,6 +470,137 @@ func TestInitAppDataCreatesStoreLayoutAndBacksUpBadSettings(t *testing.T) {
 	}
 }
 
+func TestReadingMemoryPersistsAndRestoresLastDocument(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	docPath := filepath.Join(workspace, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Saved\n\n## Spot\n\nBody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := app.OpenDocument(docPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(doc.Path, 240, 0.42, "spot", doc.ModifiedAt, doc.Size); err != nil {
+		t.Fatal(err)
+	}
+
+	memoryBytes, err := os.ReadFile(filepath.Join(appDataRoot, "data", "reading-memory.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var memory ReadingMemoryStore
+	if err := json.Unmarshal(memoryBytes, &memory); err != nil {
+		t.Fatal(err)
+	}
+	if memory.StorageVersion != currentReadingMemoryVersion {
+		t.Fatalf("expected reading memory version %d, got %d", currentReadingMemoryVersion, memory.StorageVersion)
+	}
+
+	nextApp := NewApp()
+	if err := nextApp.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := nextApp.RestoreWorkspace(); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := nextApp.GetReadingMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.LastPosition == nil {
+		t.Fatal("expected restored reading position")
+	}
+	if snapshot.LastDocument != filepath.Clean(docPath) || snapshot.LastPosition.Path != filepath.Clean(docPath) {
+		t.Fatalf("expected restored document %q, got %+v", docPath, snapshot)
+	}
+	if snapshot.LastPosition.ScrollTop != 240 || snapshot.LastPosition.ScrollRatio != 0.42 || snapshot.LastPosition.HeadingID != "spot" {
+		t.Fatalf("expected restored reading position details, got %+v", snapshot.LastPosition)
+	}
+	if snapshot.LastPosition.ModifiedAt != doc.ModifiedAt || snapshot.LastPosition.Size != doc.Size {
+		t.Fatalf("expected restored document metadata, got %+v for doc %+v", snapshot.LastPosition, doc)
+	}
+}
+
+func TestReadingMemoryRejectsOutsideWorkspace(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(outside, 10, 0.1, "", 1, 2); err == nil {
+		t.Fatal("expected outside workspace reading position to be rejected")
+	}
+}
+
+func TestInitAppDataBacksUpBadReadingMemory(t *testing.T) {
+	appDataRoot := t.TempDir()
+	dataDir := filepath.Join(appDataRoot, "data")
+	if err := os.MkdirAll(dataDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	memoryPath := filepath.Join(dataDir, "reading-memory.json")
+	if err := os.WriteFile(memoryPath, []byte("{bad json"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	backups, err := filepath.Glob(memoryPath + ".bad-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(backups) != 1 {
+		t.Fatalf("expected one bad reading memory backup, got %d", len(backups))
+	}
+	if app.readingMemory.StorageVersion != currentReadingMemoryVersion || len(app.readingMemory.Workspaces) != 0 {
+		t.Fatalf("expected default reading memory after bad file, got %+v", app.readingMemory)
+	}
+}
+
+func TestReadingMemoryPrunesOldDocuments(t *testing.T) {
+	workspace := &WorkspaceReadingLog{
+		LastDocument: "keep.md",
+		Documents: map[string]DocumentReadingState{
+			"keep.md": {RelativePath: "keep.md", UpdatedAt: 0},
+		},
+	}
+	for index := 0; index < maxReadingMemoryDocuments+5; index++ {
+		path := fmt.Sprintf("doc-%03d.md", index)
+		workspace.Documents[path] = DocumentReadingState{RelativePath: path, UpdatedAt: int64(index + 1)}
+	}
+
+	pruneReadingDocuments(workspace)
+	if len(workspace.Documents) != maxReadingMemoryDocuments {
+		t.Fatalf("expected %d documents after pruning, got %d", maxReadingMemoryDocuments, len(workspace.Documents))
+	}
+	if _, ok := workspace.Documents["keep.md"]; !ok {
+		t.Fatal("expected last document to survive pruning")
+	}
+	if _, ok := workspace.Documents["doc-000.md"]; ok {
+		t.Fatal("expected oldest non-last document to be pruned")
+	}
+}
+
 func TestSwitchLanguageAndThemePersistSettings(t *testing.T) {
 	appDataRoot := t.TempDir()
 	app := NewApp()

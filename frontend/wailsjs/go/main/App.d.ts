@@ -10,6 +10,10 @@ export function DownloadUpdate(arg1:string,arg2:string):Promise<main.UpdateInfo>
 
 export function GetBootstrap(arg1:string):Promise<main.Bootstrap>;
 
+export function GetReadingMemory():Promise<main.ReadingMemorySnapshot>;
+
+export function GetReadingPosition(arg1:string):Promise<main.ReadingPosition>;
+
 export function OpenDocument(arg1:string):Promise<main.Document>;
 
 export function OpenDownloadedUpdate(arg1:string):Promise<void>;
@@ -21,6 +25,8 @@ export function OpenWorkspaceDocument(arg1:string):Promise<main.Document>;
 export function RefreshWorkspace():Promise<main.WorkspaceRefresh>;
 
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
+
+export function SaveReadingPosition(arg1:string,arg2:number,arg3:number,arg4:string,arg5:number,arg6:number):Promise<void>;
 
 export function ScanWorkspace(arg1:string):Promise<main.WorkspaceTree>;
 

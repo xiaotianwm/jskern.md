@@ -59,3 +59,9 @@ Consequence: Do not require `DEVELOPER_KEY`, Cloudflare Workers, D1, R2, or the 
 Reason: The directory tree is the product's core reading model, and filesystem state should not drift into React during long-term development.
 
 Consequence: Workspace structure refresh uses a Go Wails API and Go-owned structure signatures. React may weakly poll and render the returned tree, but it must not read directories, persist workspace paths, or decide filesystem truth. Active document content changes stay in the separate `StatDocument()` reminder flow.
+
+## 2026-07-08: Keep Reading Memory Go-Owned
+
+Reason: Reading progress is durable reader state, and long-term development would become confused if scroll positions and last-document memory lived in frontend browser storage.
+
+Consequence: Reading memory is stored by Go under AppData `data/reading-memory.json`, scoped by workspace, and bounded per workspace. React may report transient scroll position and current heading, but it must not own the storage schema or write durable reading memory locally.

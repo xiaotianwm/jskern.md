@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace and reading-position restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
 
 ## Done
 
@@ -88,12 +88,21 @@ Readable Markdown document MVP loop with persisted workspace restore, Go-owned d
 - Windows installer `JSKernMD-Setup-0.1.3-x64.exe` was staged under `dist/releases/v0.1.3/`.
 - `SHA256SUMS.txt` was generated for the `0.1.3` installer with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
 - GitHub Release `v0.1.3` publishes `JSKernMD-Setup-0.1.3-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Added Go-owned reading memory under AppData `data/reading-memory.json`.
+- Reading memory now stores each workspace's last document plus bounded per-document scroll position, scroll ratio, nearest heading ID, document modified time, size, and update time.
+- Startup now restores the last workspace, then reopens the last remembered document if it still exists in that workspace.
+- Opening a remembered document restores exact scroll when document metadata still matches, and falls back to the saved heading or top when the file changed.
+- Frontend reading-position reports are debounced and persisted through Go; frontend still does not write durable state to localStorage.
+- Product version advanced to `0.1.4` for the reading memory release.
+- Windows installer `JSKernMD-Setup-0.1.4-x64.exe` was staged under `dist/releases/v0.1.4/`.
+- `SHA256SUMS.txt` was generated for the `0.1.4` installer with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
+- Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
 
 ## Known Issues
 
@@ -104,6 +113,7 @@ Readable Markdown document MVP loop with persisted workspace restore, Go-owned d
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
+- Reading memory depends on stable generated heading IDs for changed-document heading fallback.
 
 ## Validation
 
@@ -234,4 +244,14 @@ Readable Markdown document MVP loop with persisted workspace restore, Go-owned d
   - `SHA256SUMS.txt` was generated with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
   - GitHub Release `v0.1.3` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.3`.
   - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.3-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Latest validation after reading memory release:
+  - Product version sources were updated to `0.1.4`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.4/JSKernMD-Setup-0.1.4-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `e2dc5aacbfe3cc9f48032c1d73320211fbaef1439b08adce98b657db5cfe3068`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.

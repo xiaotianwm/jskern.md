@@ -24,7 +24,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.3"
+	appVersion             = "0.1.4"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
@@ -41,7 +41,9 @@ type App struct {
 	workspaceTreeSig  string
 	appDataRoot       string
 	settingsPath      string
+	readingMemoryPath string
 	settings          Settings
+	readingMemory     ReadingMemoryStore
 }
 
 type workspaceAssetHandler struct {
@@ -134,7 +136,10 @@ type UpdateInfo struct {
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{settings: defaultSettings()}
+	return &App{
+		settings:      defaultSettings(),
+		readingMemory: defaultReadingMemory(),
+	}
 }
 
 // startup is called when the app starts. The context is saved
@@ -772,10 +777,20 @@ func (a *App) initAppData(root string) error {
 	if err := saveSettings(settingsPath, settings); err != nil {
 		return err
 	}
+	readingMemoryPath := filepath.Join(root, "data", "reading-memory.json")
+	readingMemory, err := loadReadingMemory(readingMemoryPath)
+	if err != nil {
+		return err
+	}
+	if err := saveReadingMemory(readingMemoryPath, readingMemory); err != nil {
+		return err
+	}
 	a.mu.Lock()
 	a.appDataRoot = root
 	a.settingsPath = settingsPath
+	a.readingMemoryPath = readingMemoryPath
 	a.settings = settings
+	a.readingMemory = readingMemory
 	a.mu.Unlock()
 	return nil
 }

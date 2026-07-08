@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -9,6 +9,7 @@ type Bootstrap = main.Bootstrap;
 type Document = main.Document;
 type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
+type ReadingPosition = main.ReadingPosition;
 type SearchResult = main.SearchResult;
 type UpdateInfo = main.UpdateInfo;
 
@@ -43,6 +44,8 @@ function App() {
     const findInputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestRef = useRef(0);
     const workspaceRefreshBusyRef = useRef(false);
+    const readingSaveTimerRef = useRef<number | null>(null);
+    const readingRestoreUntilRef = useRef(0);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -61,6 +64,10 @@ function App() {
             if (!cancelled && restored?.root) {
                 setTree(restored.root);
                 setExpandedPaths(new Set([restored.root.path]));
+                const memory = await GetReadingMemory();
+                if (!cancelled && memory?.lastPosition?.path) {
+                    await openDocument(memory.lastPosition.path, memory.lastPosition);
+                }
             }
         }
         boot();
@@ -214,6 +221,37 @@ function App() {
     }, [dismissedStatusKey, document, documentBusy]);
 
     useEffect(() => {
+        const reader = readerScrollRef.current;
+        if (!reader || !document || documentBusy) {
+            return;
+        }
+
+        const scheduleSave = () => {
+            if (readingSaveTimerRef.current !== null) {
+                window.clearTimeout(readingSaveTimerRef.current);
+            }
+            readingSaveTimerRef.current = window.setTimeout(() => {
+                readingSaveTimerRef.current = null;
+                void saveCurrentReadingPosition();
+            }, 900);
+        };
+
+        const idleSaveId = window.setTimeout(() => {
+            void saveCurrentReadingPosition();
+        }, 1200);
+        reader.addEventListener('scroll', scheduleSave, {passive: true});
+
+        return () => {
+            window.clearTimeout(idleSaveId);
+            if (readingSaveTimerRef.current !== null) {
+                window.clearTimeout(readingSaveTimerRef.current);
+                readingSaveTimerRef.current = null;
+            }
+            reader.removeEventListener('scroll', scheduleSave);
+        };
+    }, [document, documentBusy]);
+
+    useEffect(() => {
         if (!tree) {
             return;
         }
@@ -296,6 +334,7 @@ function App() {
         if (busy) {
             return;
         }
+        void saveCurrentReadingPosition();
         setBusy(true);
         try {
             const result = await OpenWorkspace();
@@ -316,9 +355,12 @@ function App() {
         }
     }
 
-    async function openDocument(path: string) {
+    async function openDocument(path: string, restorePosition?: ReadingPosition | null) {
         if (documentBusy) {
             return;
+        }
+        if (document?.path && document.path !== path) {
+            void saveCurrentReadingPosition();
         }
         setSelectedPath(path);
         setDocumentBusy(true);
@@ -327,9 +369,12 @@ function App() {
         setDismissedStatusKey('');
         try {
             const result = await OpenDocument(path);
+            const position = restorePosition === undefined
+                ? await GetReadingPosition(result.path).catch(() => null)
+                : restorePosition;
             setDocument(result);
             setSelectedPath(result.path);
-            scheduleReaderPosition();
+            scheduleReaderPosition('', position, result);
         } catch (error) {
             setDocument(null);
             setDocumentError(errorMessage(error, text['document.error_unknown']));
@@ -342,6 +387,7 @@ function App() {
         if (documentBusy) {
             return;
         }
+        void saveCurrentReadingPosition();
         setDocumentBusy(true);
         setDocumentError('');
         setStaleStatus(null);
@@ -350,7 +396,7 @@ function App() {
             const result = await OpenWorkspaceDocument(path);
             setSelectedPath(result.path);
             setDocument(result);
-            scheduleReaderPosition(heading);
+            scheduleReaderPosition(heading, null, result);
         } catch (error) {
             setDocument(null);
             setSelectedPath('');
@@ -469,6 +515,27 @@ function App() {
         }, 0);
     }
 
+    async function saveCurrentReadingPosition(currentDocument = document) {
+        const reader = readerScrollRef.current;
+        if (!currentDocument || !reader || Date.now() < readingRestoreUntilRef.current) {
+            return;
+        }
+        const maxScroll = Math.max(1, reader.scrollHeight - reader.clientHeight);
+        const scrollTop = Math.max(0, Math.round(reader.scrollTop));
+        const scrollRatio = Math.min(1, Math.max(0, scrollTop / maxScroll));
+        const headingId = currentHeadingId(reader, markdownBodyRef.current);
+        await SaveReadingPosition(
+            currentDocument.path,
+            scrollTop,
+            scrollRatio,
+            headingId,
+            currentDocument.modifiedAt,
+            currentDocument.size
+        ).catch(() => {
+            // Reading memory is a weak convenience; direct document opens still surface real errors.
+        });
+    }
+
     async function downloadUpdate() {
         if (!updateInfo || updateBusy) {
             return;
@@ -521,18 +588,39 @@ function App() {
         }
     }
 
-    function scheduleReaderPosition(heading = '') {
+    function scheduleReaderPosition(heading = '', position: ReadingPosition | null = null, currentDocument: Document | null = document) {
+        const restoreUntil = Date.now() + 900;
+        readingRestoreUntilRef.current = restoreUntil;
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
-                setReaderPosition(heading);
+                setReaderPosition(heading, position, currentDocument);
+                window.setTimeout(() => {
+                    if (readingRestoreUntilRef.current === restoreUntil) {
+                        readingRestoreUntilRef.current = 0;
+                    }
+                }, 120);
             });
         });
     }
 
-    function setReaderPosition(heading = '') {
+    function setReaderPosition(heading = '', position: ReadingPosition | null = null, currentDocument: Document | null = document) {
         const reader = readerScrollRef.current;
         if (!reader) {
             return;
+        }
+        const positionMatchesDocument = position && currentDocument &&
+            position.modifiedAt === currentDocument.modifiedAt &&
+            position.size === currentDocument.size;
+        if (positionMatchesDocument) {
+            const maxScroll = Math.max(0, reader.scrollHeight - reader.clientHeight);
+            const ratioTop = Math.round(maxScroll * Math.min(1, Math.max(0, position.scrollRatio)));
+            const targetTop = position.scrollTop > maxScroll ? ratioTop : position.scrollTop;
+            reader.scrollTop = Math.max(0, Math.min(maxScroll, targetTop));
+            reader.scrollLeft = 0;
+            return;
+        }
+        if (!heading && position?.headingId) {
+            heading = position.headingId;
         }
         if (heading) {
             const target = globalThis.document.getElementById(heading);
@@ -808,6 +896,24 @@ function App() {
 
 function documentStatusKey(status: DocumentStatus) {
     return `${status.exists}:${status.isDocument}:${status.modifiedAt}:${status.size}`;
+}
+
+function currentHeadingId(reader: HTMLElement, root: HTMLElement | null) {
+    if (!root) {
+        return '';
+    }
+    const headings = Array.from(root.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]'));
+    const readerTop = reader.getBoundingClientRect().top;
+    let current = '';
+    for (const heading of headings) {
+        const offset = heading.getBoundingClientRect().top - readerTop;
+        if (offset <= 96) {
+            current = heading.id;
+        } else {
+            break;
+        }
+    }
+    return current;
 }
 
 function errorMessage(error: unknown, fallback: string) {

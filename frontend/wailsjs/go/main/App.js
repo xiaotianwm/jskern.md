@@ -18,6 +18,14 @@ export function GetBootstrap(arg1) {
   return window['go']['main']['App']['GetBootstrap'](arg1);
 }
 
+export function GetReadingMemory() {
+  return window['go']['main']['App']['GetReadingMemory']();
+}
+
+export function GetReadingPosition(arg1) {
+  return window['go']['main']['App']['GetReadingPosition'](arg1);
+}
+
 export function OpenDocument(arg1) {
   return window['go']['main']['App']['OpenDocument'](arg1);
 }
@@ -40,6 +48,10 @@ export function RefreshWorkspace() {
 
 export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
+}
+
+export function SaveReadingPosition(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['SaveReadingPosition'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function ScanWorkspace(arg1) {

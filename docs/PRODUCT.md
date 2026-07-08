@@ -9,6 +9,7 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Open a folder as a workspace.
 - Show a persistent directory tree containing Markdown files.
 - Keep the open workspace directory tree synchronized when Markdown files or folders are added, deleted, or renamed.
+- Restore the last opened document and reading position inside the restored workspace.
 - Render the selected Markdown document.
 - Show a document outline from headings.
 - Resolve local images and relative links safely.
