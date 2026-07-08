@@ -116,6 +116,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Product version advanced to `0.1.6` for the directory-tree and tab context-menu release.
 - Windows installer `JSKernMD-Setup-0.1.6-x64.exe` was staged under `dist/releases/v0.1.6/`.
 - `SHA256SUMS.txt` was generated for the `0.1.6` installer with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+- GitHub Release `v0.1.6` publishes `JSKernMD-Setup-0.1.6-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 - GitHub Release synchronization is now mandatory for every meaningful product update unless the user explicitly pauses release work.
 
 ## Next
@@ -302,5 +303,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.6/JSKernMD-Setup-0.1.6-x64.exe`.
   - `SHA256SUMS.txt` was generated with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+  - GitHub Release `v0.1.6` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.6`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.6-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
   - `git diff --check` passed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
