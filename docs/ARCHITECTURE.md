@@ -11,6 +11,7 @@ Electron is forbidden. The binary and process name must remain `jskernmd`.
 Go owns:
 
 - Workspace opening and directory tree scanning.
+- Workspace directory-tree refresh and structure change detection.
 - Markdown reading and parsing.
 - Local image and relative link resolution.
 - Document outline extraction.
@@ -46,6 +47,9 @@ workspace folder
 -> React asks Go for current document status while the document is open
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
+-> React weakly polls Go for workspace structure refresh while a workspace is open
+-> Go re-scans the current workspace and compares a structure signature made from directory and Markdown file paths
+-> React replaces the tree only when Go reports a structure change, preserving still-valid expanded directories
 -> React may run transient in-document find highlighting over the already-rendered Markdown DOM
 -> React may show an update reminder from Go-provided release metadata
 -> Go downloads and verifies the installer into AppData temp storage when the user requests it
@@ -70,6 +74,7 @@ Supported initial locales: `zh-CN`, `en`.
 - `OpenWorkspace()`
 - `ScanWorkspace(path)`
 - `RestoreWorkspace()`
+- `RefreshWorkspace()`
 - `OpenDocument(path)`
 - `OpenWorkspaceDocument(path)`
 - `StatDocument(path, knownModifiedAt, knownSize)`
@@ -105,6 +110,8 @@ jskernmd/
 ```
 
 `settings.json` stores `storage_version`, `last_workspace`, `locale`, `theme`, and `ignored_update_version`. Startup calls `GetBootstrap("")` to read Go-owned locale/theme preferences, then calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
+
+While a workspace is open, React calls `RefreshWorkspace()` on a weak interval. Go owns the actual re-scan and compares only directory and Markdown-file structure; editing the currently open document does not refresh the tree and remains handled by `StatDocument()`. When the tree changes, React keeps expansion state only for directories that still exist and always keeps the workspace root expanded, so newly added child directories start collapsed.
 
 ## Update Flow
 

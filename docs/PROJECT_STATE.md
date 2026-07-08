@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
 
 ## Done
 
@@ -79,10 +79,19 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Product version advanced to `0.1.2` for the update-check and find-focus release.
 - Windows installer `JSKernMD-Setup-0.1.2-x64.exe` was staged under `dist/releases/v0.1.2/`.
 - `SHA256SUMS.txt` was generated for the `0.1.2` installer with SHA256 `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
+- Added `RefreshWorkspace()` as a Go-owned Wails API for refreshing the currently open workspace without opening a file dialog.
+- Workspace refresh now compares a Go-built directory/Markdown-file structure signature so content edits do not trigger directory-tree refreshes.
+- Frontend now weakly polls `RefreshWorkspace()` while a workspace is open, avoids overlapping refresh calls, cleans up its interval, and refreshes the tree only when Go reports a structure change.
+- Directory auto-sync preserves expanded directories that still exist, keeps the root expanded, and leaves newly discovered child directories collapsed by default.
+- Directory auto-sync clears stale workspace search state after tree changes so results do not point at removed files.
+- Product version advanced to `0.1.3` for the directory auto-sync release.
+- Windows installer `JSKernMD-Setup-0.1.3-x64.exe` was staged under `dist/releases/v0.1.3/`.
+- `SHA256SUMS.txt` was generated for the `0.1.3` installer with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
+- Publish the `v0.1.3` directory auto-sync installer to GitHub Releases and push the repository update.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 
@@ -213,4 +222,14 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.2/JSKernMD-Setup-0.1.2-x64.exe`.
   - `SHA256SUMS.txt` was generated with SHA256 `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Latest validation after directory auto-sync release:
+  - Product version sources were updated to `0.1.3`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.3/JSKernMD-Setup-0.1.3-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.

@@ -53,3 +53,9 @@ Consequence: Windows GitHub Release uploads use `JSKernMD-Setup-<version>-x64.ex
 Reason: JS Kern.md is an independent Markdown reader, not part of the shared Cloudflare/control-plane software suite.
 
 Consequence: Do not require `DEVELOPER_KEY`, Cloudflare Workers, D1, R2, or the shared control-plane publish/latest APIs for JS Kern.md releases or update checks. GitHub Releases remain the product's release and update source unless this product boundary is explicitly changed.
+
+## 2026-07-08: Keep Workspace Refresh Go-Owned
+
+Reason: The directory tree is the product's core reading model, and filesystem state should not drift into React during long-term development.
+
+Consequence: Workspace structure refresh uses a Go Wails API and Go-owned structure signatures. React may weakly poll and render the returned tree, but it must not read directories, persist workspace paths, or decide filesystem truth. Active document content changes stay in the separate `StatDocument()` reminder flow.

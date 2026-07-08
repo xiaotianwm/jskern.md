@@ -4,6 +4,11 @@
 
 ### Added
 
+- Added `RefreshWorkspace()` as a Go-owned Wails API for refreshing the currently open workspace directory tree without reopening the folder picker.
+- Added a Go workspace structure signature that compares directory and Markdown-file paths while ignoring document content changes.
+- Added frontend workspace auto-sync polling that calls Go every 3 seconds while a workspace is open.
+- Added auto-sync expansion preservation so directories that still exist stay expanded, the workspace root stays expanded, and newly discovered child directories remain collapsed by default.
+- Added Go tests proving workspace refresh reports unchanged trees, Markdown file additions, Markdown file deletions, content-only edits, and skipped heavy folders correctly.
 - Added Go-owned update checking against the official GitHub Releases feed for `xiaotianwm/jskern.md`.
 - Added installer asset filtering so update prompts only accept canonical `JSKernMD-Setup-<version>-x64.exe` release assets.
 - Added Go-owned update installer download into AppData `temp/update/`.
@@ -26,6 +31,9 @@
 
 ### Changed
 
+- Advanced the product version to `0.1.3` for the directory auto-sync release.
+- Workspace search state now clears after an auto-synced tree change so stale search results do not point at removed or renamed files.
+- Architecture, constraints, product scope, and decisions now explicitly record that directory refresh is Go-owned and separate from active document content-change reminders.
 - Clarified that JS Kern.md is an independent desktop app and must not use the shared Cloudflare/control-plane release system.
 - Replaced the previous control-plane update-source follow-up with a GitHub Releases-only product boundary.
 - Advanced the product version to `0.1.2` for the update-check and find-focus release.
@@ -45,6 +53,9 @@
 
 - Windows installer artifact name: `JSKernMD-Setup-<version>-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
+- Published release target: `v0.1.3`.
+- Windows installer artifact: `JSKernMD-Setup-0.1.3-x64.exe`.
+- Installer SHA256: `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
 - Published release target: `v0.1.2`.
 - Windows installer artifact: `JSKernMD-Setup-0.1.2-x64.exe`.
 - Installer SHA256: `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
@@ -54,6 +65,16 @@
 
 ### Validation
 
+- `v0.1.3` directory auto-sync release:
+  - Product version sources were updated to `0.1.3`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.3/JSKernMD-Setup-0.1.3-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - `v0.1.2` update-check and find-focus release:
   - Product version sources were updated to `0.1.2`.
   - `go test ./...` passed.

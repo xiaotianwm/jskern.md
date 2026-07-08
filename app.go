@@ -24,7 +24,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.2"
+	appVersion             = "0.1.3"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
@@ -38,6 +38,7 @@ type App struct {
 	mu                sync.RWMutex
 	workspaceRoot     string
 	workspaceRootReal string
+	workspaceTreeSig  string
 	appDataRoot       string
 	settingsPath      string
 	settings          Settings
@@ -80,6 +81,11 @@ type Settings struct {
 
 type WorkspaceTree struct {
 	Root TreeNode `json:"root"`
+}
+
+type WorkspaceRefresh struct {
+	Changed bool           `json:"changed"`
+	Tree    *WorkspaceTree `json:"tree,omitempty"`
 }
 
 type TreeNode struct {
@@ -313,9 +319,42 @@ func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 	a.mu.Lock()
 	a.workspaceRoot = filepath.Clean(abs)
 	a.workspaceRootReal = filepath.Clean(realRoot)
+	a.workspaceTreeSig = treeSignature(node)
 	a.mu.Unlock()
 	a.setLastWorkspace(abs)
 	return &WorkspaceTree{Root: node}, nil
+}
+
+func (a *App) RefreshWorkspace() (*WorkspaceRefresh, error) {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	previousSignature := a.workspaceTreeSig
+	a.mu.RUnlock()
+	if root == "" {
+		return &WorkspaceRefresh{Changed: false}, nil
+	}
+
+	node, err := scanNode(root, 0)
+	if err != nil {
+		return nil, err
+	}
+	nextSignature := treeSignature(node)
+	if nextSignature == previousSignature {
+		return &WorkspaceRefresh{Changed: false}, nil
+	}
+
+	a.mu.Lock()
+	if a.workspaceRoot != root {
+		a.mu.Unlock()
+		return &WorkspaceRefresh{Changed: false}, nil
+	}
+	a.workspaceTreeSig = nextSignature
+	a.mu.Unlock()
+
+	return &WorkspaceRefresh{
+		Changed: true,
+		Tree:    &WorkspaceTree{Root: node},
+	}, nil
 }
 
 func (a *App) OpenDocument(path string) (*Document, error) {
@@ -887,6 +926,22 @@ func scanNode(path string, depth int) (TreeNode, error) {
 	})
 	node.Children = children
 	return node, nil
+}
+
+func treeSignature(root TreeNode) string {
+	var builder strings.Builder
+	writeTreeSignature(&builder, root)
+	return builder.String()
+}
+
+func writeTreeSignature(builder *strings.Builder, node TreeNode) {
+	builder.WriteString(node.Type)
+	builder.WriteByte('\t')
+	builder.WriteString(filepath.Clean(node.Path))
+	builder.WriteByte('\n')
+	for _, child := range node.Children {
+		writeTreeSignature(builder, child)
+	}
 }
 
 func shouldSkipEntry(name string, isDir bool) bool {

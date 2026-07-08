@@ -34,6 +34,10 @@ export function OpenWorkspaceDocument(arg1) {
   return window['go']['main']['App']['OpenWorkspaceDocument'](arg1);
 }
 
+export function RefreshWorkspace() {
+  return window['go']['main']['App']['RefreshWorkspace']();
+}
+
 export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
 }

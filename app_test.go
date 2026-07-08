@@ -156,6 +156,89 @@ func TestOpenWorkspaceDocumentUsesWorkspaceRelativePath(t *testing.T) {
 	}
 }
 
+func TestRefreshWorkspaceDetectsStructureChangesOnly(t *testing.T) {
+	dir := t.TempDir()
+	docPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Home\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	refresh, err := app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refresh.Changed {
+		t.Fatalf("expected unchanged workspace structure, got %+v", refresh)
+	}
+
+	addedPath := filepath.Join(dir, "guide.md")
+	if err := os.WriteFile(addedPath, []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err = app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !refresh.Changed || refresh.Tree == nil || !treeContainsPath(refresh.Tree.Root, addedPath) {
+		t.Fatalf("expected added Markdown file to refresh tree, got %+v", refresh)
+	}
+
+	if err := os.WriteFile(addedPath, []byte("# Guide\n\ncontent changed\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err = app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refresh.Changed {
+		t.Fatalf("expected Markdown content change to stay out of tree refresh, got %+v", refresh)
+	}
+
+	if err := os.Remove(addedPath); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err = app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !refresh.Changed || refresh.Tree == nil || treeContainsPath(refresh.Tree.Root, addedPath) {
+		t.Fatalf("expected deleted Markdown file to refresh tree, got %+v", refresh)
+	}
+}
+
+func TestRefreshWorkspaceIgnoresSkippedDirectories(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# Home\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+
+	skipped := filepath.Join(dir, "node_modules")
+	if err := os.MkdirAll(skipped, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skipped, "needle.md"), []byte("# Skipped\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	refresh, err := app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refresh.Changed {
+		t.Fatalf("expected skipped directory changes to stay out of tree refresh, got %+v", refresh)
+	}
+}
+
 func TestStatDocumentDetectsChangesAndDeletion(t *testing.T) {
 	dir := t.TempDir()
 	docPath := filepath.Join(dir, "README.md")
@@ -437,6 +520,18 @@ func TestSwitchLanguageAndThemePersistSettings(t *testing.T) {
 	if bootstrap.CurrentTheme != "system" {
 		t.Fatalf("expected unsupported theme to normalize to system, got %q", bootstrap.CurrentTheme)
 	}
+}
+
+func treeContainsPath(node TreeNode, path string) bool {
+	if filepath.Clean(node.Path) == filepath.Clean(path) {
+		return true
+	}
+	for _, child := range node.Children {
+		if treeContainsPath(child, path) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestCheckGitHubUpdatesFindsInstallerRelease(t *testing.T) {

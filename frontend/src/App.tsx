@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -42,6 +42,7 @@ function App() {
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestRef = useRef(0);
+    const workspaceRefreshBusyRef = useRef(false);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -211,6 +212,47 @@ function App() {
             window.clearInterval(intervalId);
         };
     }, [dismissedStatusKey, document, documentBusy]);
+
+    useEffect(() => {
+        if (!tree) {
+            return;
+        }
+        let cancelled = false;
+
+        async function refreshWorkspace() {
+            if (workspaceRefreshBusyRef.current) {
+                return;
+            }
+            workspaceRefreshBusyRef.current = true;
+            try {
+                const refresh = await RefreshWorkspace();
+                if (cancelled || !refresh?.changed || !refresh.tree?.root) {
+                    return;
+                }
+                const refreshedRoot = refresh.tree.root;
+                setTree(refreshedRoot);
+                setExpandedPaths(current => preserveExpandedPaths(current, refreshedRoot));
+                searchRequestRef.current += 1;
+                setSearchQuery('');
+                setSearchResults([]);
+                setSearchBusy(false);
+                setSearchError('');
+            } catch {
+                // Workspace structure refresh is intentionally weak; direct opens surface concrete errors.
+            } finally {
+                workspaceRefreshBusyRef.current = false;
+            }
+        }
+
+        const intervalId = window.setInterval(() => {
+            void refreshWorkspace();
+        }, 3000);
+
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [tree?.path]);
 
     useEffect(() => {
         const query = searchQuery.trim();
@@ -776,6 +818,31 @@ function errorMessage(error: unknown, fallback: string) {
         return error;
     }
     return fallback;
+}
+
+function collectDirectoryPaths(node: TreeNode, paths = new Set<string>()) {
+    if (node.type !== 'directory') {
+        return paths;
+    }
+    paths.add(node.path);
+    for (const child of node.children ?? []) {
+        collectDirectoryPaths(child, paths);
+    }
+    return paths;
+}
+
+function preserveExpandedPaths(current: Set<string>, root: TreeNode) {
+    const directoryPaths = collectDirectoryPaths(root);
+    const next = new Set<string>();
+    for (const path of current) {
+        if (directoryPaths.has(path)) {
+            next.add(path);
+        }
+    }
+    if (root.type === 'directory') {
+        next.add(root.path);
+    }
+    return next;
 }
 
 function clearFindMarks(root: HTMLElement) {
