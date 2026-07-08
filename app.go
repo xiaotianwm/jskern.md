@@ -2,13 +2,19 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"embed"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,8 +24,9 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.1"
-	currentSettingsVersion = 1
+	appVersion             = "0.1.2"
+	currentSettingsVersion = 2
+	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
 
 //go:embed internal/i18n/locales/*.json
@@ -64,10 +71,11 @@ type Bootstrap struct {
 }
 
 type Settings struct {
-	StorageVersion int    `json:"storage_version"`
-	LastWorkspace  string `json:"last_workspace"`
-	Locale         string `json:"locale"`
-	Theme          string `json:"theme"`
+	StorageVersion       int    `json:"storage_version"`
+	LastWorkspace        string `json:"last_workspace"`
+	Locale               string `json:"locale"`
+	Theme                string `json:"theme"`
+	IgnoredUpdateVersion string `json:"ignored_update_version"`
 }
 
 type WorkspaceTree struct {
@@ -104,6 +112,18 @@ type Heading struct {
 	ID    string `json:"id"`
 	Level int    `json:"level"`
 	Text  string `json:"text"`
+}
+
+type UpdateInfo struct {
+	CurrentVersion  string `json:"currentVersion"`
+	LatestVersion   string `json:"latestVersion"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	Ignored         bool   `json:"ignored"`
+	ReleaseURL      string `json:"releaseUrl"`
+	DownloadURL     string `json:"downloadUrl"`
+	Sha256          string `json:"sha256"`
+	ReleaseNotes    string `json:"releaseNotes"`
+	DownloadedPath  string `json:"downloadedPath"`
 }
 
 // NewApp creates a new App application struct
@@ -170,6 +190,87 @@ func (a *App) SwitchTheme(theme string) (Bootstrap, error) {
 		settings.Theme = theme
 	})
 	return a.GetBootstrap("")
+}
+
+func (a *App) CheckForUpdates() (*UpdateInfo, error) {
+	info, err := checkGitHubUpdates(a.ctx, githubReleasesAPI, appVersion)
+	if err != nil {
+		return nil, err
+	}
+	a.mu.RLock()
+	ignoredVersion := a.settings.IgnoredUpdateVersion
+	a.mu.RUnlock()
+	if info.UpdateAvailable && info.LatestVersion == ignoredVersion {
+		info.UpdateAvailable = false
+		info.Ignored = true
+	}
+	return info, nil
+}
+
+func (a *App) DismissUpdate(version string) error {
+	version = normalizeVersion(version)
+	if version == "" {
+		return errors.New("empty update version")
+	}
+	a.updateSettings(func(settings *Settings) {
+		settings.IgnoredUpdateVersion = version
+	})
+	return nil
+}
+
+func (a *App) DownloadUpdate(downloadURL string, sha256Hex string) (*UpdateInfo, error) {
+	if !isAllowedUpdateDownloadURL(downloadURL) {
+		return nil, errors.New("unsupported update download URL")
+	}
+	if a.appDataRoot == "" {
+		if err := a.initAppData(""); err != nil {
+			return nil, err
+		}
+	}
+	parsed, err := url.Parse(downloadURL)
+	if err != nil {
+		return nil, err
+	}
+	fileName := filepath.Base(parsed.Path)
+	if fileName == "." || fileName == string(filepath.Separator) || !strings.HasSuffix(strings.ToLower(fileName), ".exe") {
+		return nil, errors.New("unsupported update installer")
+	}
+	updateDir := filepath.Join(a.appDataRoot, "temp", "update")
+	if err := os.MkdirAll(updateDir, 0o700); err != nil {
+		return nil, err
+	}
+	target := filepath.Join(updateDir, fileName)
+	if err := downloadFile(a.ctx, downloadURL, target, sha256Hex); err != nil {
+		return nil, err
+	}
+	return &UpdateInfo{
+		CurrentVersion: appVersion,
+		DownloadedPath: target,
+		DownloadURL:    downloadURL,
+		Sha256:         strings.ToLower(strings.TrimSpace(sha256Hex)),
+	}, nil
+}
+
+func (a *App) OpenDownloadedUpdate(path string) error {
+	if path == "" {
+		return errors.New("empty update installer path")
+	}
+	if a.appDataRoot == "" {
+		return errors.New("app data root is not initialized")
+	}
+	cleanPath := filepath.Clean(path)
+	updateDir := filepath.Join(a.appDataRoot, "temp", "update")
+	rel, err := filepath.Rel(updateDir, cleanPath)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+		return errors.New("update installer is outside the managed update directory")
+	}
+	if !strings.HasSuffix(strings.ToLower(cleanPath), ".exe") {
+		return errors.New("unsupported update installer")
+	}
+	if _, err := os.Stat(cleanPath); err != nil {
+		return err
+	}
+	return openFile(cleanPath)
 }
 
 func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
@@ -404,6 +505,211 @@ func loadLocale(locale string) (map[string]map[string]string, error) {
 	var messages map[string]map[string]string
 	err = json.Unmarshal(data, &messages)
 	return messages, err
+}
+
+func checkGitHubUpdates(ctx context.Context, apiURL string, currentVersion string) (*UpdateInfo, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, apiURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "jskernmd/"+appVersion)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("update check failed: %s", resp.Status)
+	}
+	var releases []githubRelease
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&releases); err != nil {
+		return nil, err
+	}
+	info := UpdateInfo{CurrentVersion: currentVersion}
+	current := parseVersion(currentVersion)
+	for _, release := range releases {
+		if release.Draft {
+			continue
+		}
+		latest := normalizeVersion(release.TagName)
+		if latest == "" || !versionGreater(parseVersion(latest), current) {
+			continue
+		}
+		assetURL, sha := releaseInstallerAsset(release)
+		if assetURL == "" {
+			continue
+		}
+		info.LatestVersion = latest
+		info.UpdateAvailable = true
+		info.ReleaseURL = release.HTMLURL
+		info.DownloadURL = assetURL
+		info.Sha256 = sha
+		info.ReleaseNotes = strings.TrimSpace(release.Body)
+		return &info, nil
+	}
+	return &info, nil
+}
+
+type githubRelease struct {
+	TagName string        `json:"tag_name"`
+	HTMLURL string        `json:"html_url"`
+	Body    string        `json:"body"`
+	Draft   bool          `json:"draft"`
+	Assets  []githubAsset `json:"assets"`
+}
+
+type githubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	Digest             string `json:"digest"`
+}
+
+func releaseInstallerAsset(release githubRelease) (string, string) {
+	latest := normalizeVersion(release.TagName)
+	expected := "JSKernMD-Setup-" + latest + "-x64.exe"
+	var sha string
+	for _, asset := range release.Assets {
+		if asset.Name == "SHA256SUMS.txt" {
+			continue
+		}
+		if asset.Name == expected {
+			sha = strings.TrimPrefix(strings.ToLower(strings.TrimSpace(asset.Digest)), "sha256:")
+			return asset.BrowserDownloadURL, sha
+		}
+	}
+	return "", ""
+}
+
+func downloadFile(ctx context.Context, sourceURL string, target string, sha256Hex string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodGet, sourceURL, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "jskernmd/"+appVersion)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("update download failed: %s", resp.Status)
+	}
+	temp := target + ".part"
+	out, err := os.Create(temp)
+	if err != nil {
+		return err
+	}
+	hash := sha256.New()
+	_, copyErr := io.Copy(io.MultiWriter(out, hash), resp.Body)
+	closeErr := out.Close()
+	if copyErr != nil {
+		_ = os.Remove(temp)
+		return copyErr
+	}
+	if closeErr != nil {
+		_ = os.Remove(temp)
+		return closeErr
+	}
+	actual := fmt.Sprintf("%x", hash.Sum(nil))
+	expected := strings.ToLower(strings.TrimSpace(sha256Hex))
+	if expected != "" && actual != expected {
+		_ = os.Remove(temp)
+		return fmt.Errorf("update checksum mismatch")
+	}
+	_ = os.Remove(target)
+	return os.Rename(temp, target)
+}
+
+func isAllowedUpdateDownloadURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme == "https" &&
+		strings.EqualFold(parsed.Host, "github.com") &&
+		strings.HasPrefix(parsed.Path, "/xiaotianwm/jskern.md/releases/download/") &&
+		strings.HasSuffix(strings.ToLower(parsed.Path), ".exe")
+}
+
+func openFile(path string) error {
+	switch os.PathSeparator {
+	case '\\':
+		return exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", path).Start()
+	default:
+		if _, err := exec.LookPath("open"); err == nil {
+			return exec.Command("open", path).Start()
+		}
+		return exec.Command("xdg-open", path).Start()
+	}
+}
+
+func normalizeVersion(version string) string {
+	version = strings.TrimSpace(version)
+	version = strings.TrimPrefix(version, "v")
+	version = strings.TrimPrefix(version, "V")
+	if parseVersion(version) == nil {
+		return ""
+	}
+	return version
+}
+
+func parseVersion(version string) []int {
+	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
+	if version == "" {
+		return nil
+	}
+	parts := strings.Split(version, ".")
+	if len(parts) == 0 {
+		return nil
+	}
+	result := make([]int, len(parts))
+	for index, part := range parts {
+		if part == "" {
+			return nil
+		}
+		for _, r := range part {
+			if r < '0' || r > '9' {
+				return nil
+			}
+		}
+		value, err := strconv.Atoi(part)
+		if err != nil {
+			return nil
+		}
+		result[index] = value
+	}
+	return result
+}
+
+func versionGreater(left []int, right []int) bool {
+	maxParts := len(left)
+	if len(right) > maxParts {
+		maxParts = len(right)
+	}
+	for index := 0; index < maxParts; index++ {
+		var l, r int
+		if index < len(left) {
+			l = left[index]
+		}
+		if index < len(right) {
+			r = right[index]
+		}
+		if l != r {
+			return l > r
+		}
+	}
+	return false
 }
 
 func (a *App) initAppData(root string) error {

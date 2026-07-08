@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {GetBootstrap, OpenDocument, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RestoreWorkspace, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -10,6 +10,7 @@ type Document = main.Document;
 type DocumentStatus = main.DocumentStatus;
 type Heading = main.Heading;
 type SearchResult = main.SearchResult;
+type UpdateInfo = main.UpdateInfo;
 
 const FIND_MATCH_CLASS = 'kern-find-match';
 const FIND_CURRENT_CLASS = 'kern-find-current';
@@ -33,6 +34,10 @@ function App() {
     const [findQuery, setFindQuery] = useState('');
     const [findMatches, setFindMatches] = useState<HTMLElement[]>([]);
     const [findIndex, setFindIndex] = useState(0);
+    const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+    const [updatePanelOpen, setUpdatePanelOpen] = useState(false);
+    const [updateBusy, setUpdateBusy] = useState(false);
+    const [updateError, setUpdateError] = useState('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
@@ -96,16 +101,38 @@ function App() {
                 return;
             }
             setFindOpen(true);
-            window.requestAnimationFrame(() => {
-                findInputRef.current?.focus();
-                findInputRef.current?.select();
-            });
+            focusFindInput();
         };
         window.addEventListener('kern:find', openFind);
         return () => {
             window.removeEventListener('kern:find', openFind);
         };
     }, [document]);
+
+    useEffect(() => {
+        if (findOpen) {
+            focusFindInput();
+        }
+    }, [findOpen]);
+
+    useEffect(() => {
+        if (!bootstrap) {
+            return;
+        }
+        let cancelled = false;
+        void CheckForUpdates()
+            .then(info => {
+                if (!cancelled && info?.updateAvailable && !info.ignored) {
+                    setUpdateInfo(info);
+                }
+            })
+            .catch(() => {
+                // Update checks are intentionally weak and must not block reading.
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [bootstrap?.product?.version]);
 
     useEffect(() => {
         setFindOpen(false);
@@ -393,6 +420,65 @@ function App() {
         }
     }
 
+    function focusFindInput() {
+        window.setTimeout(() => {
+            findInputRef.current?.focus();
+            findInputRef.current?.select();
+        }, 0);
+    }
+
+    async function downloadUpdate() {
+        if (!updateInfo || updateBusy) {
+            return;
+        }
+        setUpdateBusy(true);
+        setUpdateError('');
+        try {
+            const downloaded = await DownloadUpdate(updateInfo.downloadUrl, updateInfo.sha256);
+            setUpdateInfo({
+                ...updateInfo,
+                downloadedPath: downloaded.downloadedPath,
+                sha256: downloaded.sha256 || updateInfo.sha256
+            } as UpdateInfo);
+        } catch (error) {
+            setUpdateError(errorMessage(error, text['update.error']));
+        } finally {
+            setUpdateBusy(false);
+        }
+    }
+
+    async function installUpdate() {
+        if (!updateInfo?.downloadedPath || updateBusy) {
+            return;
+        }
+        setUpdateBusy(true);
+        setUpdateError('');
+        try {
+            await OpenDownloadedUpdate(updateInfo.downloadedPath);
+        } catch (error) {
+            setUpdateError(errorMessage(error, text['update.error']));
+        } finally {
+            setUpdateBusy(false);
+        }
+    }
+
+    async function dismissUpdate() {
+        if (!updateInfo || updateBusy) {
+            return;
+        }
+        setUpdateBusy(true);
+        setUpdateError('');
+        try {
+            await DismissUpdate(updateInfo.latestVersion);
+            setUpdateInfo(null);
+            setUpdatePanelOpen(false);
+        } catch (error) {
+            setUpdateError(errorMessage(error, text['update.error']));
+        } finally {
+            setUpdateBusy(false);
+        }
+    }
+
     function scheduleReaderPosition(heading = '') {
         window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
@@ -493,6 +579,40 @@ function App() {
                 </div>
                 <span className="status-line">{text['status.reader_first']}</span>
                 <div className="toolbar-spacer"/>
+                {updateInfo?.updateAvailable ? (
+                    <div className="update-area">
+                        <button type="button" className="update-button" onClick={() => setUpdatePanelOpen(current => !current)}>
+                            {text['update.available']} {updateInfo.latestVersion}
+                        </button>
+                        {updatePanelOpen ? (
+                            <div className="update-popover">
+                                <div className="update-title">{text['update.available']}</div>
+                                <div className="update-version">{text['update.version']} {updateInfo.latestVersion}</div>
+                                {updateInfo.releaseNotes ? (
+                                    <div className="update-notes">
+                                        <div className="update-notes-label">{text['update.notes']}</div>
+                                        <div className="update-notes-body">{updateInfo.releaseNotes}</div>
+                                    </div>
+                                ) : null}
+                                {updateError ? <div className="update-error">{updateError}</div> : null}
+                                <div className="update-actions">
+                                    {updateInfo.downloadedPath ? (
+                                        <button type="button" onClick={installUpdate} disabled={updateBusy}>
+                                            {text['update.install']}
+                                        </button>
+                                    ) : (
+                                        <button type="button" onClick={downloadUpdate} disabled={updateBusy || !updateInfo.downloadUrl}>
+                                            {updateBusy ? text['update.downloading'] : text['update.download']}
+                                        </button>
+                                    )}
+                                    <button type="button" onClick={dismissUpdate} disabled={updateBusy}>
+                                        {text['update.dismiss']}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
                 <label className="toolbar-select">
                     <span>{shell['menu.language']}</span>
                     <select

@@ -15,6 +15,7 @@ Go owns:
 - Local image and relative link resolution.
 - Document outline extraction.
 - App config, recent workspace state, theme, language, and persistence.
+- Update checks, installer download, checksum verification, ignored update version, and opening the downloaded installer.
 - i18n dictionaries and final dynamic user-visible messages.
 
 React owns:
@@ -46,6 +47,8 @@ workspace folder
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
 -> React may run transient in-document find highlighting over the already-rendered Markdown DOM
+-> React may show an update reminder from Go-provided release metadata
+-> Go downloads and verifies the installer into AppData temp storage when the user requests it
 ```
 
 Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.
@@ -73,6 +76,10 @@ Supported initial locales: `zh-CN`, `en`.
 - `SearchWorkspace(query)`
 - `SwitchLanguage(locale)`
 - `SwitchTheme(mode)`
+- `CheckForUpdates()`
+- `DismissUpdate(version)`
+- `DownloadUpdate(downloadURL, sha256)`
+- `OpenDownloadedUpdate(path)`
 
 ## AppData Storage
 
@@ -97,7 +104,17 @@ jskernmd/
   crash/
 ```
 
-`settings.json` stores `storage_version`, `last_workspace`, `locale`, and `theme`. Startup calls `GetBootstrap("")` to read Go-owned locale/theme preferences, then calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
+`settings.json` stores `storage_version`, `last_workspace`, `locale`, `theme`, and `ignored_update_version`. Startup calls `GetBootstrap("")` to read Go-owned locale/theme preferences, then calls `RestoreWorkspace()` to rebuild the tree from the last valid folder. Child directories remain collapsed by default; restoring a workspace must not eagerly expand the whole tree in the UI.
+
+## Update Flow
+
+The current desktop update source is the GitHub Releases API for `xiaotianwm/jskern.md`, using only release assets that match the canonical installer name:
+
+```text
+JSKernMD-Setup-<version>-x64.exe
+```
+
+Go checks for newer non-draft releases, returns the latest usable installer metadata to React, downloads installers into AppData `temp/update/`, verifies SHA256 when GitHub provides a digest, and opens the local installer only after the user clicks install. React only renders the weak reminder, download/install buttons, release notes, and transient busy/error state.
 
 ## Local Resources
 

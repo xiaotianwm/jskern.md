@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace restore, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
 
 ## Done
 
@@ -71,10 +71,19 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Windows installer `JSKernMD-Setup-0.1.1-x64.exe` was staged under `dist/releases/v0.1.1/`.
 - `SHA256SUMS.txt` was generated for the `0.1.1` installer with SHA256 `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
 - GitHub Release `v0.1.1` is the user-facing installer release for current-document find.
+- Go-owned update checking now reads the official GitHub Releases feed and only accepts canonical `JSKernMD-Setup-<version>-x64.exe` installer assets.
+- Go-owned update download stores installers under AppData `temp/update/`, verifies SHA256 when release metadata provides it, and opens the local installer only after the user clicks install.
+- `config/settings.json` now stores `ignored_update_version` so dismissed update prompts do not return every launch.
+- Toolbar update UI now shows a weak in-app update reminder with release notes, download/install actions, and localized Chinese/English labels.
+- `Ctrl/Cmd+F` now focuses and selects the current-document find input after the find bar is actually mounted.
+- Product version advanced to `0.1.2` for the update-check and find-focus release.
+- Windows installer `JSKernMD-Setup-0.1.2-x64.exe` was staged under `dist/releases/v0.1.2/`.
+- `SHA256SUMS.txt` was generated for the `0.1.2` installer with SHA256 `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
 
 ## Next
 
-- Add update-check/download UI against the control-plane latest-version API when the control-plane release path is ready for this app.
+- Move the update source from GitHub Releases to the control-plane latest-version API when that release path is ready for this app.
+- Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 
 ## Known Issues
@@ -82,6 +91,7 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
 - Workspace search is currently an on-demand scan rather than an indexed search database.
 - Current-document find is DOM-based and does not match text split across separate inline elements.
+- Update downloads currently show a busy state rather than detailed byte-level progress.
 - Window controls need visual/manual UX verification even though the exe starts successfully.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
@@ -194,3 +204,13 @@ Readable Markdown document MVP loop with persisted workspace restore, workspace 
   - `scripts/package-windows.ps1` passed and produced `dist/releases/v0.1.1/JSKernMD-Setup-0.1.1-x64.exe`.
   - `SHA256SUMS.txt` was generated with SHA256 `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds.
+- Latest validation after update-check and find-focus release:
+  - Product version sources were updated to `0.1.2`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.2/JSKernMD-Setup-0.1.2-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.

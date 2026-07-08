@@ -33,6 +33,8 @@
 - App configuration and durable reader state must be stored by Go under the system app data root for `jskernmd`; on Windows this is `%APPDATA%\jskernmd`.
 - The last opened workspace directory must be persisted and restored on startup so users do not need to reopen the same folder every launch.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
+- Update checking, ignored update versions, installer downloads, checksum verification, and opening downloaded installers are Go-owned responsibilities.
+- Current update downloads are sourced from GitHub Releases and must only accept canonical `JSKernMD-Setup-<version>-x64.exe` assets from the official `xiaotianwm/jskern.md` repository.
 
 ## Frontend
 
@@ -40,6 +42,7 @@
 - Frontend must not read the filesystem directly.
 - Frontend must not persist business data.
 - Frontend must not maintain language dictionaries.
+- Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
 - Code highlighting must use Shiki.
 - Browser-default context menu, refresh, find, zoom, link/image drag, and page overscroll must be blocked.
 - Text selection is disabled by default, then re-enabled only for Markdown body, code blocks, inputs, and explicit selectable data.

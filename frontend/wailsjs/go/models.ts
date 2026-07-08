@@ -233,6 +233,34 @@ export namespace main {
 		    return a;
 		}
 	}
+	export class UpdateInfo {
+	    currentVersion: string;
+	    latestVersion: string;
+	    updateAvailable: boolean;
+	    ignored: boolean;
+	    releaseUrl: string;
+	    downloadUrl: string;
+	    sha256: string;
+	    releaseNotes: string;
+	    downloadedPath: string;
+
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.currentVersion = source["currentVersion"];
+	        this.latestVersion = source["latestVersion"];
+	        this.updateAvailable = source["updateAvailable"];
+	        this.ignored = source["ignored"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.downloadUrl = source["downloadUrl"];
+	        this.sha256 = source["sha256"];
+	        this.releaseNotes = source["releaseNotes"];
+	        this.downloadedPath = source["downloadedPath"];
+	    }
+	}
 	export class WorkspaceTree {
 	    root: TreeNode;
 	

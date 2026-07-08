@@ -4,6 +4,14 @@
 
 ### Added
 
+- Added Go-owned update checking against the official GitHub Releases feed for `xiaotianwm/jskern.md`.
+- Added installer asset filtering so update prompts only accept canonical `JSKernMD-Setup-<version>-x64.exe` release assets.
+- Added Go-owned update installer download into AppData `temp/update/`.
+- Added SHA256 verification for downloaded update installers when release metadata provides a digest.
+- Added `DismissUpdate(version)` persistence through AppData `ignored_update_version`.
+- Added `OpenDownloadedUpdate(path)` so the app can open the downloaded installer only after the user explicitly clicks install.
+- Added localized toolbar update reminder UI with release notes, download, install, and ignore actions.
+- Added Go tests for update release parsing, installer asset filtering, checksum validation, and ignored update persistence.
 - Added app-owned current-document find for the active Markdown document.
 - Added a `Ctrl/Cmd+F` handoff from the desktop guard layer to the reader find UI, keeping browser default find blocked.
 - Added rendered Markdown match highlighting with current-match emphasis and previous/next navigation.
@@ -18,6 +26,9 @@
 
 ### Changed
 
+- Advanced the product version to `0.1.2` for the update-check and find-focus release.
+- `Ctrl/Cmd+F` now focuses and selects the current-document find input after the find bar is mounted, fixing the previous timing race.
+- `settings.json` storage advanced to version 2 for the ignored update version field.
 - Advanced the product version to `0.1.1` for the current-document find release.
 - Switching documents now clears transient current-document find state and removes match highlights.
 - Closing the find bar now removes all current-document highlights from the rendered Markdown DOM.
@@ -32,12 +43,25 @@
 
 - Windows installer artifact name: `JSKernMD-Setup-<version>-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
+- Published release target: `v0.1.2`.
+- Windows installer artifact: `JSKernMD-Setup-0.1.2-x64.exe`.
+- Installer SHA256: `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
 - Published release target: `v0.1.1`.
 - Windows installer artifact: `JSKernMD-Setup-0.1.1-x64.exe`.
 - Installer SHA256: `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
 
 ### Validation
 
+- `v0.1.2` update-check and find-focus release:
+  - Product version sources were updated to `0.1.2`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.2/JSKernMD-Setup-0.1.2-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `449f99550137ea0d36457860b18b456ed3224825cd14a7ac273661f9985b4574`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - `v0.1.1` installer release:
   - `go test ./...` passed.
   - `npm.cmd run build` passed from `frontend/`.

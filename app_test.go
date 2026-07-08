@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -434,5 +436,122 @@ func TestSwitchLanguageAndThemePersistSettings(t *testing.T) {
 	}
 	if bootstrap.CurrentTheme != "system" {
 		t.Fatalf("expected unsupported theme to normalize to system, got %q", bootstrap.CurrentTheme)
+	}
+}
+
+func TestCheckGitHubUpdatesFindsInstallerRelease(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{
+				"tag_name": "v0.1.2",
+				"html_url": "https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.2",
+				"body": "Update notes",
+				"draft": false,
+				"assets": [
+					{
+						"name": "JSKernMD-Setup-0.1.2-x64.exe",
+						"browser_download_url": "https://github.com/xiaotianwm/jskern.md/releases/download/v0.1.2/JSKernMD-Setup-0.1.2-x64.exe",
+						"digest": "sha256:abc123"
+					}
+				]
+			}
+		]`))
+	}))
+	defer server.Close()
+
+	info, err := checkGitHubUpdates(nil, server.URL, "0.1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.UpdateAvailable || info.LatestVersion != "0.1.2" {
+		t.Fatalf("expected 0.1.2 update, got %+v", info)
+	}
+	if info.Sha256 != "abc123" || info.ReleaseNotes != "Update notes" {
+		t.Fatalf("expected sha and notes from release, got %+v", info)
+	}
+}
+
+func TestCheckGitHubUpdatesIgnoresOlderAndMalformedAssets(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[
+			{
+				"tag_name": "v0.1.2",
+				"draft": false,
+				"assets": [
+					{
+						"name": "jskernmd.exe",
+						"browser_download_url": "https://github.com/xiaotianwm/jskern.md/releases/download/v0.1.2/jskernmd.exe"
+					}
+				]
+			},
+			{
+				"tag_name": "v0.1.0",
+				"draft": false,
+				"assets": [
+					{
+						"name": "JSKernMD-Setup-0.1.0-x64.exe",
+						"browser_download_url": "https://github.com/xiaotianwm/jskern.md/releases/download/v0.1.0/JSKernMD-Setup-0.1.0-x64.exe"
+					}
+				]
+			}
+		]`))
+	}))
+	defer server.Close()
+
+	info, err := checkGitHubUpdates(nil, server.URL, "0.1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.UpdateAvailable || info.LatestVersion != "" {
+		t.Fatalf("expected no usable update, got %+v", info)
+	}
+}
+
+func TestDownloadFileVerifiesChecksum(t *testing.T) {
+	payload := []byte("installer")
+	sum := fmt.Sprintf("%x", sha256.Sum256(payload))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(payload)
+	}))
+	defer server.Close()
+
+	target := filepath.Join(t.TempDir(), "update.exe")
+	if err := downloadFile(nil, server.URL, target, sum); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != string(payload) {
+		t.Fatalf("expected downloaded payload, got %q", data)
+	}
+	if err := downloadFile(nil, server.URL, filepath.Join(t.TempDir(), "bad.exe"), "bad"); err == nil {
+		t.Fatal("expected checksum mismatch to fail")
+	}
+}
+
+func TestDismissUpdatePersistsIgnoredVersion(t *testing.T) {
+	appDataRoot := t.TempDir()
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.DismissUpdate("v0.1.2"); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsBytes, err := os.ReadFile(filepath.Join(appDataRoot, "config", "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings Settings
+	if err := json.Unmarshal(settingsBytes, &settings); err != nil {
+		t.Fatal(err)
+	}
+	if settings.IgnoredUpdateVersion != "0.1.2" {
+		t.Fatalf("expected ignored version 0.1.2, got %+v", settings)
 	}
 }
