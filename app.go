@@ -24,7 +24,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.5"
+	appVersion             = "0.1.6"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
@@ -284,6 +284,14 @@ func (a *App) OpenDownloadedUpdate(path string) error {
 	return openFile(cleanPath)
 }
 
+func (a *App) RevealPath(path string) error {
+	target, err := a.revealableWorkspacePath(path)
+	if err != nil {
+		return err
+	}
+	return revealPath(target)
+}
+
 func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Open Workspace",
@@ -496,6 +504,35 @@ func (a *App) workspaceRelativePath(path string) (string, bool) {
 	return filepath.ToSlash(rel), true
 }
 
+func (a *App) revealableWorkspacePath(path string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", errors.New("empty workspace path")
+	}
+	var (
+		target string
+		err    error
+	)
+	if filepath.IsAbs(path) {
+		target, err = filepath.Abs(path)
+	} else {
+		target, err = a.workspacePath(path)
+	}
+	if err != nil {
+		return "", err
+	}
+	target = filepath.Clean(target)
+	if !a.isLexicallyWithinWorkspace(target) {
+		return "", errors.New("path is outside the current workspace")
+	}
+	if _, err := os.Stat(target); err != nil {
+		return "", err
+	}
+	if !a.isWithinWorkspace(target) {
+		return "", errors.New("path is outside the current workspace")
+	}
+	return target, nil
+}
+
 func (a *App) assetHandler() http.Handler {
 	return workspaceAssetHandler{app: a}
 }
@@ -695,6 +732,29 @@ func openFile(path string) error {
 			return exec.Command("open", path).Start()
 		}
 		return exec.Command("xdg-open", path).Start()
+	}
+}
+
+func revealPath(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	switch os.PathSeparator {
+	case '\\':
+		if info.IsDir() {
+			return exec.Command("explorer.exe", path).Start()
+		}
+		return exec.Command("explorer.exe", "/select,"+path).Start()
+	default:
+		if _, err := exec.LookPath("open"); err == nil {
+			return exec.Command("open", "-R", path).Start()
+		}
+		target := path
+		if !info.IsDir() {
+			target = filepath.Dir(path)
+		}
+		return exec.Command("xdg-open", target).Start()
 	}
 }
 

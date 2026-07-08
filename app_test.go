@@ -156,6 +156,39 @@ func TestOpenWorkspaceDocumentUsesWorkspaceRelativePath(t *testing.T) {
 	}
 }
 
+func TestRevealableWorkspacePathValidatesWorkspaceBoundary(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	docPath := filepath.Join(nested, "guide.md")
+	if err := os.WriteFile(docPath, []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := app.revealableWorkspacePath(docPath); err != nil || got != filepath.Clean(docPath) {
+		t.Fatalf("expected workspace file to be revealable, got path=%q err=%v", got, err)
+	}
+	if got, err := app.revealableWorkspacePath("docs"); err != nil || got != filepath.Clean(nested) {
+		t.Fatalf("expected workspace-relative directory to be revealable, got path=%q err=%v", got, err)
+	}
+	if _, err := app.revealableWorkspacePath(outside); err == nil {
+		t.Fatal("expected outside workspace path to be rejected")
+	}
+	if _, err := app.revealableWorkspacePath(filepath.Join(dir, "missing.md")); err == nil {
+		t.Fatal("expected missing workspace path to be rejected")
+	}
+}
+
 func TestRefreshWorkspaceDetectsStructureChangesOnly(t *testing.T) {
 	dir := t.TempDir()
 	docPath := filepath.Join(dir, "README.md")

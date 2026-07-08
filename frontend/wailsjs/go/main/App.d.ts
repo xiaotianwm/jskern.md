@@ -28,6 +28,8 @@ export function RefreshWorkspace():Promise<main.WorkspaceRefresh>;
 
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
 
+export function RevealPath(arg1:string):Promise<void>;
+
 export function SaveOpenTabs(arg1:Array<string>,arg2:string):Promise<void>;
 
 export function SaveReadingPosition(arg1:string,arg2:number,arg3:number,arg4:string,arg5:number,arg6:number):Promise<void>;

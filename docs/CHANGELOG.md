@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-07-08 - v0.1.6 Directory Tree And Tab Context Menus
+
+### Added
+
+- Added app-owned right-click context menus for directory-tree rows.
+- Added directory-tree menu actions for opening Markdown files, expanding or collapsing directories, refreshing the workspace tree, copying the path, and showing the item in the system file manager.
+- Added app-owned right-click context menus for open document tabs.
+- Added tab menu actions for switching to a tab, closing a tab, closing other tabs, closing tabs to the right, copying the path, and showing the document in the system file manager.
+- Added `RevealPath(path)` as a Go Wails API that validates the target is an existing file or directory inside the current workspace before launching the platform file manager.
+- Added Wails runtime clipboard usage for copying Go-provided file and directory paths from context menus.
+- Added localized context-menu labels for Chinese and English.
+- Added Go tests for workspace-boundary validation before file-manager reveal actions.
+
+### Changed
+
+- Advanced the product version to `0.1.6` for the directory-tree and tab context-menu release.
+- Reused the existing Go-owned `RefreshWorkspace()` flow for the directory-tree refresh menu action, keeping filesystem truth in Go.
+- Reused the existing tab-session persistence flow for tab context-menu close operations so tab order and active tab state stay in AppData reading memory.
+- Recorded the release workflow rule that every meaningful product update must synchronize the installer and checksum to GitHub Releases unless release work is explicitly paused.
+- Updated project constraints, architecture notes, product scope, and decision log to record that context-menu file actions remain Go-validated.
+
+### Release Packaging
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.6-x64.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+- Installer SHA256: `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+- Published release target: `v0.1.6`.
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.6`.
+
+### Validation
+
+- `go test ./...` passed.
+- `wails generate module` passed.
+- `npm.cmd run build` passed from `frontend/`.
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+- `wails build` passed and produced `build/bin/jskernmd.exe`.
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.6/JSKernMD-Setup-0.1.6-x64.exe`.
+- `SHA256SUMS.txt` was generated with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+- `git diff --check` passed.
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-08 - v0.1.5 Multi-Tab Reading Session
 
 ### Added

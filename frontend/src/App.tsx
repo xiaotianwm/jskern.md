@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme} from '../wailsjs/go/main/App';
+import {ClipboardSetText, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -29,6 +29,17 @@ type OpenDocumentOptions = {
     forceReload?: boolean;
 };
 
+type ContextMenuState =
+    | {kind: 'tree'; node: TreeNode; x: number; y: number}
+    | {kind: 'tab'; tab: DocumentTab; x: number; y: number};
+
+type ContextMenuItem = {
+    label: string;
+    action: () => void | Promise<void>;
+    disabled?: boolean;
+    separatorBefore?: boolean;
+};
+
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
     const [tree, setTree] = useState<TreeNode | null>(null);
@@ -53,6 +64,7 @@ function App() {
     const [updatePanelOpen, setUpdatePanelOpen] = useState(false);
     const [updateBusy, setUpdateBusy] = useState(false);
     const [updateError, setUpdateError] = useState('');
+    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
@@ -168,6 +180,28 @@ function App() {
             window.removeEventListener('keydown', handleKeyDown, true);
         };
     }, [document, tabs, documentBusy]);
+
+    useEffect(() => {
+        if (!contextMenu) {
+            return;
+        }
+        const closeMenu = () => setContextMenu(null);
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                closeMenu();
+            }
+        };
+        window.addEventListener('pointerdown', closeMenu);
+        window.addEventListener('resize', closeMenu);
+        window.addEventListener('scroll', closeMenu, true);
+        window.addEventListener('keydown', handleKeyDown, true);
+        return () => {
+            window.removeEventListener('pointerdown', closeMenu);
+            window.removeEventListener('resize', closeMenu);
+            window.removeEventListener('scroll', closeMenu, true);
+            window.removeEventListener('keydown', handleKeyDown, true);
+        };
+    }, [contextMenu]);
 
     useEffect(() => {
         if (findOpen) {
@@ -309,33 +343,8 @@ function App() {
         }
         let cancelled = false;
 
-        async function refreshWorkspace() {
-            if (workspaceRefreshBusyRef.current) {
-                return;
-            }
-            workspaceRefreshBusyRef.current = true;
-            try {
-                const refresh = await RefreshWorkspace();
-                if (cancelled || !refresh?.changed || !refresh.tree?.root) {
-                    return;
-                }
-                const refreshedRoot = refresh.tree.root;
-                setTree(refreshedRoot);
-                setExpandedPaths(current => preserveExpandedPaths(current, refreshedRoot));
-                searchRequestRef.current += 1;
-                setSearchQuery('');
-                setSearchResults([]);
-                setSearchBusy(false);
-                setSearchError('');
-            } catch {
-                // Workspace structure refresh is intentionally weak; direct opens surface concrete errors.
-            } finally {
-                workspaceRefreshBusyRef.current = false;
-            }
-        }
-
         const intervalId = window.setInterval(() => {
-            void refreshWorkspace();
+            void refreshWorkspaceNow(() => !cancelled);
         }, 3000);
 
         return () => {
@@ -381,6 +390,31 @@ function App() {
             window.clearTimeout(timeoutId);
         };
     }, [searchQuery, text, tree]);
+
+    async function refreshWorkspaceNow(shouldApply = () => true) {
+        if (workspaceRefreshBusyRef.current) {
+            return;
+        }
+        workspaceRefreshBusyRef.current = true;
+        try {
+            const refresh = await RefreshWorkspace();
+            if (!shouldApply() || !refresh?.changed || !refresh.tree?.root) {
+                return;
+            }
+            const refreshedRoot = refresh.tree.root;
+            setTree(refreshedRoot);
+            setExpandedPaths(current => preserveExpandedPaths(current, refreshedRoot));
+            searchRequestRef.current += 1;
+            setSearchQuery('');
+            setSearchResults([]);
+            setSearchBusy(false);
+            setSearchError('');
+        } catch {
+            // Workspace structure refresh is intentionally weak; direct opens surface concrete errors.
+        } finally {
+            workspaceRefreshBusyRef.current = false;
+        }
+    }
 
     async function openWorkspace() {
         if (busy) {
@@ -608,6 +642,149 @@ function App() {
                 next.add(path);
             }
             return next;
+        });
+    }
+
+    function openTreeContextMenu(node: TreeNode, event: React.MouseEvent<HTMLElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        const {x, y} = contextMenuPoint(event);
+        setContextMenu({kind: 'tree', node, x, y});
+    }
+
+    function openTabContextMenu(tab: DocumentTab, event: React.MouseEvent<HTMLElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        const {x, y} = contextMenuPoint(event);
+        setContextMenu({kind: 'tab', tab, x, y});
+    }
+
+    async function copyPath(path: string) {
+        await ClipboardSetText(path);
+    }
+
+    async function revealPath(path: string) {
+        await RevealPath(path);
+    }
+
+    async function closeOtherTabs(path: string) {
+        if (documentBusy) {
+            return;
+        }
+        const targetTab = tabs.find(tab => tab.path === path);
+        if (!targetTab) {
+            return;
+        }
+        const nextTabs = [targetTab];
+        if (document?.path === path) {
+            setTabs(nextTabs);
+            await persistOpenTabs(nextTabs, path);
+            return;
+        }
+        await saveCurrentReadingPosition(document, true);
+        setTabs(nextTabs);
+        await openDocument(path, undefined, {
+            tabsOverride: nextTabs,
+            savePrevious: false
+        });
+    }
+
+    async function closeTabsToRight(path: string) {
+        if (documentBusy) {
+            return;
+        }
+        const tabIndex = tabs.findIndex(tab => tab.path === path);
+        if (tabIndex < 0) {
+            return;
+        }
+        const nextTabs = tabs.slice(0, tabIndex + 1);
+        const activePath = document?.path ?? '';
+        if (nextTabs.some(tab => tab.path === activePath)) {
+            setTabs(nextTabs);
+            await persistOpenTabs(nextTabs, activePath || nextTabs[0].path);
+            return;
+        }
+        await saveCurrentReadingPosition(document, true);
+        setTabs(nextTabs);
+        await openDocument(path, undefined, {
+            tabsOverride: nextTabs,
+            savePrevious: false
+        });
+    }
+
+    function contextMenuItems(): ContextMenuItem[] {
+        if (!contextMenu) {
+            return [];
+        }
+        if (contextMenu.kind === 'tree') {
+            const node = contextMenu.node;
+            const isDirectory = node.type === 'directory';
+            const isExpanded = expandedPaths.has(node.path);
+            return [
+                ...(isDirectory ? [{
+                    label: isExpanded ? text['context.collapse'] : text['context.expand'],
+                    action: () => toggleDirectory(node.path)
+                }] : [{
+                    label: text['context.open'],
+                    action: () => openDocument(node.path),
+                    disabled: documentBusy
+                }]),
+                {
+                    label: text['context.refresh_workspace'],
+                    action: () => refreshWorkspaceNow(),
+                    separatorBefore: true
+                },
+                {
+                    label: text['context.copy_path'],
+                    action: () => copyPath(node.path)
+                },
+                {
+                    label: text['context.show_in_file_manager'],
+                    action: () => revealPath(node.path)
+                }
+            ];
+        }
+
+        const tab = contextMenu.tab;
+        const tabIndex = tabs.findIndex(item => item.path === tab.path);
+        return [
+            {
+                label: text['context.switch_tab'],
+                action: () => openDocument(tab.path),
+                disabled: documentBusy || tab.path === document?.path
+            },
+            {
+                label: text['context.close_tab'],
+                action: () => closeTab(tab.path),
+                disabled: documentBusy
+            },
+            {
+                label: text['context.close_other_tabs'],
+                action: () => closeOtherTabs(tab.path),
+                disabled: documentBusy || tabs.length <= 1,
+                separatorBefore: true
+            },
+            {
+                label: text['context.close_tabs_right'],
+                action: () => closeTabsToRight(tab.path),
+                disabled: documentBusy || tabIndex < 0 || tabIndex >= tabs.length - 1
+            },
+            {
+                label: text['context.copy_path'],
+                action: () => copyPath(tab.path),
+                separatorBefore: true
+            },
+            {
+                label: text['context.show_in_file_manager'],
+                action: () => revealPath(tab.path)
+            }
+        ];
+    }
+
+    function runContextMenuAction(action: () => void | Promise<void>) {
+        setContextMenu(null);
+        void Promise.resolve(action()).catch(() => {
+            // Context-menu actions are convenience affordances; core document errors stay on direct opens.
         });
     }
 
@@ -970,6 +1147,7 @@ function App() {
                                 expandedPaths={expandedPaths}
                                 onToggleDirectory={toggleDirectory}
                                 onOpenDocument={openDocument}
+                                onOpenContextMenu={openTreeContextMenu}
                             />
                         ) : (
                             <div className="empty-state">{text['empty.workspace']}</div>
@@ -983,7 +1161,11 @@ function App() {
                             {tabs.map(tab => {
                                 const active = tab.path === document?.path;
                                 return (
-                                    <div className={`document-tab ${active ? 'active' : ''}`} key={tab.path}>
+                                    <div
+                                        className={`document-tab ${active ? 'active' : ''}`}
+                                        key={tab.path}
+                                        onContextMenu={event => openTabContextMenu(tab, event)}
+                                    >
                                         <button
                                             type="button"
                                             className="document-tab-main"
@@ -1109,6 +1291,14 @@ function App() {
                     )}
                 </aside>
             </section>
+            {contextMenu ? (
+                <ContextMenu
+                    x={contextMenu.x}
+                    y={contextMenu.y}
+                    items={contextMenuItems()}
+                    onAction={runContextMenuAction}
+                />
+            ) : null}
         </main>
     );
 }
@@ -1264,13 +1454,59 @@ function updateCurrentFindMatch(matches: HTMLElement[], index: number) {
     });
 }
 
+function contextMenuPoint(event: React.MouseEvent<HTMLElement>) {
+    const width = 220;
+    const height = 260;
+    const edge = 8;
+    return {
+        x: Math.max(edge, Math.min(event.clientX, window.innerWidth - width - edge)),
+        y: Math.max(edge, Math.min(event.clientY, window.innerHeight - height - edge))
+    };
+}
+
+function ContextMenu({
+    x,
+    y,
+    items,
+    onAction
+}: {
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+    onAction: (action: () => void | Promise<void>) => void;
+}) {
+    return (
+        <div
+            className="context-menu"
+            role="menu"
+            style={{left: x, top: y} as React.CSSProperties}
+            onPointerDown={event => event.stopPropagation()}
+            onContextMenu={event => event.preventDefault()}
+        >
+            {items.map((item, index) => (
+                <button
+                    type="button"
+                    role="menuitem"
+                    key={`${item.label}-${index}`}
+                    className={`context-menu-item ${item.separatorBefore ? 'with-separator' : ''}`}
+                    disabled={item.disabled}
+                    onClick={() => onAction(item.action)}
+                >
+                    {item.label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
 function TreeView({
     node,
     depth,
     selectedPath,
     expandedPaths,
     onToggleDirectory,
-    onOpenDocument
+    onOpenDocument,
+    onOpenContextMenu
 }: {
     node: TreeNode;
     depth: number;
@@ -1278,6 +1514,7 @@ function TreeView({
     expandedPaths: Set<string>;
     onToggleDirectory: (path: string) => void;
     onOpenDocument: (path: string) => void;
+    onOpenContextMenu: (node: TreeNode, event: React.MouseEvent<HTMLElement>) => void;
 }) {
     const isDirectory = node.type === 'directory';
     const isSelected = node.path === selectedPath;
@@ -1288,6 +1525,7 @@ function TreeView({
                 type="button"
                 className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
                 onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
+                onContextMenu={event => onOpenContextMenu(node, event)}
                 aria-expanded={isDirectory ? isExpanded : undefined}
             >
                 <span className="tree-glyph">{isDirectory ? (isExpanded ? '▾' : '▸') : '•'}</span>
@@ -1304,6 +1542,7 @@ function TreeView({
                             expandedPaths={expandedPaths}
                             onToggleDirectory={onToggleDirectory}
                             onOpenDocument={onOpenDocument}
+                            onOpenContextMenu={onOpenContextMenu}
                         />
                     ))}
                 </div>

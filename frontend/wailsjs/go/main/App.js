@@ -54,6 +54,10 @@ export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
 }
 
+export function RevealPath(arg1) {
+  return window['go']['main']['App']['RevealPath'](arg1);
+}
+
 export function SaveOpenTabs(arg1, arg2) {
   return window['go']['main']['App']['SaveOpenTabs'](arg1, arg2);
 }

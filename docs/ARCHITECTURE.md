@@ -12,6 +12,7 @@ Go owns:
 
 - Workspace opening and directory tree scanning.
 - Workspace directory-tree refresh and structure change detection.
+- Workspace path validation before system file-manager reveal actions.
 - Markdown reading and parsing.
 - Local image and relative link resolution.
 - Document outline extraction.
@@ -25,6 +26,7 @@ React owns:
 - Shell rendering.
 - Directory tree UI.
 - Open document tab strip rendering and tab switching interactions.
+- App-owned context-menu rendering for directory tree and tab strip actions.
 - Markdown view rendering from Go-provided document data.
 - Outline panel rendering.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
@@ -50,6 +52,9 @@ workspace folder
 -> Go persists workspace-scoped reading memory under AppData
 -> React reports open tab order and active tab to Go
 -> Go persists workspace-scoped tab session state with reading memory under AppData
+-> user right-clicks a directory-tree row or tab
+-> React renders a transient app-owned context menu
+-> file-manager reveal actions round-trip through Go workspace path validation
 -> React asks Go for current document status while the document is open
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
@@ -81,6 +86,7 @@ Supported initial locales: `zh-CN`, `en`.
 - `ScanWorkspace(path)`
 - `RestoreWorkspace()`
 - `RefreshWorkspace()`
+- `RevealPath(path)`
 - `OpenDocument(path)`
 - `OpenWorkspaceDocument(path)`
 - `StatDocument(path, knownModifiedAt, knownSize)`
@@ -165,3 +171,4 @@ JSKernMD-Setup-<version>-x64.exe
 The staged release directory must also contain `SHA256SUMS.txt`. Raw Wails executable builds remain local validation artifacts and are not the primary downloadable release package.
 
 GitHub Release asset labels must match the uploaded filenames exactly so the public download list is self-explanatory.
+Every meaningful product update must end with a synchronized GitHub Release installer and checksum unless release work is explicitly paused by the user.

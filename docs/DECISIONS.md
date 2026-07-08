@@ -47,6 +47,7 @@ Consequence: Go preserves safe `language-*` classes on `pre` and `code`; React a
 Reason: End users should download a normal desktop installer instead of a raw build executable, and artifact names need to stay stable across releases.
 
 Consequence: Windows GitHub Release uploads use `JSKernMD-Setup-<version>-x64.exe` plus `SHA256SUMS.txt`. The release staging script is `scripts/package-windows.ps1`; `build/bin/jskernmd.exe` is kept as a local validation output only.
+Every meaningful product update is treated as incomplete until the installer and checksum have been synchronized to GitHub Releases, unless the user explicitly pauses release work.
 
 ## 2026-07-08: Keep JS Kern.md Independent From The Shared Control Plane
 
@@ -71,3 +72,9 @@ Consequence: Reading memory is stored by Go under AppData `data/reading-memory.j
 Reason: Multi-tab reading is part of the reader session, and users should not lose their open Markdown set or active tab after restarting the app.
 
 Consequence: Open tabs and the active document are persisted by Go in the workspace-scoped reading memory file. React renders the tab strip and reports tab changes, but it must not use frontend storage for tab sessions. Switching tabs must save the outgoing document position and restore the incoming document position; reloading a changed document must preserve the current reader offset.
+
+## 2026-07-08: Keep Context-Menu File Actions Go-Validated
+
+Reason: Directory-tree and tab context menus should feel native, but revealing local files is still a filesystem action that must not drift into React.
+
+Consequence: React may render transient app-owned context menus, copy Go-provided paths, and call existing reader actions. Any system file-manager reveal action must call a Go Wails API that validates the target is an existing file or directory inside the current workspace before launching the platform file manager.

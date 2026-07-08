@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
 
 ## Done
 
@@ -108,10 +108,20 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Windows installer `JSKernMD-Setup-0.1.5-x64.exe` was staged under `dist/releases/v0.1.5/`.
 - `SHA256SUMS.txt` was generated for the `0.1.5` installer with SHA256 `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
 - GitHub Release `v0.1.5` publishes `JSKernMD-Setup-0.1.5-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Added app-owned context menus for directory-tree rows and open document tabs.
+- Directory-tree context menus now support opening files, expanding/collapsing directories, refreshing the workspace tree, copying paths, and showing items in the system file manager.
+- Tab context menus now support switching, closing the tab, closing other tabs, closing tabs to the right, copying paths, and showing documents in the system file manager.
+- Added `RevealPath(path)` so system file-manager reveal actions are validated by Go against the current workspace before launching platform tools.
+- Context-menu text is localized through Go-owned Chinese and English dictionaries.
+- Product version advanced to `0.1.6` for the directory-tree and tab context-menu release.
+- Windows installer `JSKernMD-Setup-0.1.6-x64.exe` was staged under `dist/releases/v0.1.6/`.
+- `SHA256SUMS.txt` was generated for the `0.1.6` installer with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+- GitHub Release synchronization is now mandatory for every meaningful product update unless the user explicitly pauses release work.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
+- Add visible weak feedback for context-menu copy/reveal failures if user testing shows silent failures are confusing.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
@@ -282,4 +292,15 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
   - `SHA256SUMS.txt` was generated with SHA256 `57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
   - GitHub Release `v0.1.5` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.5`.
   - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.5-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:57f682aeab4fcd8f0e33f1e289585aea738c4a4a840aab874c39eaa68e028b57`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+- Latest validation after directory-tree and tab context menus:
+  - Product version sources were updated to `0.1.6`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.6/JSKernMD-Setup-0.1.6-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `1cd6de5ba0fd880e098f1b0bd519bb74977eb8fb95ec4498cecb34ba03401cc8`.
+  - `git diff --check` passed.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
