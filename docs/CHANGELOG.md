@@ -74,6 +74,8 @@
   - `wails build` passed and produced `build/bin/jskernmd.exe`.
   - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.3/JSKernMD-Setup-0.1.3-x64.exe`.
   - `SHA256SUMS.txt` was generated with SHA256 `d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
+  - GitHub Release `v0.1.3` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.3`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.3-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:d596cc6d02b1ebc43822a9c7bafbbf3b59e7b6dbb82299c624260a0eda3dfeb5`.
   - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - `v0.1.2` update-check and find-focus release:
   - Product version sources were updated to `0.1.2`.
