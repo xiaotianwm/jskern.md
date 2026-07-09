@@ -46,6 +46,8 @@
 - `SHA256SUMS.txt` was generated with SHA256 `83da01550453aa3721b0c2a313ed54b1ac7861348080f8ed2c203ad43c01f56f`。
 - `git diff --check` passed。
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
+- GitHub Release `v0.1.11` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.11`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.11-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:83da01550453aa3721b0c2a313ed54b1ac7861348080f8ed2c203ad43c01f56f`。
 
 ---
 
