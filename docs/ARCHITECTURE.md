@@ -55,6 +55,8 @@ workspace folder
 -> user right-clicks a directory-tree row or tab
 -> React renders a transient app-owned context menu
 -> file-manager reveal actions round-trip through Go workspace path validation
+-> directory-tree rename actions round-trip through Go workspace path validation and OS rename
+-> React remaps transient open-tab and expansion state from the Go returned old/new paths
 -> React asks Go for current document status while the document is open
 -> Go validates the path and reports whether the file changed on disk
 -> React shows a weak reload reminder without taking ownership of filesystem state
@@ -87,6 +89,7 @@ Supported initial locales: `zh-CN`, `en`.
 - `RestoreWorkspace()`
 - `RefreshWorkspace()`
 - `RevealPath(path)`
+- `RenamePath(path, newName)`
 - `OpenDocument(path)`
 - `OpenWorkspaceDocument(path)`
 - `StatDocument(path, knownModifiedAt, knownSize)`

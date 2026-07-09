@@ -32,6 +32,7 @@
     "context.close_tabs_right": "Close Tabs to the Right",
     "context.expand": "Expand",
     "context.collapse": "Collapse",
+    "context.rename": "Rename",
     "context.refresh_workspace": "Refresh Directory Tree",
     "context.copy_path": "Copy Path",
     "context.show_in_file_manager": "Show in File Manager",

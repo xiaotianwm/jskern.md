@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, and GitHub installer releases.
 
 ## Done
 
@@ -128,11 +128,21 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Windows installer `JSKernMD-Setup-0.1.7-x64.exe` was staged under `dist/releases/v0.1.7/`.
 - `SHA256SUMS.txt` was generated for the `0.1.7` installer with SHA256 `7a3d782997a37412ab1b20922a462b0ce825fdd9e050219533a8e5636e9822ff`.
 - GitHub Release `v0.1.7` publishes `JSKernMD-Setup-0.1.7-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Right-side outline now scrolls inside its panel for long heading lists.
+- Center reader content now expands with the available window width up to a wider desktop reading cap.
+- Custom titlebar double-click now toggles maximize/restore, and the right-side window buttons explicitly stay outside the drag region.
+- Added `RenamePath(path, newName)` so directory-tree renames are validated and executed by Go inside the current workspace.
+- Directory-tree context menus now include rename, rendered as an inline tree-row editor instead of a browser prompt.
+- Rename refreshes the Go-scanned tree and remaps affected open tabs, selected paths, expanded directories, and active document path.
+- Product version advanced to `0.1.8` for the reader layout and tree rename release.
+- Windows installer `JSKernMD-Setup-0.1.8-x64.exe` was staged under `dist/releases/v0.1.8/`.
+- `SHA256SUMS.txt` was generated for the `0.1.8` installer with SHA256 `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
+- GitHub Release `v0.1.8` publishes `JSKernMD-Setup-0.1.8-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
-- Add visible weak feedback for context-menu copy/reveal failures if user testing shows silent failures are confusing.
+- Add visible weak feedback for context-menu copy/reveal/rename failures if user testing shows silent failures are confusing.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
@@ -144,7 +154,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Workspace search is currently an on-demand scan rather than an indexed search database.
 - Current-document find is DOM-based and does not match text split across separate inline elements.
 - Update downloads currently show a busy state rather than detailed byte-level progress.
-- Window controls need visual/manual UX verification even though the exe starts successfully.
+- Aero Snap, high-DPI, and multi-monitor titlebar behavior still need manual UX verification beyond the current launch smoke test.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
 - Code blocks without a supported language marker intentionally remain plain.
 - Reading memory depends on stable generated heading IDs for changed-document heading fallback.
@@ -153,6 +163,15 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
+- Latest validation after reader layout and tree rename v0.1.8:
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.8/JSKernMD-Setup-0.1.8-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - `go test ./...` passed.
 - `npm.cmd run build` passed.
 - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.

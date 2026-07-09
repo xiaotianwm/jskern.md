@@ -32,6 +32,7 @@
     "context.close_tabs_right": "关闭右侧标签页",
     "context.expand": "展开",
     "context.collapse": "收起",
+    "context.rename": "重命名",
     "context.refresh_workspace": "刷新目录树",
     "context.copy_path": "复制路径",
     "context.show_in_file_manager": "在文件管理器中显示",

@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-07-09 - v0.1.8 Reader Layout And Tree Rename
+
+### Added
+
+- Added `RenamePath(path, newName)` as a Go-owned Wails API for directory-tree renames.
+- Added Go validation for rename targets: source must exist inside the current workspace, the workspace root cannot be renamed, new names must be single path segments, target paths must remain inside the workspace, duplicate targets are rejected, and renamed files must keep a Markdown extension.
+- Added Go tests for Markdown file rename, directory rename, refreshed tree state, unsafe target rejection, duplicate target rejection, workspace-root rejection, and outside-workspace source rejection.
+- Added an app-owned inline rename editor to directory-tree rows, opened from the tree context menu without using browser prompt UI.
+- Added localized Chinese and English `Rename` context-menu text through Go-owned locale JSON.
+
+### Changed
+
+- The outline panel now uses a fixed shell plus an internal scroll region, so long document outlines can scroll independently.
+- The center reader column now expands with the available window width up to a wider desktop reading cap instead of staying locked to the earlier narrow 820px content width.
+- The custom titlebar now handles double-click maximize/restore and isolates all right-side window buttons with explicit no-drag behavior and stopped double-click propagation.
+- Directory-tree rename refreshes the Go-scanned tree immediately and remaps open tabs, selected paths, expanded directories, and the active document path when a renamed directory contains open tabs.
+- Advanced the product version to `0.1.8` for the reader layout and tree rename release.
+
+### Release Packaging
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.8-x64.exe`.
+- Checksum artifact: `SHA256SUMS.txt`.
+- Installer SHA256: `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
+- Published release target: `v0.1.8`.
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.8`.
+
+### Validation
+
+- `go test ./...` passed.
+- `wails generate module` passed.
+- `npm.cmd run build` passed from `frontend/`.
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+- `wails build` passed and produced `build/bin/jskernmd.exe`.
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.8/JSKernMD-Setup-0.1.8-x64.exe`.
+- `SHA256SUMS.txt` was generated with SHA256 `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+
+---
+
 ## 2026-07-08 - v0.1.7 Installer Locale And Upgrade Path
 
 ### Added

@@ -189,6 +189,92 @@ func TestRevealableWorkspacePathValidatesWorkspaceBoundary(t *testing.T) {
 	}
 }
 
+func TestRenamePathRenamesWorkspaceDocumentAndRefreshesTree(t *testing.T) {
+	dir := t.TempDir()
+	docPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Home\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	result, err := app.RenamePath(docPath, "Guide.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "Guide.md")
+	if result.OldPath != filepath.Clean(docPath) || result.NewPath != filepath.Clean(target) || result.NodeType != "file" {
+		t.Fatalf("expected rename result for document, got %+v", result)
+	}
+	if _, err := os.Stat(target); err != nil {
+		t.Fatal(err)
+	}
+	if result.Tree == nil || !treeContainsPath(result.Tree.Root, target) || treeContainsPath(result.Tree.Root, docPath) {
+		t.Fatalf("expected refreshed tree with renamed document, got %+v", result.Tree)
+	}
+}
+
+func TestRenamePathRenamesWorkspaceDirectory(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	docPath := filepath.Join(nested, "guide.md")
+	if err := os.WriteFile(docPath, []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	result, err := app.RenamePath(nested, "notes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "notes")
+	if result.NodeType != "directory" || result.NewPath != filepath.Clean(target) {
+		t.Fatalf("expected directory rename result, got %+v", result)
+	}
+	if result.Tree == nil || !treeContainsPath(result.Tree.Root, filepath.Join(target, "guide.md")) {
+		t.Fatalf("expected refreshed tree with renamed directory child, got %+v", result.Tree)
+	}
+}
+
+func TestRenamePathRejectsUnsafeTargets(t *testing.T) {
+	dir := t.TempDir()
+	docPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Home\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "exists.md"), []byte("# Existing\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"", "../escape.md", "notes/guide.md", "guide.txt", "bad:name.md", "exists.md"} {
+		if _, err := app.RenamePath(docPath, name); err == nil {
+			t.Fatalf("expected rename target %q to be rejected", name)
+		}
+	}
+	if _, err := app.RenamePath(dir, "new-root"); err == nil {
+		t.Fatal("expected workspace root rename to be rejected")
+	}
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	if err := os.WriteFile(outside, []byte("# Outside\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.RenamePath(outside, "inside.md"); err == nil {
+		t.Fatal("expected outside source to be rejected")
+	}
+}
+
 func TestRefreshWorkspaceDetectsStructureChangesOnly(t *testing.T) {
 	dir := t.TempDir()
 	docPath := filepath.Join(dir, "README.md")

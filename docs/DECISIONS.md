@@ -75,9 +75,9 @@ Consequence: Open tabs and the active document are persisted by Go in the worksp
 
 ## 2026-07-08: Keep Context-Menu File Actions Go-Validated
 
-Reason: Directory-tree and tab context menus should feel native, but revealing local files is still a filesystem action that must not drift into React.
+Reason: Directory-tree and tab context menus should feel native, but revealing or renaming local files and folders are still filesystem actions that must not drift into React.
 
-Consequence: React may render transient app-owned context menus, copy Go-provided paths, and call existing reader actions. Any system file-manager reveal action must call a Go Wails API that validates the target is an existing file or directory inside the current workspace before launching the platform file manager.
+Consequence: React may render transient app-owned context menus, inline rename inputs, copy Go-provided paths, and call existing reader actions. Any system file-manager reveal or directory-tree rename action must call a Go Wails API that validates the target is an existing file or directory inside the current workspace before launching the platform file manager or mutating the filesystem. React may remap transient tabs and expansion state from Go-returned old/new paths, but it must not decide filesystem truth or persist rename state locally.
 
 ## 2026-07-08: Make Windows Installer Upgrades Directory-Aware
 

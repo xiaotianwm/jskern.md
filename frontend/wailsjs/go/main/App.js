@@ -50,6 +50,10 @@ export function RefreshWorkspace() {
   return window['go']['main']['App']['RefreshWorkspace']();
 }
 
+export function RenamePath(arg1, arg2) {
+  return window['go']['main']['App']['RenamePath'](arg1, arg2);
+}
+
 export function RestoreWorkspace() {
   return window['go']['main']['App']['RestoreWorkspace']();
 }

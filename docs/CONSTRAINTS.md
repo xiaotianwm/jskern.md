@@ -40,7 +40,7 @@
 - Reloading a changed document from the weak disk-change reminder must preserve the current reader offset with the reloaded document metadata instead of reusing stale saved memory or jumping to the top.
 - Directory tree refresh and workspace structure change detection are Go-owned responsibilities; React may ask for a refreshed tree but must not inspect the filesystem itself.
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.
-- Context-menu actions that reveal files or folders in the system file manager must go through Go path validation and must remain restricted to the current workspace.
+- Context-menu actions that reveal or rename files or folders must go through Go path validation and must remain restricted to the current workspace.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
 - Update checking, ignored update versions, installer downloads, checksum verification, and opening downloaded installers are Go-owned responsibilities.
 - Current update downloads are sourced from GitHub Releases and must only accept canonical `JSKernMD-Setup-<version>-x64.exe` assets from the official `xiaotianwm/jskern.md` repository.
@@ -54,7 +54,7 @@
 - Frontend may render the tab strip and call Go APIs to save the open-tab list, but must not own the durable tab-session storage format or persist open tabs locally.
 - Frontend must not maintain language dictionaries.
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
-- Frontend may render app-owned context menus for the directory tree and tab strip, but menu state is transient UI state only and must not become durable workspace/session state.
+- Frontend may render app-owned context menus for the directory tree and tab strip, including inline rename editing, but menu and rename-edit state are transient UI state only and must not become durable workspace/session state.
 - Frontend workspace auto-sync may use a weak polling loop against Go, but the loop must clean up timers, avoid overlapping requests, preserve valid expanded directories, and keep newly discovered directories collapsed by default.
 - Code highlighting must use Shiki.
 - Browser-default context menu, refresh, find, zoom, link/image drag, and page overscroll must be blocked.

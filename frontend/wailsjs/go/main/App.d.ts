@@ -26,6 +26,8 @@ export function OpenWorkspaceDocument(arg1:string):Promise<main.Document>;
 
 export function RefreshWorkspace():Promise<main.WorkspaceRefresh>;
 
+export function RenamePath(arg1:string,arg2:string):Promise<main.RenameResult>;
+
 export function RestoreWorkspace():Promise<main.WorkspaceTree>;
 
 export function RevealPath(arg1:string):Promise<void>;

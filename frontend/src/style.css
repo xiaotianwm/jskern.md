@@ -86,7 +86,7 @@ a {
     --wails-draggable: drag;
     -webkit-app-region: drag;
     display: grid;
-    grid-template-columns: 220px 1fr 138px;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) 138px;
     align-items: center;
     height: var(--titlebar-h);
     border-bottom: 1px solid var(--border);
@@ -141,6 +141,11 @@ a {
     display: grid;
     grid-template-columns: repeat(3, 46px);
     height: 100%;
+}
+
+.window-controls,
+.window-controls * {
+    -webkit-app-region: no-drag;
 }
 
 .window-controls button {
@@ -503,6 +508,8 @@ a {
 }
 
 .outline-panel {
+    display: grid;
+    grid-template-rows: 34px minmax(0, 1fr);
     border-left: 1px solid var(--border);
 }
 
@@ -556,6 +563,10 @@ a {
     color: var(--text);
 }
 
+.rename-row {
+    border: 0;
+}
+
 .tree-glyph {
     font-size: 10px;
 }
@@ -565,6 +576,22 @@ a {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.tree-rename-input {
+    width: 100%;
+    min-width: 0;
+    height: 20px;
+    border: 1px solid color-mix(in srgb, var(--ring) 60%, var(--border-input));
+    border-radius: 4px;
+    padding: 0 5px;
+    color: var(--text);
+    background: var(--bg-input);
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .reader-surface {
@@ -726,7 +753,7 @@ a {
 }
 
 .reader-placeholder {
-    width: min(760px, calc(100% - 48px));
+    width: min(1180px, calc(100% - 48px));
     margin: 42px auto;
 }
 
@@ -754,13 +781,13 @@ a {
 }
 
 .document-view {
-    width: min(820px, calc(100% - 56px));
+    width: min(1180px, calc(100% - 56px));
     margin: 0 auto;
     padding: 34px 0 112px;
 }
 
 .document-message {
-    width: min(820px, calc(100% - 56px));
+    width: min(1180px, calc(100% - 56px));
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 12px;
@@ -974,7 +1001,14 @@ a {
 }
 
 .outline-list {
+    min-height: 0;
+    overflow: auto;
     padding: 4px 0;
+}
+
+.outline-panel > .empty-state {
+    min-height: 0;
+    overflow: auto;
 }
 
 .outline-row {

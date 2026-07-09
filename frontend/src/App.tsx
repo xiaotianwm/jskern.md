@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {ClipboardSetText, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
+import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RenamePath, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -65,6 +65,8 @@ function App() {
     const [updateBusy, setUpdateBusy] = useState(false);
     const [updateError, setUpdateError] = useState('');
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+    const [renamingPath, setRenamingPath] = useState('');
+    const [renameDraft, setRenameDraft] = useState('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
@@ -72,6 +74,7 @@ function App() {
     const workspaceRefreshBusyRef = useRef(false);
     const readingSaveTimerRef = useRef<number | null>(null);
     const readingRestoreUntilRef = useRef(0);
+    const renameCommitBusyRef = useRef(false);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -667,6 +670,57 @@ function App() {
         await RevealPath(path);
     }
 
+    function beginRename(node: TreeNode) {
+        setRenamingPath(node.path);
+        setRenameDraft(node.name);
+    }
+
+    function cancelRename() {
+        setRenamingPath('');
+        setRenameDraft('');
+    }
+
+    async function commitRename(node: TreeNode) {
+        if (renameCommitBusyRef.current) {
+            return;
+        }
+        const nextName = renameDraft.trim();
+        if (!nextName || nextName === node.name) {
+            cancelRename();
+            return;
+        }
+        renameCommitBusyRef.current = true;
+        try {
+            const result = await RenamePath(node.path, nextName);
+            if (result?.tree?.root) {
+                setTree(result.tree.root);
+                setExpandedPaths(current => remapExpandedPaths(current, result.oldPath, result.newPath, result.nodeType, result.tree!.root));
+            }
+            const nextTabs = tabs.map(tab => {
+                const path = remapRenamedPath(tab.path, result.oldPath, result.newPath, result.nodeType);
+                return path === tab.path ? tab : {path, name: tabNameFromPath(path)};
+            });
+            const activePath = document?.path ?? '';
+            const nextActivePath = activePath ? remapRenamedPath(activePath, result.oldPath, result.newPath, result.nodeType) : '';
+            setTabs(nextTabs);
+            setSelectedPath(current => current ? remapRenamedPath(current, result.oldPath, result.newPath, result.nodeType) : current);
+            await persistOpenTabs(nextTabs, nextActivePath);
+            cancelRename();
+            if (activePath && nextActivePath !== activePath) {
+                const position = captureCurrentReadingPosition(document);
+                await openDocument(nextActivePath, position, {
+                    tabsOverride: nextTabs,
+                    savePrevious: false,
+                    forceReload: true
+                });
+            }
+        } catch {
+            cancelRename();
+        } finally {
+            renameCommitBusyRef.current = false;
+        }
+    }
+
     async function closeOtherTabs(path: string) {
         if (documentBusy) {
             return;
@@ -720,6 +774,7 @@ function App() {
             const node = contextMenu.node;
             const isDirectory = node.type === 'directory';
             const isExpanded = expandedPaths.has(node.path);
+            const isWorkspaceRoot = node.path === tree?.path;
             return [
                 ...(isDirectory ? [{
                     label: isExpanded ? text['context.collapse'] : text['context.expand'],
@@ -729,6 +784,11 @@ function App() {
                     action: () => openDocument(node.path),
                     disabled: documentBusy
                 }]),
+                {
+                    label: text['context.rename'],
+                    action: () => beginRename(node),
+                    disabled: isWorkspaceRoot || documentBusy
+                },
                 {
                     label: text['context.refresh_workspace'],
                     action: () => refreshWorkspaceNow(),
@@ -859,6 +919,19 @@ function App() {
             findInputRef.current?.focus();
             findInputRef.current?.select();
         }, 0);
+    }
+
+    function handleTitlebarDoubleClick(event: React.MouseEvent<HTMLElement>) {
+        const target = event.target;
+        if (target instanceof Element && target.closest('.window-controls')) {
+            return;
+        }
+        void WindowToggleMaximise();
+    }
+
+    function runWindowControl(event: React.MouseEvent<HTMLButtonElement>, action: () => void | Promise<void>) {
+        event.stopPropagation();
+        void Promise.resolve(action());
     }
 
     function captureCurrentReadingPosition(currentDocument = document): ReadingPosition | null {
@@ -1010,7 +1083,7 @@ function App() {
 
     return (
         <main className="app-shell">
-            <header className="titlebar">
+            <header className="titlebar" onDoubleClick={handleTitlebarDoubleClick}>
                 <div className="brand-lockup" aria-label={product?.displayName}>
                     <span className="brand-prefix">{brand?.prefix}</span>
                     <span className="brand-core">{brand?.core}</span>
@@ -1020,9 +1093,9 @@ function App() {
                     <span className="subtitle">{text['app.subtitle']}</span>
                 </div>
                 <div className="window-controls">
-                    <button type="button" title={shell['window.minimize']} aria-label={shell['window.minimize']} onClick={WindowMinimise}>-</button>
-                    <button type="button" title={shell['window.maximize']} aria-label={shell['window.maximize']} onClick={WindowToggleMaximise}>□</button>
-                    <button type="button" className="close" title={shell['window.close']} aria-label={shell['window.close']} onClick={Quit}>×</button>
+                    <button type="button" title={shell['window.minimize']} aria-label={shell['window.minimize']} onClick={event => runWindowControl(event, WindowMinimise)} onDoubleClick={event => event.stopPropagation()}>-</button>
+                    <button type="button" title={shell['window.maximize']} aria-label={shell['window.maximize']} onClick={event => runWindowControl(event, WindowToggleMaximise)} onDoubleClick={event => event.stopPropagation()}>□</button>
+                    <button type="button" className="close" title={shell['window.close']} aria-label={shell['window.close']} onClick={event => runWindowControl(event, Quit)} onDoubleClick={event => event.stopPropagation()}>×</button>
                 </div>
             </header>
 
@@ -1145,6 +1218,11 @@ function App() {
                                 depth={0}
                                 selectedPath={selectedPath}
                                 expandedPaths={expandedPaths}
+                                renamingPath={renamingPath}
+                                renameDraft={renameDraft}
+                                onRenameDraftChange={setRenameDraft}
+                                onCommitRename={commitRename}
+                                onCancelRename={cancelRename}
                                 onToggleDirectory={toggleDirectory}
                                 onOpenDocument={openDocument}
                                 onOpenContextMenu={openTreeContextMenu}
@@ -1391,6 +1469,38 @@ function preserveExpandedPaths(current: Set<string>, root: TreeNode) {
     return next;
 }
 
+function remapExpandedPaths(current: Set<string>, oldPath: string, newPath: string, nodeType: string, root: TreeNode) {
+    const mapped = new Set<string>();
+    for (const path of current) {
+        mapped.add(remapRenamedPath(path, oldPath, newPath, nodeType));
+    }
+    return preserveExpandedPaths(mapped, root);
+}
+
+function remapRenamedPath(path: string, oldPath: string, newPath: string, nodeType: string) {
+    const slashPath = pathWithForwardSlashes(path);
+    const slashOld = pathWithForwardSlashes(oldPath);
+    const normalizedPath = normalizePathForCompare(path);
+    const normalizedOld = normalizePathForCompare(oldPath);
+    if (normalizedPath === normalizedOld) {
+        return newPath;
+    }
+    if (nodeType === 'directory' && normalizedPath.startsWith(normalizedOld + '/')) {
+        const suffix = slashPath.slice(slashOld.length);
+        const separator = newPath.includes('\\') ? '\\' : '/';
+        return newPath + suffix.replace(/\//g, separator);
+    }
+    return path;
+}
+
+function pathWithForwardSlashes(path: string) {
+    return path.replace(/\\/g, '/').replace(/\/+$/g, '');
+}
+
+function normalizePathForCompare(path: string) {
+    return pathWithForwardSlashes(path).toLocaleLowerCase();
+}
+
 function clearFindMarks(root: HTMLElement) {
     const marks = Array.from(root.querySelectorAll(`mark.${FIND_MATCH_CLASS}`));
     for (const mark of marks) {
@@ -1504,6 +1614,11 @@ function TreeView({
     depth,
     selectedPath,
     expandedPaths,
+    renamingPath,
+    renameDraft,
+    onRenameDraftChange,
+    onCommitRename,
+    onCancelRename,
     onToggleDirectory,
     onOpenDocument,
     onOpenContextMenu
@@ -1512,6 +1627,11 @@ function TreeView({
     depth: number;
     selectedPath: string;
     expandedPaths: Set<string>;
+    renamingPath: string;
+    renameDraft: string;
+    onRenameDraftChange: (value: string) => void;
+    onCommitRename: (node: TreeNode) => void;
+    onCancelRename: () => void;
     onToggleDirectory: (path: string) => void;
     onOpenDocument: (path: string) => void;
     onOpenContextMenu: (node: TreeNode, event: React.MouseEvent<HTMLElement>) => void;
@@ -1519,18 +1639,54 @@ function TreeView({
     const isDirectory = node.type === 'directory';
     const isSelected = node.path === selectedPath;
     const isExpanded = isDirectory && expandedPaths.has(node.path);
+    const isRenaming = renamingPath === node.path;
     return (
         <div className="tree-node" style={{'--depth': depth} as React.CSSProperties}>
-            <button
-                type="button"
-                className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
-                onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
-                onContextMenu={event => onOpenContextMenu(node, event)}
-                aria-expanded={isDirectory ? isExpanded : undefined}
-            >
-                <span className="tree-glyph">{isDirectory ? (isExpanded ? '▾' : '▸') : '•'}</span>
-                <span className="tree-name" title={node.path}>{node.name}</span>
-            </button>
+            {isRenaming ? (
+                <div className={`tree-row rename-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}>
+                    <span className="tree-glyph">{isDirectory ? (isExpanded ? '▾' : '▸') : '•'}</span>
+                    <input
+                        className="tree-rename-input"
+                        value={renameDraft}
+                        autoFocus
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        aria-label={node.name}
+                        onChange={event => onRenameDraftChange(event.currentTarget.value)}
+                        onBlur={event => {
+                            if (event.currentTarget.dataset.cancelled === 'true') {
+                                return;
+                            }
+                            onCommitRename(node);
+                        }}
+                        onClick={event => event.stopPropagation()}
+                        onKeyDown={event => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                onCommitRename(node);
+                            }
+                            if (event.key === 'Escape') {
+                                event.preventDefault();
+                                event.currentTarget.dataset.cancelled = 'true';
+                                onCancelRename();
+                            }
+                        }}
+                    />
+                </div>
+            ) : (
+                <button
+                    type="button"
+                    className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
+                    onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
+                    onContextMenu={event => onOpenContextMenu(node, event)}
+                    aria-expanded={isDirectory ? isExpanded : undefined}
+                >
+                    <span className="tree-glyph">{isDirectory ? (isExpanded ? '▾' : '▸') : '•'}</span>
+                    <span className="tree-name" title={node.path}>{node.name}</span>
+                </button>
+            )}
             {isExpanded && node.children?.length ? (
                 <div className="tree-children">
                     {node.children.map(child => (
@@ -1540,6 +1696,11 @@ function TreeView({
                             depth={depth + 1}
                             selectedPath={selectedPath}
                             expandedPaths={expandedPaths}
+                            renamingPath={renamingPath}
+                            renameDraft={renameDraft}
+                            onRenameDraftChange={onRenameDraftChange}
+                            onCommitRename={onCommitRename}
+                            onCancelRename={onCancelRename}
                             onToggleDirectory={onToggleDirectory}
                             onOpenDocument={onOpenDocument}
                             onOpenContextMenu={onOpenContextMenu}

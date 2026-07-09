@@ -24,7 +24,7 @@ import (
 
 const (
 	appSlug                = "jskernmd"
-	appVersion             = "0.1.7"
+	appVersion             = "0.1.8"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
@@ -88,6 +88,13 @@ type WorkspaceTree struct {
 type WorkspaceRefresh struct {
 	Changed bool           `json:"changed"`
 	Tree    *WorkspaceTree `json:"tree,omitempty"`
+}
+
+type RenameResult struct {
+	OldPath  string         `json:"oldPath"`
+	NewPath  string         `json:"newPath"`
+	NodeType string         `json:"nodeType"`
+	Tree     *WorkspaceTree `json:"tree,omitempty"`
 }
 
 type TreeNode struct {
@@ -290,6 +297,55 @@ func (a *App) RevealPath(path string) error {
 		return err
 	}
 	return revealPath(target)
+}
+
+func (a *App) RenamePath(path string, newName string) (*RenameResult, error) {
+	source, err := a.renameableWorkspacePath(path)
+	if err != nil {
+		return nil, err
+	}
+	name, err := validRenameName(newName)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(source)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() && !isMarkdownFile(name) {
+		return nil, errors.New("renamed document must keep a markdown extension")
+	}
+
+	target := filepath.Join(filepath.Dir(source), name)
+	target = filepath.Clean(target)
+	if filepath.Clean(source) == target {
+		return &RenameResult{OldPath: source, NewPath: target, NodeType: treeNodeType(info)}, nil
+	}
+	if !a.isLexicallyWithinWorkspace(target) {
+		return nil, errors.New("rename target is outside the current workspace")
+	}
+	if !a.isRenameTargetWithinRealWorkspace(filepath.Dir(source), target) {
+		return nil, errors.New("rename target is outside the current workspace")
+	}
+	if _, err := os.Stat(target); err == nil {
+		return nil, errors.New("rename target already exists")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	if err := os.Rename(source, target); err != nil {
+		return nil, err
+	}
+
+	node, err := a.refreshWorkspaceTreeAfterMutation()
+	if err != nil {
+		return nil, err
+	}
+	return &RenameResult{
+		OldPath:  source,
+		NewPath:  target,
+		NodeType: treeNodeType(info),
+		Tree:     &WorkspaceTree{Root: node},
+	}, nil
 }
 
 func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
@@ -531,6 +587,56 @@ func (a *App) revealableWorkspacePath(path string) (string, error) {
 		return "", errors.New("path is outside the current workspace")
 	}
 	return target, nil
+}
+
+func (a *App) renameableWorkspacePath(path string) (string, error) {
+	target, err := a.revealableWorkspacePath(path)
+	if err != nil {
+		return "", err
+	}
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" || filepath.Clean(target) == filepath.Clean(root) {
+		return "", errors.New("workspace root cannot be renamed")
+	}
+	return target, nil
+}
+
+func (a *App) isRenameTargetWithinRealWorkspace(sourceParent string, target string) bool {
+	a.mu.RLock()
+	realRoot := a.workspaceRootReal
+	a.mu.RUnlock()
+	if realRoot == "" {
+		return false
+	}
+	realParent, err := filepath.EvalSymlinks(sourceParent)
+	if err != nil {
+		return false
+	}
+	realTarget := filepath.Join(realParent, filepath.Base(target))
+	realRel, err := filepath.Rel(realRoot, filepath.Clean(realTarget))
+	if err != nil {
+		return false
+	}
+	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
+}
+
+func (a *App) refreshWorkspaceTreeAfterMutation() (TreeNode, error) {
+	a.mu.RLock()
+	root := a.workspaceRoot
+	a.mu.RUnlock()
+	if root == "" {
+		return TreeNode{}, errors.New("workspace is not open")
+	}
+	node, err := scanNode(root, 0)
+	if err != nil {
+		return TreeNode{}, err
+	}
+	a.mu.Lock()
+	a.workspaceTreeSig = treeSignature(node)
+	a.mu.Unlock()
+	return node, nil
 }
 
 func (a *App) assetHandler() http.Handler {
@@ -1032,6 +1138,33 @@ func shouldSkipEntry(name string, isDir bool) bool {
 	default:
 		return false
 	}
+}
+
+func validRenameName(name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", errors.New("empty rename target")
+	}
+	if name == "." || name == ".." {
+		return "", errors.New("invalid rename target")
+	}
+	if strings.ContainsAny(name, `/\`) || strings.ContainsRune(name, 0) || filepath.VolumeName(name) != "" {
+		return "", errors.New("rename target must be a file or folder name")
+	}
+	if strings.ContainsAny(name, `<>:"|?*`) || strings.HasSuffix(name, ".") || strings.HasSuffix(name, " ") {
+		return "", errors.New("rename target contains unsupported characters")
+	}
+	if filepath.Base(name) != name {
+		return "", errors.New("rename target must be a file or folder name")
+	}
+	return name, nil
+}
+
+func treeNodeType(info os.FileInfo) string {
+	if info.IsDir() {
+		return "directory"
+	}
+	return "file"
 }
 
 func isMarkdownFile(name string) bool {
