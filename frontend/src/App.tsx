@@ -70,6 +70,7 @@ function App() {
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [renamingPath, setRenamingPath] = useState('');
     const [renameDraft, setRenameDraft] = useState('');
+    const [draggingWorkspaceId, setDraggingWorkspaceId] = useState('');
     const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
@@ -793,8 +794,14 @@ function App() {
 
     function beginWorkspaceDrag(workspaceID: string, event: React.DragEvent<HTMLElement>) {
         draggingWorkspaceIdRef.current = workspaceID;
+        setDraggingWorkspaceId(workspaceID);
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', workspaceID);
+    }
+
+    function clearWorkspaceDrag() {
+        draggingWorkspaceIdRef.current = '';
+        setDraggingWorkspaceId('');
     }
 
     function allowWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
@@ -808,7 +815,7 @@ function App() {
     async function dropWorkspace(targetWorkspaceID: string, event: React.DragEvent<HTMLElement>) {
         event.preventDefault();
         const sourceWorkspaceID = draggingWorkspaceIdRef.current || event.dataTransfer.getData('text/plain');
-        draggingWorkspaceIdRef.current = '';
+        clearWorkspaceDrag();
         if (!sourceWorkspaceID || sourceWorkspaceID === targetWorkspaceID) {
             return;
         }
@@ -1041,8 +1048,13 @@ function App() {
     }
 
     function runWindowControl(event: React.MouseEvent<HTMLButtonElement>, action: () => void | Promise<void>) {
+        event.preventDefault();
         event.stopPropagation();
         void Promise.resolve(action());
+    }
+
+    function stopWindowControlPointerEvent(event: React.PointerEvent<HTMLElement> | React.MouseEvent<HTMLElement>) {
+        event.stopPropagation();
     }
 
     function captureCurrentReadingPosition(currentDocument = document): ReadingPosition | null {
@@ -1203,10 +1215,10 @@ function App() {
                 <div className="titlebar-center">
                     <span className="subtitle">{text['app.subtitle']}</span>
                 </div>
-                <div className="window-controls">
-                    <button type="button" title={shell['window.minimize']} aria-label={shell['window.minimize']} onClick={event => runWindowControl(event, WindowMinimise)} onDoubleClick={event => event.stopPropagation()}>-</button>
-                    <button type="button" title={shell['window.maximize']} aria-label={shell['window.maximize']} onClick={event => runWindowControl(event, WindowToggleMaximise)} onDoubleClick={event => event.stopPropagation()}>□</button>
-                    <button type="button" className="close" title={shell['window.close']} aria-label={shell['window.close']} onClick={event => runWindowControl(event, Quit)} onDoubleClick={event => event.stopPropagation()}>×</button>
+                <div className="window-controls" onPointerDown={stopWindowControlPointerEvent} onMouseDown={stopWindowControlPointerEvent} onDoubleClick={event => event.stopPropagation()}>
+                    <button type="button" title={shell['window.minimize']} aria-label={shell['window.minimize']} onClick={event => runWindowControl(event, WindowMinimise)}>-</button>
+                    <button type="button" title={shell['window.maximize']} aria-label={shell['window.maximize']} onClick={event => runWindowControl(event, WindowToggleMaximise)}>□</button>
+                    <button type="button" className="close" title={shell['window.close']} aria-label={shell['window.close']} onClick={event => runWindowControl(event, Quit)}>×</button>
                 </div>
             </header>
 
@@ -1345,6 +1357,8 @@ function App() {
                                         onWorkspaceDragStart={beginWorkspaceDrag}
                                         onWorkspaceDragOver={allowWorkspaceDrop}
                                         onWorkspaceDrop={dropWorkspace}
+                                        onWorkspaceDragEnd={clearWorkspaceDrag}
+                                        draggingWorkspaceId={draggingWorkspaceId}
                                     />
                                 ))}
                             </div>
@@ -1777,7 +1791,9 @@ function TreeView({
     onOpenContextMenu,
     onWorkspaceDragStart,
     onWorkspaceDragOver,
-    onWorkspaceDrop
+    onWorkspaceDrop,
+    onWorkspaceDragEnd,
+    draggingWorkspaceId
 }: {
     node: TreeNode;
     depth: number;
@@ -1796,6 +1812,8 @@ function TreeView({
     onWorkspaceDragStart?: (workspaceID: string, event: React.DragEvent<HTMLElement>) => void;
     onWorkspaceDragOver?: (event: React.DragEvent<HTMLElement>) => void;
     onWorkspaceDrop?: (workspaceID: string, event: React.DragEvent<HTMLElement>) => void;
+    onWorkspaceDragEnd?: () => void;
+    draggingWorkspaceId?: string;
 }) {
     const isDirectory = node.type === 'directory';
     const isSelected = node.path === selectedPath;
@@ -1839,8 +1857,9 @@ function TreeView({
             ) : (
                 <button
                     type="button"
-                    className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isWorkspaceRoot ? 'workspace-root' : ''} ${isSelected ? 'selected' : ''}`}
+                    className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isWorkspaceRoot ? 'workspace-root' : ''} ${isWorkspaceRoot && workspaceId === draggingWorkspaceId ? 'dragging' : ''} ${isSelected ? 'selected' : ''}`}
                     draggable={isWorkspaceRoot}
+                    data-kern-draggable-workspace={isWorkspaceRoot ? 'true' : undefined}
                     onDragStart={event => {
                         if (isWorkspaceRoot && workspaceId) {
                             onWorkspaceDragStart?.(workspaceId, event);
@@ -1858,7 +1877,7 @@ function TreeView({
                     }}
                     onDragEnd={() => {
                         if (isWorkspaceRoot) {
-                            // Drag state lives in the parent ref and is cleared on drop; a missed drop is harmless.
+                            onWorkspaceDragEnd?.();
                         }
                     }}
                     onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
@@ -1890,6 +1909,8 @@ function TreeView({
                             onWorkspaceDragStart={onWorkspaceDragStart}
                             onWorkspaceDragOver={onWorkspaceDragOver}
                             onWorkspaceDrop={onWorkspaceDrop}
+                            onWorkspaceDragEnd={onWorkspaceDragEnd}
+                            draggingWorkspaceId={draggingWorkspaceId}
                         />
                     ))}
                 </div>

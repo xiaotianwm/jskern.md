@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, and GitHub installer releases.
 
 ## Done
 
@@ -166,6 +166,10 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Windows NSIS installer now registers Explorer context-menu entries for opening Markdown files and adding folders to the workspace list.
 - Windows NSIS uninstaller now deletes only the JS Kern.md Explorer context-menu registry keys it created.
 - Product version advanced to `0.1.11` for the multi-workspace and Explorer integration release.
+- Window control buttons now explicitly override Wails titlebar drag variables and stop mouse-down propagation, preventing titlebar dragging from stealing minimize/maximize/close clicks.
+- The desktop drag guard now keeps blocking web-style image/link drags but allows marked top-level workspace roots to use HTML5 drag/drop sorting.
+- Workspace root cursor feedback now switches to `grabbing` only while a real workspace drag is active, not on normal click or right-click.
+- Product version advanced to `0.1.12` for the titlebar and workspace drag interaction fix release.
 
 ## Next
 
@@ -175,6 +179,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
 - Add drag-reorder for open tabs only if normal reading use shows tab order needs manual adjustment.
+- Manually verify the titlebar/window-control click behavior on additional Windows display scaling and multi-monitor setups if users still report missed clicks.
 
 ## Known Issues
 
@@ -192,6 +197,18 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after titlebar and workspace drag fixes v0.1.12:
+  - Product version sources were updated to `0.1.12`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.12/JSKernMD-Setup-0.1.12-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `fe0b2ccce4031a2181d73914c0a30b5c43bb62bb383352209ed13cb674c3aa32`.
+  - `git diff --check` passed after reverting unrelated Wails-generated whitespace-only file rewrites.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+  - GitHub Release `v0.1.12` was prepared for `JSKernMD-Setup-0.1.12-x64.exe` and `SHA256SUMS.txt`.
 - Latest validation after multi-workspace and Explorer integration v0.1.11:
   - Product version sources were updated to `0.1.11`.
   - `go test ./...` passed.

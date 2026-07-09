@@ -1,5 +1,43 @@
 # 更新日志
 
+## 2026-07-09 - v0.1.12 Titlebar And Workspace Drag Fixes
+
+### 修复
+
+- 修复无边框标题栏最小化、最大化、关闭按钮偶发点击无效的问题。
+- 修复顶层工作区拖拽排序无效的问题：桌面行为拦截器现在只放行带有 JS Kern.md 工作区拖拽标记的元素，继续拦截图片、链接等默认网页拖拽。
+- 修复工作区根节点点击或右键时直接显示拖拽手型的问题；现在只有真实 `dragstart` 后才显示 `grabbing`。
+
+### 变更
+
+- 窗口控制按钮区域显式覆盖 Wails 的 `--wails-draggable` 变量为 `no-drag`，并阻断鼠标按下事件继续冒泡到标题栏拖拽逻辑。
+- 顶层工作区拖拽状态改为 React 临时 UI 状态，只用于当前拖拽中的样式显示，不参与持久化。
+- README 当前版本说明已更新为 `v0.1.12`。
+- 将产品版本提升到 `0.1.12`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.12-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer SHA256: `fe0b2ccce4031a2181d73914c0a30b5c43bb62bb383352209ed13cb674c3aa32`。
+- Published release target: `v0.1.12`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.12`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.12/JSKernMD-Setup-0.1.12-x64.exe`。
+- `SHA256SUMS.txt` was generated with SHA256 `fe0b2ccce4031a2181d73914c0a30b5c43bb62bb383352209ed13cb674c3aa32`。
+- `git diff --check` passed after reverting unrelated Wails-generated whitespace-only file rewrites。
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
+- GitHub Release `v0.1.12` was prepared for `JSKernMD-Setup-0.1.12-x64.exe` and `SHA256SUMS.txt`。
+
+---
+
 ## 2026-07-09 - v0.1.11 Multi-Workspace And Explorer Integration
 
 ### 新增

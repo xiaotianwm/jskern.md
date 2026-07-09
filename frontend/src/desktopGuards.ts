@@ -1,6 +1,12 @@
 export function installDesktopGuards() {
     window.addEventListener('contextmenu', event => event.preventDefault());
-    window.addEventListener('dragstart', event => event.preventDefault());
+    window.addEventListener('dragstart', event => {
+        const target = event.target;
+        if (target instanceof Element && target.closest('[data-kern-draggable-workspace="true"]')) {
+            return;
+        }
+        event.preventDefault();
+    });
     window.addEventListener('wheel', event => {
         if (event.ctrlKey) {
             event.preventDefault();

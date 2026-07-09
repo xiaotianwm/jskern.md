@@ -137,15 +137,21 @@ a {
 }
 
 .window-controls {
+    --wails-draggable: no-drag;
     -webkit-app-region: no-drag;
     display: grid;
     grid-template-columns: repeat(3, 46px);
     height: 100%;
+    position: relative;
+    z-index: 5;
+    pointer-events: auto;
 }
 
 .window-controls,
 .window-controls * {
+    --wails-draggable: no-drag;
     -webkit-app-region: no-drag;
+    pointer-events: auto;
 }
 
 .window-controls button {
@@ -154,6 +160,7 @@ a {
     color: var(--text-muted);
     background: transparent;
     cursor: default;
+    touch-action: none;
 }
 
 .window-controls button:hover {
@@ -572,9 +579,10 @@ a {
     height: 28px;
     font-weight: 650;
     color: var(--text);
+    cursor: default;
 }
 
-.tree-row.workspace-root:active {
+.tree-row.workspace-root.dragging {
     cursor: grabbing;
 }
 
