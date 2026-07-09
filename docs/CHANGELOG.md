@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-07-09 - README Chinese Product Overview
+
+### Changed
+
+- Rewrote the root `README.md` in Simplified Chinese.
+- Expanded the README feature overview around the product's lightweight, fast, folder-first Markdown reading workflow.
+- Documented the current user-facing capabilities: workspace directory tree, Markdown rendering, outline navigation, multi-tab reading, reading memory, workspace search, current-document find, directory auto-sync, weak external-change reminders, context menus, rename, Shiki highlighting, desktop anti-web behavior, language/theme support, installer/update flow, and development constraints.
+
+### Validation
+
+- `README.md` was rewritten as UTF-8 text.
+- `git diff --check` passed.
+
+---
+
 ## 2026-07-09 - v0.1.8 Reader Layout And Tree Rename
 
 ### Added

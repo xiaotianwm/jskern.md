@@ -1,18 +1,139 @@
 # JS Kern.md
 
-JS Kern.md is a lightweight desktop Markdown reader built with Go and Wails.
+**JS Kern.md** 是一款轻量、快速、目录树优先的桌面端 Markdown 阅读器。
 
-The product is folder-first: the core workflow is opening a directory, browsing a Markdown tree, reading documents, and navigating document outlines. Single-file opening can exist later, but it must not replace the directory-tree reading model.
+它不是“把网页套进窗口”的 Markdown 工具，也不是以编辑为核心的笔记软件。它的目标很明确：打开一个 Markdown 文档目录，快速浏览、切换、搜索、定位和阅读，让本地文档库像一本轻便的桌面书一样随开随读。
 
-## Stack
+## 核心定位
 
-- Desktop runtime: Wails v2
-- Backend: Go
-- Frontend: React + TypeScript + Vite
-- Markdown parser: goldmark
-- Code highlighting: Shiki
+- **轻量**：基于 **Wails + Go**，不使用 Electron，启动更快、体积更小、内存占用更低。
+- **快捷**：打开文件夹后直接进入目录树阅读流，支持多标签、阅读位置记忆和工作区恢复。
+- **阅读优先**：聚焦 Markdown 阅读体验，而不是把编辑器、浏览器和笔记系统混在一起。
+- **目录树优先**：产品核心是“打开一个文件夹阅读一组 Markdown”，不是单文件查看器。
 
-## Development
+## 已支持功能
+
+### 文件夹工作区
+
+- 打开本地文件夹作为工作区。
+- 左侧显示 Markdown 目录树。
+- 默认只展开工作区根目录，子目录保持收起，避免大型文档库一次性铺满界面。
+- 目录树独立滚动，长目录不会挤压阅读区。
+- 启动时自动恢复上次打开的工作区。
+
+### Markdown 阅读
+
+- 使用 Go 后端基于 `goldmark` 解析 Markdown。
+- 渲染内容经过安全 HTML 清洗后再交给前端显示。
+- 中间阅读区随窗口宽度自适应，适合宽屏阅读。
+- 支持标题、列表、引用、表格、代码块、图片等常见 Markdown 内容。
+- 支持本地相对图片资源，通过 Go 受控资源入口加载。
+- 支持相对 Markdown 链接跳转，路径校验由 Go 完成。
+
+### 大纲导航
+
+- 自动提取当前文档标题结构。
+- 右侧显示文档大纲。
+- 点击大纲标题可快速跳转到对应位置。
+- 大纲面板独立滚动，长文档标题不会被截断。
+
+### 多标签页
+
+- 支持同时打开多个 Markdown 文档。
+- 标签页切换会保留每个文档自己的阅读位置。
+- 支持关闭标签页、关闭其他标签页、关闭右侧标签页。
+- 启动时恢复上次打开的标签页和活动文档。
+
+### 阅读记忆
+
+- 自动记住每个工作区的最近阅读文档。
+- 自动记住每个文档的滚动位置、滚动比例和最近标题位置。
+- 文档未变化时恢复精确位置。
+- 文档变化后优先尝试回到最近标题，避免直接跳到错误位置。
+
+### 搜索与查找
+
+- 工作区搜索：搜索 Markdown 文件名、相对路径和正文内容。
+- 当前文档查找：`Ctrl/Cmd + F` 打开应用内查找框。
+- 查找框自动聚焦并选中输入内容。
+- 查找结果高亮显示，支持上一个/下一个跳转。
+
+### 目录树自动同步
+
+- 工作区内 Markdown 文件或目录新增、删除、重命名后，目录树会自动同步。
+- 自动同步只关注目录和 Markdown 文件结构变化，普通正文修改不会打断目录树。
+- 新发现的子目录默认保持收起。
+
+### 文件变化弱提醒
+
+- 当前阅读的文档在磁盘上发生变化时，底部显示弱提醒。
+- 可以选择重新加载新内容，也可以暂时忽略。
+- 重新加载时尽量保持当前位置，不会强行跳回顶部。
+
+### 桌面右键菜单
+
+- 目录树右键菜单支持：
+  - 打开文档
+  - 展开 / 收起目录
+  - 重命名文件或文件夹
+  - 刷新目录树
+  - 复制路径
+  - 在文件管理器中显示
+- 标签页右键菜单支持：
+  - 切换到标签页
+  - 关闭标签页
+  - 关闭其他标签页
+  - 关闭右侧标签页
+  - 复制路径
+  - 在文件管理器中显示
+- 文件系统相关操作都由 Go 后端校验路径，限制在当前工作区内。
+
+### 代码高亮
+
+- Markdown 代码块使用 **Shiki** 高亮。
+- 高亮风格接近 VS Code / TextMate 语法标记效果。
+- 不支持的语言会退回普通代码块显示，不影响阅读。
+
+### 桌面体验
+
+- 自定义无边框标题栏。
+- 支持标题栏双击最大化 / 还原。
+- 全局阻止浏览器默认右键菜单、刷新、缩放、拖拽等网页行为。
+- 除正文、代码块、输入框和可复制路径外，默认禁用多余文本选中。
+- 支持浅色、深色、跟随系统主题。
+- 支持中文和英文界面，语言文案由 Go 统一提供。
+
+### 安装与更新
+
+- Windows 安装包通过 GitHub Releases 发布。
+- 安装包命名规范：`JSKernMD-Setup-<version>-x64.exe`。
+- 安装器会根据系统语言显示中文或英文界面。
+- 升级安装时优先复用已安装目录。
+- 应用内可检查 GitHub Release 更新，并下载校验后的安装包。
+
+## 下载
+
+当前发布页：
+
+[https://github.com/xiaotianwm/jskern.md/releases](https://github.com/xiaotianwm/jskern.md/releases)
+
+最新 Windows 安装包示例：
+
+```txt
+JSKernMD-Setup-0.1.8-x64.exe
+```
+
+## 技术栈
+
+- 桌面运行时：Wails v2
+- 后端：Go
+- 前端：React + TypeScript + Vite
+- Markdown 解析：goldmark
+- HTML 安全清洗：bluemonday
+- 代码高亮：Shiki
+- 本地持久化：Go 管理的 AppData 配置和阅读记忆
+
+## 本地开发
 
 ```bash
 wails dev
@@ -22,11 +143,25 @@ wails dev
 wails build
 ```
 
-PowerShell may block `npm.ps1`; use `npm.cmd` for direct frontend commands on Windows.
+Windows PowerShell 可能拦截 `npm.ps1`，直接运行前端命令时建议使用：
 
-## Project Memory
+```bash
+npm.cmd run build
+```
 
-Before making changes, read:
+## 项目约束
+
+- JS Kern.md 是桌面端 Markdown 阅读器。
+- MVP 以目录树阅读为核心，不以单文件查看为核心。
+- Markdown 编辑不属于当前 MVP。
+- Wails 是唯一桌面运行时，禁止引入 Electron。
+- Go 负责文件系统访问、Markdown 解析、路径校验、配置、i18n、持久化和耐久状态。
+- React 只负责渲染和短生命周期交互状态。
+- 前端不维护翻译字典，不把业务数据写入 `localStorage`。
+
+## 项目记忆
+
+开发前必须阅读：
 
 - `AGENTS.md`
 - `docs/PROJECT_STATE.md`
@@ -34,5 +169,9 @@ Before making changes, read:
 - `docs/ARCHITECTURE.md`
 - `docs/DECISIONS.md`
 - `docs/CHANGELOG.md`
+- 涉及产品范围时同时阅读 `docs/PRODUCT.md`
 
-Every meaningful update must end by updating `docs/PROJECT_STATE.md` and adding a detailed entry to `docs/CHANGELOG.md`.
+每次有意义的更新都必须同步：
+
+- `docs/CHANGELOG.md`
+- `docs/PROJECT_STATE.md`

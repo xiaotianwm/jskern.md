@@ -138,6 +138,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Windows installer `JSKernMD-Setup-0.1.8-x64.exe` was staged under `dist/releases/v0.1.8/`.
 - `SHA256SUMS.txt` was generated for the `0.1.8` installer with SHA256 `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
 - GitHub Release `v0.1.8` publishes `JSKernMD-Setup-0.1.8-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Root `README.md` is now written in Simplified Chinese and presents the current lightweight, fast, folder-first Markdown reading feature set.
 
 ## Next
 
@@ -163,6 +164,9 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
+- Latest validation after Chinese README update:
+  - `README.md` was rewritten as UTF-8 text.
+  - `git diff --check` passed.
 - Latest validation after reader layout and tree rename v0.1.8:
   - `go test ./...` passed.
   - `wails generate module` passed.
