@@ -172,6 +172,10 @@ func (a *App) GetReadingPosition(path string) (*ReadingPosition, error) {
 	var state DocumentReadingState
 	var found bool
 	if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil {
+		if len(workspace.OpenTabs) > 0 && !containsString(workspace.OpenTabs, relativePath) {
+			a.mu.RUnlock()
+			return nil, nil
+		}
 		state, found = workspace.Documents[relativePath]
 	}
 	a.mu.RUnlock()
@@ -248,6 +252,7 @@ func (a *App) SaveOpenTabs(paths []string, activePath string) error {
 	workspace.OpenTabs = openTabs
 	workspace.ActiveDocument = activeDocument
 	workspace.LastDocument = activeDocument
+	pruneClosedReadingDocuments(workspace)
 	pruneReadingDocuments(workspace)
 	memoryPath := a.readingMemoryPath
 	if memoryPath == "" {
@@ -257,6 +262,18 @@ func (a *App) SaveOpenTabs(paths []string, activePath string) error {
 	err := saveReadingMemory(memoryPath, a.readingMemory)
 	a.mu.Unlock()
 	return err
+}
+
+func pruneClosedReadingDocuments(workspace *WorkspaceReadingLog) {
+	keep := map[string]struct{}{}
+	for _, path := range workspace.OpenTabs {
+		keep[path] = struct{}{}
+	}
+	for path := range workspace.Documents {
+		if _, ok := keep[path]; !ok {
+			delete(workspace.Documents, path)
+		}
+	}
 }
 
 func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float64, headingID string, modifiedAt int64, size int64) error {

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, and GitHub installer releases.
 
 ## Done
 
@@ -141,6 +141,12 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Root `README.md` is now written in Simplified Chinese and presents the current lightweight, fast, folder-first Markdown reading feature set.
 - Root `README.md` now includes explicit Chinese `关于 JS Kern.md` and `更新日志` sections, with the update-log section linking GitHub Releases and `docs/CHANGELOG.md`.
 - GitHub repository About description is synchronized to Chinese for the lightweight, fast, directory-tree-first desktop Markdown reader positioning.
+- Closed document tabs now clear their saved reading-position records through Go-owned reading memory cleanup.
+- `GetReadingPosition()` now ignores stale AppData records for documents that are no longer in the current open-tab session.
+- Product version advanced to `0.1.9` for the closed-tab reading-memory cleanup release.
+- Windows installer `JSKernMD-Setup-0.1.9-x64.exe` was staged under `dist/releases/v0.1.9/`.
+- `SHA256SUMS.txt` was generated for the `0.1.9` installer with SHA256 `b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`.
+- GitHub Release `v0.1.9` publishes `JSKernMD-Setup-0.1.9-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
@@ -166,6 +172,16 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
+- Latest validation after closed-tab reading-memory cleanup v0.1.9:
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.9/JSKernMD-Setup-0.1.9-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+  - GitHub Release `v0.1.9` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.9`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.9-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`.
 - Latest validation after README About and update-log localization:
   - `README.md` now has Chinese `关于 JS Kern.md` and `更新日志` sections.
   - `docs/CHANGELOG.md` main heading and common section labels are localized to Chinese.

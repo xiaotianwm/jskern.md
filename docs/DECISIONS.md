@@ -73,6 +73,12 @@ Reason: Multi-tab reading is part of the reader session, and users should not lo
 
 Consequence: Open tabs and the active document are persisted by Go in the workspace-scoped reading memory file. React renders the tab strip and reports tab changes, but it must not use frontend storage for tab sessions. Switching tabs must save the outgoing document position and restore the incoming document position; reloading a changed document must preserve the current reader offset.
 
+## 2026-07-09: Treat Closing A Tab As Clearing Its Reading Position
+
+Reason: Closing a document is an explicit signal that the document should leave the active reading session; reopening it later from the directory tree should feel like a fresh open, not a hidden restoration of an old closed-tab offset.
+
+Consequence: `SaveOpenTabs()` is the Go-owned cleanup boundary for tab-session changes. When a document is no longer present in the reported open-tab list, its saved reading-position record is removed. `GetReadingPosition()` must also ignore stale records for documents outside the current open-tab list so old AppData state cannot resurrect closed-document positions.
+
 ## 2026-07-08: Keep Context-Menu File Actions Go-Validated
 
 Reason: Directory-tree and tab context menus should feel native, but revealing or renaming local files and folders are still filesystem actions that must not drift into React.

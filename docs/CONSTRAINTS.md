@@ -37,6 +37,7 @@
 - Reading memory must remain workspace-scoped and directory-tree-first: restore the last document inside the restored workspace, and preserve per-document scroll position plus heading fallback when the document still exists.
 - Open document tabs and the active tab are Go-owned durable reader session state and must be stored with reading memory under AppData, not in frontend `localStorage`.
 - Tab switching must save the previous tab's current reading position before opening the target tab, then restore the target tab's own saved reading position instead of jumping to the top.
+- Closing a document tab must remove that document's saved reading position from Go-owned reading memory; reopening a closed document from the directory tree must start at the top unless it is still part of the current open-tab session.
 - Reloading a changed document from the weak disk-change reminder must preserve the current reader offset with the reloaded document metadata instead of reusing stale saved memory or jumping to the top.
 - Directory tree refresh and workspace structure change detection are Go-owned responsibilities; React may ask for a refreshed tree but must not inspect the filesystem itself.
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.

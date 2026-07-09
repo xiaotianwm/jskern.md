@@ -708,6 +708,138 @@ func TestReadingSessionPersistsAndRestoresOpenTabs(t *testing.T) {
 	}
 }
 
+func TestSaveOpenTabsClearsClosedDocumentPositions(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	firstPath := filepath.Join(workspace, "README.md")
+	secondPath := filepath.Join(workspace, "guide.md")
+	if err := os.WriteFile(firstPath, []byte("# First\n\nBody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(secondPath, []byte("# Guide\n\nBody\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	firstDoc, err := app.OpenDocument(firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondDoc, err := app.OpenDocument(secondPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveOpenTabs([]string{firstDoc.Path, secondDoc.Path}, secondDoc.Path); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(firstDoc.Path, 120, 0.25, "", firstDoc.ModifiedAt, firstDoc.Size); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(secondDoc.Path, 360, 0.75, "", secondDoc.ModifiedAt, secondDoc.Size); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := app.SaveOpenTabs([]string{firstDoc.Path}, firstDoc.Path); err != nil {
+		t.Fatal(err)
+	}
+	firstPosition, err := app.GetReadingPosition(firstDoc.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstPosition == nil || firstPosition.ScrollTop != 120 {
+		t.Fatalf("expected kept first document position, got %+v", firstPosition)
+	}
+	secondPosition, err := app.GetReadingPosition(secondDoc.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if secondPosition != nil {
+		t.Fatalf("expected closed document position to be cleared, got %+v", secondPosition)
+	}
+
+	if err := app.SaveOpenTabs(nil, ""); err != nil {
+		t.Fatal(err)
+	}
+	firstPosition, err = app.GetReadingPosition(firstDoc.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if firstPosition != nil {
+		t.Fatalf("expected all document positions to be cleared after closing all tabs, got %+v", firstPosition)
+	}
+}
+
+func TestGetReadingPositionIgnoresStaleClosedDocumentMemory(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	firstPath := filepath.Join(workspace, "README.md")
+	secondPath := filepath.Join(workspace, "guide.md")
+	if err := os.WriteFile(firstPath, []byte("# First\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(secondPath, []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(workspace); err != nil {
+		t.Fatal(err)
+	}
+	firstDoc, err := app.OpenDocument(firstPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondDoc, err := app.OpenDocument(secondPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveOpenTabs([]string{firstDoc.Path, secondDoc.Path}, secondDoc.Path); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SaveReadingPosition(secondDoc.Path, 360, 0.75, "", secondDoc.ModifiedAt, secondDoc.Size); err != nil {
+		t.Fatal(err)
+	}
+	firstRelative, ok := app.workspaceRelativePath(firstDoc.Path)
+	if !ok {
+		t.Fatal("expected first relative path")
+	}
+	secondRelative, ok := app.workspaceRelativePath(secondDoc.Path)
+	if !ok {
+		t.Fatal("expected second relative path")
+	}
+
+	app.mu.Lock()
+	workspaceLog := app.readingMemory.Workspaces[workspaceMemoryKey(workspace)]
+	workspaceLog.OpenTabs = []string{firstRelative}
+	workspaceLog.ActiveDocument = firstRelative
+	workspaceLog.LastDocument = firstRelative
+	workspaceLog.Documents[secondRelative] = DocumentReadingState{
+		RelativePath: secondRelative,
+		ScrollTop:    360,
+		ScrollRatio:  0.75,
+		ModifiedAt:   secondDoc.ModifiedAt,
+		Size:         secondDoc.Size,
+	}
+	app.mu.Unlock()
+
+	position, err := app.GetReadingPosition(secondDoc.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if position != nil {
+		t.Fatalf("expected stale closed document memory to be ignored, got %+v", position)
+	}
+}
+
 func TestSaveOpenTabsRejectsOutsideWorkspace(t *testing.T) {
 	appDataRoot := t.TempDir()
 	workspace := t.TempDir()

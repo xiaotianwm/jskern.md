@@ -1,5 +1,39 @@
 # 更新日志
 
+## 2026-07-09 - v0.1.9 Closed-Tab Reading Memory Cleanup
+
+### 修复
+
+- 关闭文档标签页后，Go-owned `SaveOpenTabs()` 会删除该文档在 `data/reading-memory.json` 中的阅读位置记录。
+- 从目录树重新打开已关闭文档时，不再恢复旧滚动位置，而是从文档顶部开始。
+- `GetReadingPosition()` 现在会忽略旧版 AppData 中残留的、已经不在当前 `open_tabs` 列表里的文档位置记录，避免历史脏数据重新生效。
+
+### 变更
+
+- 将产品版本提升到 `0.1.9`。
+- README、产品范围、架构文档、约束文档和决策日志都记录了“关闭标签即清除该文档阅读位置”的行为边界。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.9-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer SHA256: `b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`。
+- Published release target: `v0.1.9`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.9`。
+
+### 验证
+
+- `go test ./...` passed。
+- `npm.cmd run build` passed from `frontend/`。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.9/JSKernMD-Setup-0.1.9-x64.exe`。
+- `SHA256SUMS.txt` was generated with SHA256 `b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`。
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
+- GitHub Release `v0.1.9` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.9`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.9-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`。
+
+---
 ## 2026-07-09 - README 关于与更新日志中文化
 
 ### 变更
