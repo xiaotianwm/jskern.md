@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,49 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestProductInfoComesFromManifest(t *testing.T) {
+	var manifest productManifestFile
+	if err := json.Unmarshal(productManifest, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	bootstrap, err := NewApp().GetBootstrap("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bootstrap.Product.Version != manifest.Version {
+		t.Fatalf("expected bootstrap version %q from manifest, got %q", manifest.Version, bootstrap.Product.Version)
+	}
+	if bootstrap.Product.AppSlug != manifest.AppSlug {
+		t.Fatalf("expected app slug %q from manifest, got %q", manifest.AppSlug, bootstrap.Product.AppSlug)
+	}
+	if bootstrap.Product.AppID != manifest.AppID {
+		t.Fatalf("expected app id %q from manifest, got %q", manifest.AppID, bootstrap.Product.AppID)
+	}
+}
+
+func TestCurrentManifestVersionIsNotReportedAsUpdate(t *testing.T) {
+	assetName := "JSKernMD-Setup-" + productInfo.Version + "-x64.exe"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode([]githubRelease{{
+			TagName: "v" + productInfo.Version,
+			HTMLURL: "https://github.com/xiaotianwm/jskern.md/releases/tag/v" + productInfo.Version,
+			Assets: []githubAsset{{
+				Name:               assetName,
+				BrowserDownloadURL: "https://github.com/xiaotianwm/jskern.md/releases/download/v" + productInfo.Version + "/" + assetName,
+			}},
+		}})
+	}))
+	defer server.Close()
+
+	info, err := checkGitHubUpdates(context.Background(), server.URL, productInfo.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.UpdateAvailable {
+		t.Fatalf("expected no update for current manifest version, got %+v", info)
+	}
+}
 
 func TestOpenDocumentRendersAndSanitizesMarkdown(t *testing.T) {
 	dir := t.TempDir()

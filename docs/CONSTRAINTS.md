@@ -25,6 +25,7 @@
 ## Backend
 
 - Go is the authority for filesystem access, path validation, Markdown parsing, local asset resolution, config, persistence, i18n, and dynamic messages.
+- Go-visible product identity and update-check current version must come from `product.manifest.json`; do not maintain a second hardcoded Go version constant.
 - Markdown parsing must use `goldmark`.
 - Rendered Markdown must be sanitized before entering the frontend.
 - Physical paths must use `path/filepath`; no string-concatenated paths.

@@ -1,5 +1,41 @@
 # 更新日志
 
+## 2026-07-09 - v0.1.10 Manifest-Owned Go Version Fix
+
+### 修复
+
+- 修复 `v0.1.9` 安装后仍提示更新的问题。
+- 根因是 `product.manifest.json`、`wails.json` 和安装包元数据已升到 `0.1.9`，但 Go 后端内部 `appVersion` 常量仍为 `0.1.8`，导致应用检查 GitHub Releases 时认为自己还是旧版。
+
+### 变更
+
+- Go 现在嵌入并解析 `product.manifest.json`，Bootstrap 产品信息、更新检查当前版本、更新下载信息、AppData slug 和更新请求 User-Agent 都从 manifest 派生。
+- 移除独立手写的 Go `appVersion` / `appSlug` 常量，避免以后版本号再次分裂。
+- 新增测试，确保 Bootstrap 产品版本来自 manifest，并确保当前 manifest 版本不会被 GitHub Release 检查误判为可更新。
+- 将产品版本提升到 `0.1.10`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.10-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer SHA256: `c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`。
+- Published release target: `v0.1.10`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.10`。
+
+### 验证
+
+- GitHub latest before the fix was verified as `v0.1.9`, confirming the repeated prompt was not caused by the Release latest marker.
+- `go test ./...` passed。
+- `npm.cmd run build` passed from `frontend/`。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.10/JSKernMD-Setup-0.1.10-x64.exe`。
+- `SHA256SUMS.txt` was generated with SHA256 `c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`。
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
+- GitHub Release `v0.1.10` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.10`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.10-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`。
+
+---
 ## 2026-07-09 - v0.1.9 Closed-Tab Reading Memory Cleanup
 
 ### 修复

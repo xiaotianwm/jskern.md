@@ -6,6 +6,8 @@ JS Kern.md uses Wails v2 with a Go backend and React + TypeScript frontend.
 
 Electron is forbidden. The binary and process name must remain `jskernmd`.
 
+`product.manifest.json` is embedded into the Go binary and is the source for Go-visible product identity, including the version used by bootstrap and update checks.
+
 ## Ownership
 
 Go owns:

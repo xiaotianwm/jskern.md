@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, and GitHub installer releases.
 
 ## Done
 
@@ -147,6 +147,13 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Windows installer `JSKernMD-Setup-0.1.9-x64.exe` was staged under `dist/releases/v0.1.9/`.
 - `SHA256SUMS.txt` was generated for the `0.1.9` installer with SHA256 `b0609f41ed32484f2022aa04a7411817b2f3cb9cd2ce0d95cdb30bb7d9c9ea09`.
 - GitHub Release `v0.1.9` publishes `JSKernMD-Setup-0.1.9-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- GitHub latest was verified as `v0.1.9`; the repeated update prompt came from the app binary reporting Go `appVersion=0.1.8`.
+- Go now embeds `product.manifest.json` and derives Bootstrap product info, update-check current version, update download metadata, AppData slug, and update User-Agent from the manifest.
+- Removed the separate hardcoded Go app version/source-of-truth split and added tests for manifest-owned product version behavior.
+- Product version advanced to `0.1.10` for the manifest-owned Go version fix.
+- Windows installer `JSKernMD-Setup-0.1.10-x64.exe` was staged under `dist/releases/v0.1.10/`.
+- `SHA256SUMS.txt` was generated for the `0.1.10` installer with SHA256 `c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`.
+- GitHub Release `v0.1.10` publishes `JSKernMD-Setup-0.1.10-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
@@ -172,6 +179,17 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
+- Latest validation after manifest-owned Go version fix v0.1.10:
+  - GitHub latest before the fix was verified as `v0.1.9`, confirming the repeated prompt was not caused by the Release latest marker.
+  - `go test ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.10/JSKernMD-Setup-0.1.10-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
+  - GitHub Release `v0.1.10` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.10`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.10-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`.
 - Latest validation after closed-tab reading-memory cleanup v0.1.9:
   - `go test ./...` passed.
   - `npm.cmd run build` passed from `frontend/`.

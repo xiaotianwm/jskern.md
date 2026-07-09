@@ -23,14 +23,17 @@ import (
 )
 
 const (
-	appSlug                = "jskernmd"
-	appVersion             = "0.1.8"
 	currentSettingsVersion = 2
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
 
 //go:embed internal/i18n/locales/*.json
 var localeFiles embed.FS
+
+//go:embed product.manifest.json
+var productManifest []byte
+
+var productInfo = mustLoadProductInfo()
 
 // App struct
 type App struct {
@@ -63,6 +66,15 @@ type ProductInfo struct {
 type LocaleOption struct {
 	Code  string `json:"code"`
 	Label string `json:"label"`
+}
+
+type productManifestFile struct {
+	AppID       string         `json:"app_id"`
+	AppSlug     string         `json:"app_slug"`
+	ProductName string         `json:"product_name"`
+	Version     string         `json:"version"`
+	Repository  string         `json:"repository"`
+	Languages   []LocaleOption `json:"languages"`
 }
 
 type Bootstrap struct {
@@ -149,6 +161,40 @@ func NewApp() *App {
 	}
 }
 
+func mustLoadProductInfo() ProductInfo {
+	var manifest productManifestFile
+	if err := json.Unmarshal(productManifest, &manifest); err != nil {
+		panic(fmt.Sprintf("load product manifest: %v", err))
+	}
+	product := ProductInfo{
+		AppID:       strings.TrimSpace(manifest.AppID),
+		AppSlug:     strings.TrimSpace(manifest.AppSlug),
+		DisplayName: strings.TrimSpace(manifest.ProductName),
+		Version:     strings.TrimSpace(manifest.Version),
+		Repository:  strings.TrimSpace(manifest.Repository),
+		BrandParts: map[string]string{
+			"prefix": "js",
+			"core":   "kern",
+			"suffix": ".md",
+		},
+		Languages: append([]LocaleOption(nil), manifest.Languages...),
+	}
+	if product.AppSlug == "" || product.Version == "" {
+		panic("product manifest must include app_slug and version")
+	}
+	return product
+}
+
+func productInfoCopy() ProductInfo {
+	product := productInfo
+	product.BrandParts = map[string]string{}
+	for key, value := range productInfo.BrandParts {
+		product.BrandParts[key] = value
+	}
+	product.Languages = append([]LocaleOption(nil), productInfo.Languages...)
+	return product
+}
+
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
@@ -171,22 +217,7 @@ func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
 	}
 
 	return Bootstrap{
-		Product: ProductInfo{
-			AppID:       "js.kern-md",
-			AppSlug:     "jskernmd",
-			DisplayName: "JS Kern.md",
-			Version:     appVersion,
-			Repository:  "jskern.md",
-			BrandParts: map[string]string{
-				"prefix": "js",
-				"core":   "kern",
-				"suffix": ".md",
-			},
-			Languages: []LocaleOption{
-				{Code: "zh-CN", Label: "中文"},
-				{Code: "en", Label: "English"},
-			},
-		},
+		Product:        productInfoCopy(),
 		CurrentLocale:  locale,
 		CurrentTheme:   theme,
 		ShellLocale:    messages["shell"],
@@ -211,7 +242,7 @@ func (a *App) SwitchTheme(theme string) (Bootstrap, error) {
 }
 
 func (a *App) CheckForUpdates() (*UpdateInfo, error) {
-	info, err := checkGitHubUpdates(a.ctx, githubReleasesAPI, appVersion)
+	info, err := checkGitHubUpdates(a.ctx, githubReleasesAPI, productInfo.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +293,7 @@ func (a *App) DownloadUpdate(downloadURL string, sha256Hex string) (*UpdateInfo,
 		return nil, err
 	}
 	return &UpdateInfo{
-		CurrentVersion: appVersion,
+		CurrentVersion: productInfo.Version,
 		DownloadedPath: target,
 		DownloadURL:    downloadURL,
 		Sha256:         strings.ToLower(strings.TrimSpace(sha256Hex)),
@@ -705,7 +736,7 @@ func checkGitHubUpdates(ctx context.Context, apiURL string, currentVersion strin
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "jskernmd/"+appVersion)
+	req.Header.Set("User-Agent", productInfo.AppSlug+"/"+productInfo.Version)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -783,7 +814,7 @@ func downloadFile(ctx context.Context, sourceURL string, target string, sha256He
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", "jskernmd/"+appVersion)
+	req.Header.Set("User-Agent", productInfo.AppSlug+"/"+productInfo.Version)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
@@ -928,7 +959,7 @@ func (a *App) initAppData(root string) error {
 		if err != nil {
 			return err
 		}
-		root = filepath.Join(configDir, appSlug)
+		root = filepath.Join(configDir, productInfo.AppSlug)
 	}
 	for _, name := range []string{"config", "data", "logs", "cache", "temp", "runtime", "crash"} {
 		if err := os.MkdirAll(filepath.Join(root, name), 0o700); err != nil {

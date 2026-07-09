@@ -73,6 +73,12 @@ Reason: Multi-tab reading is part of the reader session, and users should not lo
 
 Consequence: Open tabs and the active document are persisted by Go in the workspace-scoped reading memory file. React renders the tab strip and reports tab changes, but it must not use frontend storage for tab sessions. Switching tabs must save the outgoing document position and restore the incoming document position; reloading a changed document must preserve the current reader offset.
 
+## 2026-07-09: Use Product Manifest For Go-Visible Version
+
+Reason: The `v0.1.9` installer metadata was updated, but the Go update-check version constant remained `0.1.8`, causing a freshly installed `0.1.9` app to still report itself as old and prompt for the same update.
+
+Consequence: Go embeds `product.manifest.json` and derives bootstrap product identity, update-check current version, update download metadata, AppData slug, and update User-Agent from that manifest data. A separate hardcoded Go app-version constant is forbidden.
+
 ## 2026-07-09: Treat Closing A Tab As Clearing Its Reading Position
 
 Reason: Closing a document is an explicit signal that the document should leave the active reading session; reopening it later from the directory tree should feel like a fresh open, not a hidden restoration of an old closed-tab offset.
