@@ -34,7 +34,8 @@
 - `SHA256SUMS.txt` was generated with SHA256 `fe0b2ccce4031a2181d73914c0a30b5c43bb62bb383352209ed13cb674c3aa32`。
 - `git diff --check` passed after reverting unrelated Wails-generated whitespace-only file rewrites。
 - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
-- GitHub Release `v0.1.12` was prepared for `JSKernMD-Setup-0.1.12-x64.exe` and `SHA256SUMS.txt`。
+- GitHub Release `v0.1.12` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.12`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.12-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:fe0b2ccce4031a2181d73914c0a30b5c43bb62bb383352209ed13cb674c3aa32`。
 
 ---
 
