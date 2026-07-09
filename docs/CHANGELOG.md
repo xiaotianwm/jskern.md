@@ -1,14 +1,30 @@
-# Changelog
+# 更新日志
 
+## 2026-07-09 - README 关于与更新日志中文化
+
+### 变更
+
+- 将根 `README.md` 的产品介绍区调整为中文 `关于 JS Kern.md`，补充本地 Markdown 文档库阅读场景说明。
+- 在根 `README.md` 新增中文 `更新日志` 区块，链接 GitHub Releases 和 `docs/CHANGELOG.md`，并补充 `v0.1.8` 用户可见更新摘要。
+- 将 `docs/CHANGELOG.md` 的主标题和常用三级结构标题中文化，减少文档入口的英文残留。
+- 将 GitHub 仓库 About 描述同步为中文：轻量、快速、目录树优先的桌面 Markdown 阅读器。
+
+### 验证
+
+- `README.md`、`docs/CHANGELOG.md`、`docs/PROJECT_STATE.md` 均通过 UTF-8 读取校验。
+- `gh repo view xiaotianwm/jskern.md` 已确认仓库 About 描述为中文。
+- `git diff --check` passed。
+
+---
 ## 2026-07-09 - README Chinese Product Overview
 
-### Changed
+### 变更
 
 - Rewrote the root `README.md` in Simplified Chinese.
 - Expanded the README feature overview around the product's lightweight, fast, folder-first Markdown reading workflow.
 - Documented the current user-facing capabilities: workspace directory tree, Markdown rendering, outline navigation, multi-tab reading, reading memory, workspace search, current-document find, directory auto-sync, weak external-change reminders, context menus, rename, Shiki highlighting, desktop anti-web behavior, language/theme support, installer/update flow, and development constraints.
 
-### Validation
+### 验证
 
 - `README.md` was rewritten as UTF-8 text.
 - `git diff --check` passed.
@@ -17,7 +33,7 @@
 
 ## 2026-07-09 - v0.1.8 Reader Layout And Tree Rename
 
-### Added
+### 新增
 
 - Added `RenamePath(path, newName)` as a Go-owned Wails API for directory-tree renames.
 - Added Go validation for rename targets: source must exist inside the current workspace, the workspace root cannot be renamed, new names must be single path segments, target paths must remain inside the workspace, duplicate targets are rejected, and renamed files must keep a Markdown extension.
@@ -25,7 +41,7 @@
 - Added an app-owned inline rename editor to directory-tree rows, opened from the tree context menu without using browser prompt UI.
 - Added localized Chinese and English `Rename` context-menu text through Go-owned locale JSON.
 
-### Changed
+### 变更
 
 - The outline panel now uses a fixed shell plus an internal scroll region, so long document outlines can scroll independently.
 - The center reader column now expands with the available window width up to a wider desktop reading cap instead of staying locked to the earlier narrow 820px content width.
@@ -33,7 +49,7 @@
 - Directory-tree rename refreshes the Go-scanned tree immediately and remaps open tabs, selected paths, expanded directories, and the active document path when a renamed directory contains open tabs.
 - Advanced the product version to `0.1.8` for the reader layout and tree rename release.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-0.1.8-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -41,7 +57,7 @@
 - Published release target: `v0.1.8`.
 - GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.8`.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `wails generate module` passed.
@@ -58,7 +74,7 @@
 
 ## 2026-07-08 - v0.1.7 Installer Locale And Upgrade Path
 
-### Added
+### 新增
 
 - Added English and Simplified Chinese NSIS Modern UI language support to the Windows installer.
 - Added installer and uninstaller startup language selection based on the current Windows UI language, without adding a language picker step.
@@ -66,14 +82,14 @@
 - Added compatibility fallback for older installers by deriving the previous install directory from the quoted `UninstallString` path when `InstallLocation` is missing.
 - Added installer registry writes for `InstallLocation` and `InstallerLanguage`.
 
-### Changed
+### 变更
 
 - Advanced the product version to `0.1.7` for the installer locale and upgrade-path release.
 - `scripts/package-windows.ps1` now synchronizes `wails.json.info` from `product.manifest.json` before invoking Wails NSIS packaging, keeping installer metadata aligned with the product manifest.
 - `scripts/package-windows.ps1` now writes generated JSON and checksum text as UTF-8 with LF line endings to avoid Windows formatting churn.
 - Kept `project.nsi` ASCII-only after validation showed `makensis` reads the script as ACP by default; localized wizard text now relies on NSIS built-in language tables.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-0.1.7-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -81,7 +97,7 @@
 - Published release target: `v0.1.7`.
 - GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.7`.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `npm.cmd run build` passed from `frontend/`.
@@ -100,7 +116,7 @@
 
 ## 2026-07-08 - v0.1.6 Directory Tree And Tab Context Menus
 
-### Added
+### 新增
 
 - Added app-owned right-click context menus for directory-tree rows.
 - Added directory-tree menu actions for opening Markdown files, expanding or collapsing directories, refreshing the workspace tree, copying the path, and showing the item in the system file manager.
@@ -111,7 +127,7 @@
 - Added localized context-menu labels for Chinese and English.
 - Added Go tests for workspace-boundary validation before file-manager reveal actions.
 
-### Changed
+### 变更
 
 - Advanced the product version to `0.1.6` for the directory-tree and tab context-menu release.
 - Reused the existing Go-owned `RefreshWorkspace()` flow for the directory-tree refresh menu action, keeping filesystem truth in Go.
@@ -119,7 +135,7 @@
 - Recorded the release workflow rule that every meaningful product update must synchronize the installer and checksum to GitHub Releases unless release work is explicitly paused.
 - Updated project constraints, architecture notes, product scope, and decision log to record that context-menu file actions remain Go-validated.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-0.1.6-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -127,7 +143,7 @@
 - Published release target: `v0.1.6`.
 - GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.6`.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `wails generate module` passed.
@@ -145,7 +161,7 @@
 
 ## 2026-07-08 - v0.1.5 Multi-Tab Reading Session
 
-### Added
+### 新增
 
 - Added Go-owned workspace tab-session memory stored inside AppData `data/reading-memory.json`.
 - Added `open_tabs` and `active_document` fields to each workspace reading-memory record while keeping the legacy `last_document` field for compatibility.
@@ -158,7 +174,7 @@
 - Added localized tab accessibility labels for Chinese and English.
 - Added Go tests for tab-session persistence, outside-workspace rejection, and legacy last-document normalization.
 
-### Changed
+### 变更
 
 - Advanced the product version to `0.1.5` for the multi-tab reading-session release.
 - Switching tabs now force-saves the outgoing document's current reading position before opening the target tab.
@@ -166,7 +182,7 @@
 - Reloading a changed document from the weak disk-change reminder now preserves the current reader offset using the reloaded document metadata.
 - Updated project constraints, architecture notes, product scope, and decision log to record that tab sessions are Go-owned AppData state.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-0.1.5-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -174,7 +190,7 @@
 - Published release target: `v0.1.5`.
 - GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.5`.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `wails generate module` passed.
@@ -191,7 +207,7 @@
 
 ## 2026-07-08 - v0.1.4 Reading Memory
 
-### Added
+### 新增
 
 - Added Go-owned reading memory stored at AppData `data/reading-memory.json`.
 - Added versioned reading-memory storage with `.bad-*` backup recovery for invalid JSON.
@@ -207,13 +223,13 @@
 - Added changed-document fallback restoration that targets the saved heading ID when possible and otherwise opens from the top.
 - Added Go tests for reading-memory persistence, restore, outside-workspace rejection, bad-file backup, and pruning.
 
-### Changed
+### 变更
 
 - Advanced the product version to `0.1.4` for the reading memory release.
 - Updated project constraints, architecture notes, product scope, and decision log to record that reading memory is Go-owned AppData state, not frontend storage.
 - Opening a new document no longer inherits the previous reader scroll; it uses that document's own saved memory when present, otherwise starts at the top.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-0.1.4-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -221,7 +237,7 @@
 - Published release target: `v0.1.4`.
 - GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.4`.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `wails generate module` passed.
@@ -238,7 +254,7 @@
 
 ## 2026-07-08
 
-### Added
+### 新增
 
 - Added `RefreshWorkspace()` as a Go-owned Wails API for refreshing the currently open workspace directory tree without reopening the folder picker.
 - Added a Go workspace structure signature that compares directory and Markdown-file paths while ignoring document content changes.
@@ -265,7 +281,7 @@
 - Added Go tests for persisted language/theme switching and normalization.
 - Added `scripts/package-windows.ps1` to build a Wails NSIS installer, stage it under `dist/releases/v<version>/`, and generate `SHA256SUMS.txt`.
 
-### Changed
+### 变更
 
 - Advanced the product version to `0.1.3` for the directory auto-sync release.
 - Workspace search state now clears after an auto-synced tree change so stale search results do not point at removed or renamed files.
@@ -285,7 +301,7 @@
 - Windows installer naming was corrected to the user-facing `JSKernMD-Setup-<version>-x64.exe` pattern instead of the internal binary-style name.
 - GitHub Release asset labels now match their filenames exactly so the download list is readable.
 
-### Release Packaging
+### 发布打包
 
 - Windows installer artifact name: `JSKernMD-Setup-<version>-x64.exe`.
 - Checksum artifact: `SHA256SUMS.txt`.
@@ -299,7 +315,7 @@
 - Windows installer artifact: `JSKernMD-Setup-0.1.1-x64.exe`.
 - Installer SHA256: `83513e2681d3a753136a60c6d777f3722ea67d4169a6dd022bd85565bae910a7`.
 
-### Validation
+### 验证
 
 - `v0.1.3` directory auto-sync release:
   - Product version sources were updated to `0.1.3`.
@@ -360,7 +376,7 @@
 
 ## 2026-07-07
 
-### Added
+### 新增
 
 - Added `SearchWorkspace(query)` as a Go-owned Wails API for workspace Markdown search.
 - Added bounded on-demand Markdown search across the current workspace:
@@ -373,11 +389,11 @@
 - Added localized search UI text in `zh-CN` and `en`.
 - Regenerated Wails frontend bindings for the new `SearchResult` model and `SearchWorkspace` API.
 
-### Changed
+### 变更
 
 - Moved `SearchWorkspace(query)` from planned architecture work into the implemented Wails API surface.
 
-### Validation
+### 验证
 
 - Workspace search:
   - `go test ./...` passed.
@@ -389,7 +405,7 @@
 
 ---
 
-### Changed
+### 变更
 
 - Reader position changes are now direct offset assignments instead of browser scroll animations.
 - Removed smooth scrolling from the reader container so newly opened documents appear at the top immediately.
@@ -398,7 +414,7 @@
 - Opening or reloading a document from the workspace tree now resets the center reader scroll position to the top instead of inheriting the previous document's scroll offset.
 - Workspace-relative Markdown links with heading fragments still navigate to their requested heading after the new document renders.
 
-### Validation
+### 验证
 
 - Instant reader positioning:
   - `go test ./...` passed.
@@ -415,7 +431,7 @@
 
 ---
 
-### Added
+### 新增
 
 - Added Go-provided document freshness metadata:
   - `modifiedAt`
@@ -425,7 +441,7 @@
 - Added localized reader-surface error copy for document open failures.
 - Added localized weak external-change reminder copy with reload and dismiss actions.
 
-### Changed
+### 变更
 
 - Failed document opens now clear stale reader content and show a visible error panel instead of silently leaving the previous document onscreen.
 - The current document now polls Go for disk freshness and shows a non-modal reminder when the file changes externally.
@@ -433,7 +449,7 @@
 - Dismissing an external-change reminder suppresses only that exact changed snapshot; a later file change can surface a new reminder.
 - Wails frontend bindings were regenerated for the new `DocumentStatus` model and `StatDocument` API.
 
-### Validation
+### 验证
 
 - Document status notices:
   - `go test ./...` passed.
@@ -445,17 +461,17 @@
 
 ---
 
-### Added
+### 新增
 
 - Added `markdown-reader-icon.svg` as the product app icon source artwork.
 - Added a converted 1024x1024 alpha PNG app icon at `build/appicon.png`.
 - Added a regenerated Windows ICO at `build/windows/icon.ico` so Wails embeds the new icon into `jskernmd.exe`.
 
-### Changed
+### 变更
 
 - Replaced the default Wails application icon with the JS Kern.md Markdown reader icon.
 
-### Validation
+### 验证
 
 - App icon integration:
   - Rendered `markdown-reader-icon.svg` to `build/appicon.png` with transparent corners.
@@ -468,7 +484,7 @@
 
 ---
 
-### Added
+### 新增
 
 - Added Shiki-based syntax highlighting for rendered Markdown code blocks.
 - Added a focused frontend highlighter module that scans Go-sanitized Markdown HTML after document render.
@@ -476,13 +492,13 @@
 - Added a Go sanitizer allowance for `class` attributes on `pre` and `code` elements so fenced code language markers survive into the renderer.
 - Added a Go test proving fenced code blocks preserve `language-*` classes for the Shiki handoff.
 
-### Changed
+### 变更
 
 - Code highlighting now remains a frontend display enhancement while Markdown parsing, HTML rendering, and sanitization stay in Go.
 - Shiki now uses a fine-grained bundled language/theme set instead of importing the full Shiki language catalog.
 - Unsupported or unlabeled code blocks intentionally fall back to the existing plain code-block rendering.
 
-### Validation
+### 验证
 
 - Shiki code highlighting:
   - `go test ./...` passed.
@@ -493,7 +509,7 @@
 
 ---
 
-### Added
+### 新增
 
 - Added a Go-controlled `/kern-asset` endpoint through the Wails asset server for local Markdown images.
 - Added Markdown AST rewriting for workspace-local bitmap image references.
@@ -503,14 +519,14 @@
 - Added image sizing styles for rendered Markdown images.
 - Added Go tests for local image rewriting, relative Markdown link rewriting, workspace-relative document opening, and asset endpoint path rejection.
 
-### Changed
+### 变更
 
 - `OpenDocument(path)` now renders Markdown through the App instance so it can resolve workspace-local resources.
 - Workspace-local image serving now streams files through Go instead of embedding image bytes in JSON.
 - Workspace-relative document links now round-trip through Go path validation instead of letting the WebView resolve local paths.
 - SVG images are intentionally not served in this first local asset pass; bitmap formats are supported first.
 
-### Validation
+### 验证
 
 - Local image and relative Markdown link support:
   - `go test ./...` passed.
@@ -522,7 +538,7 @@
 
 ---
 
-### Added
+### 新增
 
 - Added Go-managed AppData initialization for the `jskernmd` data root.
 - Added the required local storage layout:
@@ -540,13 +556,13 @@
 - Added startup restore in the frontend so the last valid workspace tree reappears automatically.
 - Added Go tests for AppData layout creation, settings persistence, workspace restore, and bad settings backup.
 
-### Changed
+### 变更
 
 - `ScanWorkspace(path)` now persists the successfully opened workspace directory.
 - Startup workspace restoration keeps the root directory expanded while child directories remain collapsed by default.
 - Project constraints, architecture notes, and decision log now record that directory-tree workspace state belongs in Go-managed AppData, not frontend storage.
 
-### Validation
+### 验证
 
 - AppData workspace persistence:
   - `go test ./...` passed.
@@ -559,7 +575,7 @@
 
 ---
 
-### Added
+### 新增
 
 - Added expand/collapse behavior to the workspace tree.
 - Added root-only default expansion: the workspace root opens, child directories start collapsed.
@@ -577,13 +593,13 @@
 - Added document title and selectable path display.
 - Added right-side outline rendering and heading scroll navigation.
 
-### Changed
+### 变更
 
 - Directory rows now act as toggles instead of disabled labels.
 - The reader shell now clears the selected document when a new workspace is opened.
 - The Markdown body and document path explicitly allow text selection while the rest of the shell remains anti-web.
 
-### Validation
+### 验证
 
 - Directory tree collapse/scroll update:
   - `go test ./...` passed.
@@ -597,13 +613,13 @@
 - `wails build` passed and produced `build/bin/jskernmd.exe`.
 - Launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 
-### Notes
+### 备注
 
 - `go get @latest` could not reach `proxy.golang.org` or GitHub from this environment, so dependencies were added from the local module cache: `goldmark v1.7.4` and `bluemonday v1.0.27`.
 
 ---
 
-### Added
+### 新增
 
 - Initialized the Wails React + TypeScript project for `JS Kern.md`.
 - Added durable project memory files:
@@ -628,7 +644,7 @@
 - Initialized the local Git repository on `main`.
 - Created and pushed the public GitHub repository: `https://github.com/xiaotianwm/jskern.md`.
 
-### Changed
+### 变更
 
 - Set Wails output filename to `jskernmd`.
 - Set app display title to `JS Kern.md`.
@@ -637,7 +653,7 @@
 - Upgraded the frontend development toolchain to current Vite, TypeScript, and React plugin packages after npm audit found vulnerabilities in the Wails template defaults.
 - Updated TypeScript config to modern `moduleResolution: "Bundler"` so the upgraded toolchain builds cleanly.
 
-### Constraints Captured
+### 已记录约束
 
 - The MVP must be directory-tree based.
 - Wails is the only allowed desktop runtime.
@@ -645,7 +661,7 @@
 - Go owns filesystem access, Markdown parsing, durable state, and i18n.
 - React only renders Go-provided data and short-lived interaction state.
 
-### Validation
+### 验证
 
 - `go test ./...` passed.
 - `npm.cmd run build` passed.

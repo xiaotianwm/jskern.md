@@ -139,6 +139,8 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - `SHA256SUMS.txt` was generated for the `0.1.8` installer with SHA256 `e57cbbfb441cc6c705f3363c1484774ed3ff402883d9ff8ba2518a6c374ace86`.
 - GitHub Release `v0.1.8` publishes `JSKernMD-Setup-0.1.8-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 - Root `README.md` is now written in Simplified Chinese and presents the current lightweight, fast, folder-first Markdown reading feature set.
+- Root `README.md` now includes explicit Chinese `关于 JS Kern.md` and `更新日志` sections, with the update-log section linking GitHub Releases and `docs/CHANGELOG.md`.
+- GitHub repository About description is synchronized to Chinese for the lightweight, fast, directory-tree-first desktop Markdown reader positioning.
 
 ## Next
 
@@ -164,8 +166,11 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
-- Latest validation after Chinese README update:
-  - `README.md` was rewritten as UTF-8 text.
+- Latest validation after README About and update-log localization:
+  - `README.md` now has Chinese `关于 JS Kern.md` and `更新日志` sections.
+  - `docs/CHANGELOG.md` main heading and common section labels are localized to Chinese.
+  - GitHub repository About description is confirmed in Chinese.
+  - `README.md`, `docs/CHANGELOG.md`, and `docs/PROJECT_STATE.md` passed UTF-8 read validation.
   - `git diff --check` passed.
 - Latest validation after reader layout and tree rename v0.1.8:
   - `go test ./...` passed.
