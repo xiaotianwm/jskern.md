@@ -24,78 +24,88 @@ func (a *App) SearchWorkspace(query string) ([]SearchResult, error) {
 	}
 
 	a.mu.RLock()
-	root := a.workspaceRoot
+	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
 	a.mu.RUnlock()
-	if root == "" {
+	if len(workspaces) == 0 {
 		return nil, errors.New("workspace is not open")
 	}
 
 	lowerQuery := strings.ToLower(query)
 	results := []SearchResult{}
-	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if entry != nil && entry.IsDir() {
-				return filepath.SkipDir
+	for _, workspace := range workspaces {
+		root := workspace.Path
+		err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				if entry != nil && entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
 			}
-			return nil
-		}
-		if path != root && shouldSkipEntry(entry.Name(), entry.IsDir()) {
-			if entry.IsDir() {
-				return filepath.SkipDir
+			if path != root && shouldSkipEntry(entry.Name(), entry.IsDir()) {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
 			}
-			return nil
-		}
-		if entry.IsDir() || !isMarkdownFile(entry.Name()) {
-			return nil
-		}
+			if entry.IsDir() || !isMarkdownFile(entry.Name()) {
+				return nil
+			}
 
-		abs := filepath.Clean(path)
-		if !a.isWithinWorkspace(abs) {
-			return nil
-		}
-		rel, ok := a.workspaceRelativePath(abs)
-		if !ok {
-			return nil
-		}
-
-		name := entry.Name()
-		if strings.Contains(strings.ToLower(name), lowerQuery) || strings.Contains(strings.ToLower(rel), lowerQuery) {
-			results = append(results, SearchResult{
-				Path:         abs,
-				Name:         name,
-				RelativePath: rel,
-				Kind:         "file",
-				Snippet:      rel,
-			})
-			if len(results) >= maxSearchResults {
-				return filepath.SkipAll
+			abs := filepath.Clean(path)
+			if !a.isWithinWorkspace(abs) {
+				return nil
 			}
-		}
-
-		info, err := entry.Info()
-		if err != nil || info.Size() > maxMarkdownBytes {
-			return nil
-		}
-		data, err := os.ReadFile(abs)
-		if err != nil {
-			return nil
-		}
-		if snippet, ok := searchSnippet(string(data), query); ok {
-			results = append(results, SearchResult{
-				Path:         abs,
-				Name:         name,
-				RelativePath: rel,
-				Kind:         "content",
-				Snippet:      snippet,
-			})
-			if len(results) >= maxSearchResults {
-				return filepath.SkipAll
+			rel, ok := workspaceRelativePathFromRoot(root, abs)
+			if !ok {
+				return nil
 			}
+			displayRel := rel
+			if len(workspaces) > 1 {
+				displayRel = workspace.Name + "/" + rel
+			}
+
+			name := entry.Name()
+			if strings.Contains(strings.ToLower(name), lowerQuery) || strings.Contains(strings.ToLower(displayRel), lowerQuery) {
+				results = append(results, SearchResult{
+					Path:         abs,
+					Name:         name,
+					RelativePath: displayRel,
+					Kind:         "file",
+					Snippet:      displayRel,
+				})
+				if len(results) >= maxSearchResults {
+					return filepath.SkipAll
+				}
+			}
+
+			info, err := entry.Info()
+			if err != nil || info.Size() > maxMarkdownBytes {
+				return nil
+			}
+			data, err := os.ReadFile(abs)
+			if err != nil {
+				return nil
+			}
+			if snippet, ok := searchSnippet(string(data), query); ok {
+				results = append(results, SearchResult{
+					Path:         abs,
+					Name:         name,
+					RelativePath: displayRel,
+					Kind:         "content",
+					Snippet:      snippet,
+				})
+				if len(results) >= maxSearchResults {
+					return filepath.SkipAll
+				}
+			}
+			return nil
+		})
+		if err != nil && err != filepath.SkipAll {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
+		if len(results) >= maxSearchResults {
+			break
+		}
 	}
 	return results, nil
 }

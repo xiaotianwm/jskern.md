@@ -1,10 +1,12 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {ClipboardSetText, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspace, RenamePath, RestoreWorkspace, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
+import {ClipboardSetText, EventsOn, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
+import {CheckForUpdates, ConsumeLaunchRequest, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspaces, RemoveWorkspace, RenamePath, ReorderWorkspaces, RestoreWorkspaces, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
 type TreeNode = main.TreeNode;
+type WorkspaceTree = main.WorkspaceTree;
+type WorkspaceCollection = main.WorkspaceCollection;
 type Bootstrap = main.Bootstrap;
 type Document = main.Document;
 type DocumentStatus = main.DocumentStatus;
@@ -13,6 +15,7 @@ type ReadingTab = main.ReadingTab;
 type ReadingPosition = main.ReadingPosition;
 type SearchResult = main.SearchResult;
 type UpdateInfo = main.UpdateInfo;
+type LaunchRequest = main.LaunchRequest;
 
 const FIND_MATCH_CLASS = 'kern-find-match';
 const FIND_CURRENT_CLASS = 'kern-find-current';
@@ -42,7 +45,7 @@ type ContextMenuItem = {
 
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
-    const [tree, setTree] = useState<TreeNode | null>(null);
+    const [workspaces, setWorkspaces] = useState<WorkspaceTree[]>([]);
     const [document, setDocument] = useState<Document | null>(null);
     const [tabs, setTabs] = useState<DocumentTab[]>([]);
     const [selectedPath, setSelectedPath] = useState<string>('');
@@ -67,6 +70,7 @@ function App() {
     const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
     const [renamingPath, setRenamingPath] = useState('');
     const [renameDraft, setRenameDraft] = useState('');
+    const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
@@ -89,10 +93,16 @@ function App() {
                 return;
             }
             setBootstrap(data);
-            const restored = await RestoreWorkspace();
-            if (!cancelled && restored?.root) {
-                setTree(restored.root);
-                setExpandedPaths(new Set([restored.root.path]));
+            const restored = await RestoreWorkspaces();
+            if (!cancelled && restored?.workspaces?.length) {
+                applyWorkspaceCollection(restored);
+            }
+            const launch = await ConsumeLaunchRequest();
+            if (!cancelled && hasLaunchRequest(launch)) {
+                await applyLaunchRequest(launch);
+                return;
+            }
+            if (!cancelled && restored?.workspaces?.length) {
                 const session = await GetReadingSession();
                 const restoredTabs = (session?.openTabs ?? []).map(tabFromReadingSession);
                 if (!cancelled && restoredTabs.length) {
@@ -119,6 +129,20 @@ function App() {
             cancelled = true;
         };
     }, []);
+
+    useEffect(() => {
+        if (!bootstrap) {
+            return;
+        }
+        const off = EventsOn('kern:launch-request', () => {
+            void ConsumeLaunchRequest()
+                .then(request => applyLaunchRequest(request))
+                .catch(() => {
+                    // Explorer entry points are convenience routes; direct UI actions still surface errors.
+                });
+        });
+        return off;
+    }, [bootstrap, document, tabs, documentBusy]);
 
     useEffect(() => {
         const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -341,7 +365,7 @@ function App() {
     }, [document, documentBusy]);
 
     useEffect(() => {
-        if (!tree) {
+        if (!workspaces.length) {
             return;
         }
         let cancelled = false;
@@ -354,13 +378,13 @@ function App() {
             cancelled = true;
             window.clearInterval(intervalId);
         };
-    }, [tree?.path]);
+    }, [workspaces.map(workspace => workspace.workspace.id).join('|')]);
 
     useEffect(() => {
         const query = searchQuery.trim();
         const requestId = searchRequestRef.current + 1;
         searchRequestRef.current = requestId;
-        if (!tree || Array.from(query).length < 2) {
+        if (!workspaces.length || Array.from(query).length < 2) {
             setSearchResults([]);
             setSearchBusy(false);
             setSearchError('');
@@ -392,7 +416,26 @@ function App() {
         return () => {
             window.clearTimeout(timeoutId);
         };
-    }, [searchQuery, text, tree]);
+    }, [searchQuery, text, workspaces]);
+
+    function applyWorkspaceCollection(collection: WorkspaceCollection | null | undefined) {
+        const nextWorkspaces = collection?.workspaces ?? [];
+        setWorkspaces(nextWorkspaces);
+        setExpandedPaths(current => preserveExpandedWorkspacePaths(current, nextWorkspaces));
+    }
+
+    async function applyLaunchRequest(request: LaunchRequest | null | undefined) {
+        if (!hasLaunchRequest(request)) {
+            return;
+        }
+        const nextRequest = request;
+        if (nextRequest.collection) {
+            applyWorkspaceCollection(nextRequest.collection);
+        }
+        if (nextRequest.documentPath) {
+            await openDocument(nextRequest.documentPath);
+        }
+    }
 
     async function refreshWorkspaceNow(shouldApply = () => true) {
         if (workspaceRefreshBusyRef.current) {
@@ -400,13 +443,11 @@ function App() {
         }
         workspaceRefreshBusyRef.current = true;
         try {
-            const refresh = await RefreshWorkspace();
-            if (!shouldApply() || !refresh?.changed || !refresh.tree?.root) {
+            const refresh = await RefreshWorkspaces();
+            if (!shouldApply() || !refresh?.changed || !refresh.collection?.workspaces) {
                 return;
             }
-            const refreshedRoot = refresh.tree.root;
-            setTree(refreshedRoot);
-            setExpandedPaths(current => preserveExpandedPaths(current, refreshedRoot));
+            applyWorkspaceCollection(refresh.collection);
             searchRequestRef.current += 1;
             setSearchQuery('');
             setSearchResults([]);
@@ -427,21 +468,11 @@ function App() {
         setBusy(true);
         try {
             const result = await OpenWorkspace();
-            if (result?.root) {
-                setTree(result.root);
-                setDocument(null);
-                setTabs([]);
-                setSelectedPath('');
-                setDocumentError('');
-                setStaleStatus(null);
-                setDismissedStatusKey('');
+            if (result?.workspaces?.length) {
+                applyWorkspaceCollection(result);
                 setSearchQuery('');
                 setSearchResults([]);
                 setSearchError('');
-                setExpandedPaths(new Set([result.root.path]));
-                await SaveOpenTabs([], '').catch(() => {
-                    // Empty tab persistence is a weak startup convenience.
-                });
             }
         } finally {
             setBusy(false);
@@ -693,8 +724,8 @@ function App() {
         try {
             const result = await RenamePath(node.path, nextName);
             if (result?.tree?.root) {
-                setTree(result.tree.root);
-                setExpandedPaths(current => remapExpandedPaths(current, result.oldPath, result.newPath, result.nodeType, result.tree!.root));
+                setWorkspaces(current => replaceWorkspaceRootForPath(current, result.oldPath, result.tree!.root));
+                setExpandedPaths(current => remapExpandedPaths(current, result.oldPath, result.newPath, result.nodeType, workspaces.map(item => item.root)));
             }
             const nextTabs = tabs.map(tab => {
                 const path = remapRenamedPath(tab.path, result.oldPath, result.newPath, result.nodeType);
@@ -719,6 +750,80 @@ function App() {
         } finally {
             renameCommitBusyRef.current = false;
         }
+    }
+
+    async function removeWorkspaceRoot(workspace: WorkspaceTree) {
+        if (documentBusy) {
+            return;
+        }
+        await saveCurrentReadingPosition(document, true);
+        const removedRoot = workspace.root.path;
+        const result = await RemoveWorkspace(workspace.workspace.id);
+        applyWorkspaceCollection(result);
+        const nextTabs = tabs.filter(tab => !pathIsInsideRoot(tab.path, removedRoot));
+        const activeRemoved = document?.path ? pathIsInsideRoot(document.path, removedRoot) : false;
+        setTabs(nextTabs);
+        setExpandedPaths(current => {
+            const next = new Set<string>();
+            for (const path of current) {
+                if (!pathIsInsideRoot(path, removedRoot)) {
+                    next.add(path);
+                }
+            }
+            return next;
+        });
+        if (!activeRemoved) {
+            await persistOpenTabs(nextTabs, document?.path ?? '');
+            return;
+        }
+        setDocument(null);
+        setSelectedPath('');
+        setDocumentError('');
+        setStaleStatus(null);
+        setDismissedStatusKey('');
+        if (nextTabs.length) {
+            await openDocument(nextTabs[0].path, undefined, {
+                tabsOverride: nextTabs,
+                savePrevious: false
+            });
+        } else {
+            await persistOpenTabs([], '');
+        }
+    }
+
+    function beginWorkspaceDrag(workspaceID: string, event: React.DragEvent<HTMLElement>) {
+        draggingWorkspaceIdRef.current = workspaceID;
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', workspaceID);
+    }
+
+    function allowWorkspaceDrop(event: React.DragEvent<HTMLElement>) {
+        if (!draggingWorkspaceIdRef.current) {
+            return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+    }
+
+    async function dropWorkspace(targetWorkspaceID: string, event: React.DragEvent<HTMLElement>) {
+        event.preventDefault();
+        const sourceWorkspaceID = draggingWorkspaceIdRef.current || event.dataTransfer.getData('text/plain');
+        draggingWorkspaceIdRef.current = '';
+        if (!sourceWorkspaceID || sourceWorkspaceID === targetWorkspaceID) {
+            return;
+        }
+        const ids = workspaces.map(workspace => workspace.workspace.id);
+        const from = ids.indexOf(sourceWorkspaceID);
+        const to = ids.indexOf(targetWorkspaceID);
+        if (from < 0 || to < 0) {
+            return;
+        }
+        ids.splice(from, 1);
+        ids.splice(to, 0, sourceWorkspaceID);
+        const byID = new Map(workspaces.map(workspace => [workspace.workspace.id, workspace]));
+        setWorkspaces(ids.map(id => byID.get(id)).filter(Boolean) as WorkspaceTree[]);
+        const result = await ReorderWorkspaces(ids);
+        applyWorkspaceCollection(result);
     }
 
     async function closeOtherTabs(path: string) {
@@ -774,7 +879,8 @@ function App() {
             const node = contextMenu.node;
             const isDirectory = node.type === 'directory';
             const isExpanded = expandedPaths.has(node.path);
-            const isWorkspaceRoot = node.path === tree?.path;
+            const workspace = workspaceForRootPath(workspaces, node.path);
+            const isWorkspaceRoot = Boolean(workspace);
             return [
                 ...(isDirectory ? [{
                     label: isExpanded ? text['context.collapse'] : text['context.expand'],
@@ -789,10 +895,15 @@ function App() {
                     action: () => beginRename(node),
                     disabled: isWorkspaceRoot || documentBusy
                 },
+                ...(isWorkspaceRoot && workspace ? [{
+                    label: text['context.remove_workspace'],
+                    action: () => removeWorkspaceRoot(workspace),
+                    separatorBefore: true
+                }] : []),
                 {
                     label: text['context.refresh_workspace'],
                     action: () => refreshWorkspaceNow(),
-                    separatorBefore: true
+                    separatorBefore: !isWorkspaceRoot
                 },
                 {
                     label: text['context.copy_path'],
@@ -1074,7 +1185,7 @@ function App() {
         reader.scrollLeft = 0;
     }
 
-    const hasWorkspace = useMemo(() => Boolean(tree), [tree]);
+    const hasWorkspace = useMemo(() => workspaces.length > 0, [workspaces]);
     const showSearchPanel = searchQuery.trim().length >= 2 && hasWorkspace;
 
     if (!bootstrap) {
@@ -1212,21 +1323,31 @@ function App() {
                 <aside className="sidebar">
                     <div className="panel-heading">{text['panel.workspace']}</div>
                     <div className="tree-scroll">
-                        {hasWorkspace && tree ? (
-                            <TreeView
-                                node={tree}
-                                depth={0}
-                                selectedPath={selectedPath}
-                                expandedPaths={expandedPaths}
-                                renamingPath={renamingPath}
-                                renameDraft={renameDraft}
-                                onRenameDraftChange={setRenameDraft}
-                                onCommitRename={commitRename}
-                                onCancelRename={cancelRename}
-                                onToggleDirectory={toggleDirectory}
-                                onOpenDocument={openDocument}
-                                onOpenContextMenu={openTreeContextMenu}
-                            />
+                        {hasWorkspace ? (
+                            <div className="workspace-roots">
+                                {workspaces.map(workspace => (
+                                    <TreeView
+                                        key={workspace.workspace.id}
+                                        node={workspace.root}
+                                        depth={0}
+                                        workspaceId={workspace.workspace.id}
+                                        isWorkspaceRoot
+                                        selectedPath={selectedPath}
+                                        expandedPaths={expandedPaths}
+                                        renamingPath={renamingPath}
+                                        renameDraft={renameDraft}
+                                        onRenameDraftChange={setRenameDraft}
+                                        onCommitRename={commitRename}
+                                        onCancelRename={cancelRename}
+                                        onToggleDirectory={toggleDirectory}
+                                        onOpenDocument={openDocument}
+                                        onOpenContextMenu={openTreeContextMenu}
+                                        onWorkspaceDragStart={beginWorkspaceDrag}
+                                        onWorkspaceDragOver={allowWorkspaceDrop}
+                                        onWorkspaceDrop={dropWorkspace}
+                                    />
+                                ))}
+                            </div>
                         ) : (
                             <div className="empty-state">{text['empty.workspace']}</div>
                         )}
@@ -1444,6 +1565,26 @@ function errorMessage(error: unknown, fallback: string) {
     return fallback;
 }
 
+function hasLaunchRequest(request: LaunchRequest | null | undefined): request is LaunchRequest {
+    return Boolean(request?.collection?.workspaces?.length || request?.documentPath);
+}
+
+function workspaceForRootPath(workspaces: WorkspaceTree[], path: string) {
+    return workspaces.find(workspace => normalizePathForCompare(workspace.root.path) === normalizePathForCompare(path));
+}
+
+function replaceWorkspaceRootForPath(workspaces: WorkspaceTree[], path: string, root: TreeNode) {
+    return workspaces.map(workspace => pathIsInsideRoot(path, workspace.root.path)
+        ? ({...workspace, root} as WorkspaceTree)
+        : workspace);
+}
+
+function pathIsInsideRoot(path: string, root: string) {
+    const normalizedPath = normalizePathForCompare(path);
+    const normalizedRoot = normalizePathForCompare(root);
+    return normalizedPath === normalizedRoot || normalizedPath.startsWith(normalizedRoot + '/');
+}
+
 function collectDirectoryPaths(node: TreeNode, paths = new Set<string>()) {
     if (node.type !== 'directory') {
         return paths;
@@ -1455,26 +1596,36 @@ function collectDirectoryPaths(node: TreeNode, paths = new Set<string>()) {
     return paths;
 }
 
-function preserveExpandedPaths(current: Set<string>, root: TreeNode) {
-    const directoryPaths = collectDirectoryPaths(root);
+function preserveExpandedWorkspacePaths(current: Set<string>, workspaces: WorkspaceTree[]) {
+    const directoryPaths = new Set<string>();
+    for (const workspace of workspaces) {
+        collectDirectoryPaths(workspace.root, directoryPaths);
+    }
     const next = new Set<string>();
     for (const path of current) {
         if (directoryPaths.has(path)) {
             next.add(path);
         }
     }
-    if (root.type === 'directory') {
-        next.add(root.path);
-    }
     return next;
 }
 
-function remapExpandedPaths(current: Set<string>, oldPath: string, newPath: string, nodeType: string, root: TreeNode) {
+function remapExpandedPaths(current: Set<string>, oldPath: string, newPath: string, nodeType: string, roots: TreeNode[]) {
     const mapped = new Set<string>();
     for (const path of current) {
         mapped.add(remapRenamedPath(path, oldPath, newPath, nodeType));
     }
-    return preserveExpandedPaths(mapped, root);
+    const directoryPaths = new Set<string>();
+    for (const root of roots) {
+        collectDirectoryPaths(root, directoryPaths);
+    }
+    const next = new Set<string>();
+    for (const path of mapped) {
+        if (directoryPaths.has(path)) {
+            next.add(path);
+        }
+    }
+    return next;
 }
 
 function remapRenamedPath(path: string, oldPath: string, newPath: string, nodeType: string) {
@@ -1612,6 +1763,8 @@ function ContextMenu({
 function TreeView({
     node,
     depth,
+    workspaceId,
+    isWorkspaceRoot = false,
     selectedPath,
     expandedPaths,
     renamingPath,
@@ -1621,10 +1774,15 @@ function TreeView({
     onCancelRename,
     onToggleDirectory,
     onOpenDocument,
-    onOpenContextMenu
+    onOpenContextMenu,
+    onWorkspaceDragStart,
+    onWorkspaceDragOver,
+    onWorkspaceDrop
 }: {
     node: TreeNode;
     depth: number;
+    workspaceId?: string;
+    isWorkspaceRoot?: boolean;
     selectedPath: string;
     expandedPaths: Set<string>;
     renamingPath: string;
@@ -1635,6 +1793,9 @@ function TreeView({
     onToggleDirectory: (path: string) => void;
     onOpenDocument: (path: string) => void;
     onOpenContextMenu: (node: TreeNode, event: React.MouseEvent<HTMLElement>) => void;
+    onWorkspaceDragStart?: (workspaceID: string, event: React.DragEvent<HTMLElement>) => void;
+    onWorkspaceDragOver?: (event: React.DragEvent<HTMLElement>) => void;
+    onWorkspaceDrop?: (workspaceID: string, event: React.DragEvent<HTMLElement>) => void;
 }) {
     const isDirectory = node.type === 'directory';
     const isSelected = node.path === selectedPath;
@@ -1678,7 +1839,28 @@ function TreeView({
             ) : (
                 <button
                     type="button"
-                    className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isSelected ? 'selected' : ''}`}
+                    className={`tree-row ${isDirectory ? 'directory' : 'file'} ${isWorkspaceRoot ? 'workspace-root' : ''} ${isSelected ? 'selected' : ''}`}
+                    draggable={isWorkspaceRoot}
+                    onDragStart={event => {
+                        if (isWorkspaceRoot && workspaceId) {
+                            onWorkspaceDragStart?.(workspaceId, event);
+                        }
+                    }}
+                    onDragOver={event => {
+                        if (isWorkspaceRoot) {
+                            onWorkspaceDragOver?.(event);
+                        }
+                    }}
+                    onDrop={event => {
+                        if (isWorkspaceRoot && workspaceId) {
+                            onWorkspaceDrop?.(workspaceId, event);
+                        }
+                    }}
+                    onDragEnd={() => {
+                        if (isWorkspaceRoot) {
+                            // Drag state lives in the parent ref and is cleared on drop; a missed drop is harmless.
+                        }
+                    }}
                     onClick={() => isDirectory ? onToggleDirectory(node.path) : onOpenDocument(node.path)}
                     onContextMenu={event => onOpenContextMenu(node, event)}
                     aria-expanded={isDirectory ? isExpanded : undefined}
@@ -1694,6 +1876,7 @@ function TreeView({
                             key={child.path}
                             node={child}
                             depth={depth + 1}
+                            workspaceId={workspaceId}
                             selectedPath={selectedPath}
                             expandedPaths={expandedPaths}
                             renamingPath={renamingPath}
@@ -1704,6 +1887,9 @@ function TreeView({
                             onToggleDirectory={onToggleDirectory}
                             onOpenDocument={onOpenDocument}
                             onOpenContextMenu={onOpenContextMenu}
+                            onWorkspaceDragStart={onWorkspaceDragStart}
+                            onWorkspaceDragOver={onWorkspaceDragOver}
+                            onWorkspaceDrop={onWorkspaceDrop}
                         />
                     ))}
                 </div>

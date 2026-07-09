@@ -29,8 +29,14 @@ func main() {
 			Assets:  assets,
 			Handler: app.assetHandler(),
 		},
-		BackgroundColour:         &options.RGBA{R: 15, G: 15, B: 17, A: 1},
-		OnStartup:                app.startup,
+		BackgroundColour: &options.RGBA{R: 15, G: 15, B: 17, A: 1},
+		OnStartup:        app.startup,
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId: productInfo.AppID,
+			OnSecondInstanceLaunch: func(data options.SecondInstanceData) {
+				_ = app.queueLaunchArgs(data.Args, data.WorkingDirectory)
+			},
+		},
 		EnableDefaultContextMenu: false,
 		Windows: &windows.Options{
 			WebviewIsTransparent: true,

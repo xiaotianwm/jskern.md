@@ -1068,6 +1068,124 @@ func TestSwitchLanguageAndThemePersistSettings(t *testing.T) {
 	}
 }
 
+func TestSettingsMigratesLegacyLastWorkspaceToWorkspaceList(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	configDir := filepath.Join(appDataRoot, "config")
+	if err := os.MkdirAll(configDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := filepath.Join(configDir, "settings.json")
+	legacy := Settings{
+		StorageVersion: 2,
+		LastWorkspace:  workspace,
+		Locale:         "en",
+		Theme:          "dark",
+	}
+	data, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(settingsPath, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	collection, err := app.RestoreWorkspaces()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if collection == nil || len(collection.Workspaces) != 1 {
+		t.Fatalf("expected one migrated workspace, got %+v", collection)
+	}
+	if collection.Workspaces[0].Root.Path != filepath.Clean(workspace) {
+		t.Fatalf("expected migrated workspace path %q, got %+v", workspace, collection.Workspaces[0])
+	}
+	if app.settings.ActiveWorkspaceID == "" || app.settings.LastWorkspace != filepath.Clean(workspace) {
+		t.Fatalf("expected active migrated workspace, got %+v", app.settings)
+	}
+}
+
+func TestMultipleWorkspacesPersistReorderAndRemove(t *testing.T) {
+	appDataRoot := t.TempDir()
+	first := t.TempDir()
+	second := t.TempDir()
+	firstDoc := filepath.Join(first, "README.md")
+	if err := os.WriteFile(firstDoc, []byte("# First\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(second, "README.md"), []byte("# Second\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.ScanWorkspace(first); err != nil {
+		t.Fatal(err)
+	}
+	collection, err := app.AddWorkspace(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collection.Workspaces) != 2 {
+		t.Fatalf("expected two workspaces, got %+v", collection)
+	}
+	firstID := collection.Workspaces[0].Workspace.ID
+	secondID := collection.Workspaces[1].Workspace.ID
+	collection, err = app.ReorderWorkspaces([]string{secondID, firstID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if collection.Workspaces[0].Workspace.ID != secondID {
+		t.Fatalf("expected second workspace first after reorder, got %+v", collection.Workspaces)
+	}
+	if err := app.SaveOpenTabs([]string{firstDoc}, firstDoc); err != nil {
+		t.Fatal(err)
+	}
+	collection, err = app.RemoveWorkspace(firstID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(collection.Workspaces) != 1 || collection.Workspaces[0].Workspace.ID != secondID {
+		t.Fatalf("expected only second workspace after remove, got %+v", collection)
+	}
+	if _, err := os.Stat(first); err != nil {
+		t.Fatalf("remove workspace must not delete disk folder: %v", err)
+	}
+	if log := app.readingMemory.Workspaces[workspaceMemoryKey(first)]; log != nil && len(log.OpenTabs) != 0 {
+		t.Fatalf("expected removed workspace open session to be cleared, got %+v", log)
+	}
+}
+
+func TestLaunchArgsAddWorkspaceAndOpenMarkdownFile(t *testing.T) {
+	appDataRoot := t.TempDir()
+	workspace := t.TempDir()
+	docPath := filepath.Join(workspace, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Launch\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if err := app.initAppData(appDataRoot); err != nil {
+		t.Fatal(err)
+	}
+	request, err := app.launchRequestFromArgs([]string{"--open-file", docPath}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if request == nil || request.DocumentPath != filepath.Clean(docPath) || request.Collection == nil || len(request.Collection.Workspaces) != 1 {
+		t.Fatalf("expected launch request to add parent workspace and open file, got %+v", request)
+	}
+	if app.settings.Workspaces[0].Path != filepath.Clean(workspace) {
+		t.Fatalf("expected parent folder workspace, got %+v", app.settings.Workspaces)
+	}
+}
+
 func treeContainsPath(node TreeNode, path string) bool {
 	if filepath.Clean(node.Path) == filepath.Clean(path) {
 		return true

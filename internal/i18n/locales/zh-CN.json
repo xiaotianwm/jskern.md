@@ -12,7 +12,7 @@
   "business": {
     "app.subtitle": "桌面端 Markdown 阅读器",
     "action.open_workspace": "打开文件夹",
-    "search.placeholder": "搜索当前工作区",
+    "search.placeholder": "搜索全部工作区",
     "search.loading": "正在搜索",
     "search.empty": "没有找到匹配的文档",
     "search.file": "文件",
@@ -33,6 +33,7 @@
     "context.expand": "展开",
     "context.collapse": "收起",
     "context.rename": "重命名",
+    "context.remove_workspace": "移除工作区",
     "context.refresh_workspace": "刷新目录树",
     "context.copy_path": "复制路径",
     "context.show_in_file_manager": "在文件管理器中显示",

@@ -6,9 +6,12 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 
 ## MVP Scope
 
-- Open a folder as a workspace.
-- Show a persistent directory tree containing Markdown files.
-- Keep the open workspace directory tree synchronized when Markdown files or folders are added, deleted, or renamed.
+- Open one or more folders as workspaces.
+- Show a persistent multi-root directory tree containing Markdown files.
+- Keep the open workspace directory trees synchronized when Markdown files or folders are added, deleted, or renamed.
+- Persist the workspace list and top-level workspace order across launches.
+- Let users remove a top-level workspace from JS Kern.md without deleting disk files.
+- Let Windows users open Markdown files or add folders from Explorer context menus.
 - Restore the last opened document and reading position inside the restored workspace.
 - Restore the last open document tabs and active tab inside the restored workspace.
 - Preserve each tab's reading position when switching between open Markdown documents.

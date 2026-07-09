@@ -133,6 +133,34 @@ noInstallLocation:
 donePreviousInstallDir:
 FunctionEnd
 
+Function RegisterExplorerMenus
+    SetRegView 64
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
+    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
+    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
+    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
+FunctionEnd
+
+Function un.UnregisterExplorerMenus
+    SetRegView 64
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace"
+    DeleteRegKey HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace"
+FunctionEnd
+
 Section
     !insertmacro wails.setShellContext
 
@@ -147,6 +175,7 @@ Section
 
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
+    Call RegisterExplorerMenus
 
     !insertmacro wails.writeUninstaller
     SetRegView 64
@@ -166,6 +195,7 @@ Section "uninstall"
 
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
+    Call un.UnregisterExplorerMenus
 
     !insertmacro wails.deleteUninstaller
 SectionEnd

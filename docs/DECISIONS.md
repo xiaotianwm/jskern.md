@@ -96,3 +96,15 @@ Consequence: React may render transient app-owned context menus, inline rename i
 Reason: Users expect an installer update to reuse the directory where the app is already installed, and the installer should speak the user's system language without adding another choice step.
 
 Consequence: The Windows NSIS installer selects English or Simplified Chinese from the Windows UI language, writes `InstallLocation` to the uninstall registry entry, and reuses that path on future installs. Older installs that lack `InstallLocation` are handled by deriving the path from `UninstallString` when possible.
+
+## 2026-07-09: Treat Workspaces As An Ordered Collection
+
+Reason: A Markdown reader can cover several documentation roots or note libraries at once. Opening a new folder should not destroy the previous workspace tree.
+
+Consequence: JS Kern.md supports multiple top-level workspace folders. Opening a folder adds or activates an entry instead of replacing all existing roots; nested duplicates are avoided by Go. The ordered workspace list, active workspace, and root metadata live in Go-managed AppData settings. React may render drag sorting, but Go persists the final order.
+
+## 2026-07-09: Register Explorer Entry Points Through The Installer
+
+Reason: Users should be able to open Markdown files or add folders from Windows Explorer, and those OS hooks must be removed with the app.
+
+Consequence: Windows Explorer integration belongs to the installer/uninstaller lifecycle. The installer registers current-user context-menu keys for opening Markdown files with JS Kern.md and adding folders to the workspace list. The uninstaller deletes only those product-specific keys and must not remove user documents, AppData, or broad file associations.

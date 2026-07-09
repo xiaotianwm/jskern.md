@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	currentSettingsVersion = 2
+	currentSettingsVersion = 3
 	githubReleasesAPI      = "https://api.github.com/repos/xiaotianwm/jskern.md/releases"
 )
 
@@ -42,11 +42,13 @@ type App struct {
 	workspaceRoot     string
 	workspaceRootReal string
 	workspaceTreeSig  string
+	workspaceStates   map[string]workspaceRuntimeState
 	appDataRoot       string
 	settingsPath      string
 	readingMemoryPath string
 	settings          Settings
 	readingMemory     ReadingMemoryStore
+	pendingLaunch     *LaunchRequest
 }
 
 type workspaceAssetHandler struct {
@@ -86,20 +88,44 @@ type Bootstrap struct {
 }
 
 type Settings struct {
-	StorageVersion       int    `json:"storage_version"`
-	LastWorkspace        string `json:"last_workspace"`
-	Locale               string `json:"locale"`
-	Theme                string `json:"theme"`
-	IgnoredUpdateVersion string `json:"ignored_update_version"`
+	StorageVersion       int              `json:"storage_version"`
+	LastWorkspace        string           `json:"last_workspace,omitempty"`
+	ActiveWorkspaceID    string           `json:"active_workspace_id,omitempty"`
+	Workspaces           []WorkspaceEntry `json:"workspaces,omitempty"`
+	Locale               string           `json:"locale"`
+	Theme                string           `json:"theme"`
+	IgnoredUpdateVersion string           `json:"ignored_update_version"`
+}
+
+type WorkspaceEntry struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Path         string `json:"path"`
+	Order        int    `json:"order"`
+	AddedAt      int64  `json:"addedAt"`
+	LastOpenedAt int64  `json:"lastOpenedAt"`
+}
+
+type workspaceRuntimeState struct {
+	Root          string
+	RealRoot      string
+	TreeSignature string
 }
 
 type WorkspaceTree struct {
-	Root TreeNode `json:"root"`
+	Workspace WorkspaceEntry `json:"workspace"`
+	Root      TreeNode       `json:"root"`
+}
+
+type WorkspaceCollection struct {
+	Workspaces        []WorkspaceTree `json:"workspaces"`
+	ActiveWorkspaceID string          `json:"activeWorkspaceId"`
 }
 
 type WorkspaceRefresh struct {
-	Changed bool           `json:"changed"`
-	Tree    *WorkspaceTree `json:"tree,omitempty"`
+	Changed    bool                 `json:"changed"`
+	Tree       *WorkspaceTree       `json:"tree,omitempty"`
+	Collection *WorkspaceCollection `json:"collection,omitempty"`
 }
 
 type RenameResult struct {
@@ -114,6 +140,11 @@ type TreeNode struct {
 	Path     string     `json:"path"`
 	Type     string     `json:"type"`
 	Children []TreeNode `json:"children,omitempty"`
+}
+
+type LaunchRequest struct {
+	Collection   *WorkspaceCollection `json:"collection,omitempty"`
+	DocumentPath string               `json:"documentPath,omitempty"`
 }
 
 type Document struct {
@@ -156,8 +187,9 @@ type UpdateInfo struct {
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
-		settings:      defaultSettings(),
-		readingMemory: defaultReadingMemory(),
+		settings:        defaultSettings(),
+		readingMemory:   defaultReadingMemory(),
+		workspaceStates: map[string]workspaceRuntimeState{},
 	}
 }
 
@@ -200,6 +232,7 @@ func productInfoCopy() ProductInfo {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	_ = a.initAppData("")
+	_ = a.queueLaunchArgs(os.Args[1:], mustGetwd())
 }
 
 func (a *App) GetBootstrap(locale string) (Bootstrap, error) {
@@ -379,81 +412,274 @@ func (a *App) RenamePath(path string, newName string) (*RenameResult, error) {
 	}, nil
 }
 
-func (a *App) OpenWorkspace() (*WorkspaceTree, error) {
+func (a *App) OpenWorkspace() (*WorkspaceCollection, error) {
 	dir, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Open Workspace",
 	})
 	if err != nil || dir == "" {
 		return nil, err
 	}
-	return a.ScanWorkspace(dir)
+	return a.AddWorkspace(dir)
+}
+
+func (a *App) AddWorkspace(root string) (*WorkspaceCollection, error) {
+	if _, err := a.addWorkspacePath(root, true); err != nil {
+		return nil, err
+	}
+	return a.RestoreWorkspaces()
+}
+
+func (a *App) RemoveWorkspace(workspaceID string) (*WorkspaceCollection, error) {
+	workspaceID = strings.TrimSpace(workspaceID)
+	if workspaceID == "" {
+		return nil, errors.New("empty workspace id")
+	}
+
+	var removedRoot string
+	a.mu.Lock()
+	next := make([]WorkspaceEntry, 0, len(a.settings.Workspaces))
+	for _, workspace := range a.settings.Workspaces {
+		if workspace.ID == workspaceID {
+			removedRoot = workspace.Path
+			delete(a.workspaceStates, workspace.ID)
+			continue
+		}
+		next = append(next, workspace)
+	}
+	if removedRoot == "" {
+		a.mu.Unlock()
+		return nil, errors.New("workspace was not found")
+	}
+	a.settings.Workspaces = next
+	if a.settings.ActiveWorkspaceID == workspaceID {
+		a.settings.ActiveWorkspaceID = ""
+		if len(a.settings.Workspaces) > 0 {
+			a.settings.ActiveWorkspaceID = a.settings.Workspaces[0].ID
+		}
+	}
+	a.normalizeSettingsLocked()
+	a.applyActiveWorkspaceLocked()
+	settingsPath := a.settingsPath
+	settings := a.settings
+	a.clearReadingSessionForRootLocked(removedRoot)
+	memoryPath := a.readingMemoryPath
+	memory := a.readingMemory
+	a.mu.Unlock()
+
+	if settingsPath != "" {
+		_ = saveSettings(settingsPath, settings)
+	}
+	if memoryPath != "" {
+		_ = saveReadingMemory(memoryPath, memory)
+	}
+	return a.RestoreWorkspaces()
+}
+
+func (a *App) ReorderWorkspaces(workspaceIDs []string) (*WorkspaceCollection, error) {
+	if len(workspaceIDs) == 0 {
+		return a.RestoreWorkspaces()
+	}
+	a.mu.Lock()
+	byID := map[string]WorkspaceEntry{}
+	for _, workspace := range a.settings.Workspaces {
+		byID[workspace.ID] = workspace
+	}
+	next := make([]WorkspaceEntry, 0, len(a.settings.Workspaces))
+	seen := map[string]struct{}{}
+	for _, id := range workspaceIDs {
+		id = strings.TrimSpace(id)
+		workspace, ok := byID[id]
+		if !ok {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		seen[id] = struct{}{}
+		next = append(next, workspace)
+	}
+	for _, workspace := range a.settings.Workspaces {
+		if _, exists := seen[workspace.ID]; !exists {
+			next = append(next, workspace)
+		}
+	}
+	a.settings.Workspaces = next
+	a.normalizeSettingsLocked()
+	settingsPath := a.settingsPath
+	settings := a.settings
+	a.mu.Unlock()
+	if settingsPath != "" {
+		_ = saveSettings(settingsPath, settings)
+	}
+	return a.RestoreWorkspaces()
 }
 
 func (a *App) RestoreWorkspace() (*WorkspaceTree, error) {
+	collection, err := a.RestoreWorkspaces()
+	if err != nil || collection == nil || len(collection.Workspaces) == 0 {
+		return nil, err
+	}
+	for _, workspace := range collection.Workspaces {
+		if workspace.Workspace.ID == collection.ActiveWorkspaceID {
+			return &workspace, nil
+		}
+	}
+	return &collection.Workspaces[0], nil
+}
+
+func (a *App) RestoreWorkspaces() (*WorkspaceCollection, error) {
 	a.mu.RLock()
-	lastWorkspace := a.settings.LastWorkspace
+	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
+	activeID := a.settings.ActiveWorkspaceID
 	a.mu.RUnlock()
-	if lastWorkspace == "" {
+	if len(workspaces) == 0 {
 		return nil, nil
 	}
-	info, err := os.Stat(lastWorkspace)
-	if err != nil || !info.IsDir() {
-		return nil, nil
-	}
-	return a.ScanWorkspace(lastWorkspace)
+	return a.workspaceCollection(workspaces, activeID)
 }
 
 func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
-	abs, err := filepath.Abs(root)
+	tree, err := a.addWorkspacePath(root, true)
 	if err != nil {
 		return nil, err
 	}
-	node, err := scanNode(abs, 0)
+	return tree, nil
+}
+
+func (a *App) addWorkspacePath(root string, activate bool) (*WorkspaceTree, error) {
+	entry, node, state, err := scanWorkspaceRoot(root)
 	if err != nil {
 		return nil, err
 	}
-	realRoot, err := filepath.EvalSymlinks(abs)
-	if err != nil {
-		return nil, err
-	}
+
+	now := time.Now().UnixMilli()
 	a.mu.Lock()
-	a.workspaceRoot = filepath.Clean(abs)
-	a.workspaceRootReal = filepath.Clean(realRoot)
-	a.workspaceTreeSig = treeSignature(node)
+	if a.workspaceStates == nil {
+		a.workspaceStates = map[string]workspaceRuntimeState{}
+	}
+	a.normalizeSettingsLocked()
+
+	for _, existing := range a.settings.Workspaces {
+		if pathWithinRoot(entry.Path, existing.Path) {
+			entry = existing
+			node, state, err = a.scanExistingWorkspaceLocked(existing)
+			if err != nil {
+				a.mu.Unlock()
+				return nil, err
+			}
+			if activate {
+				a.settings.ActiveWorkspaceID = existing.ID
+				a.settings.LastWorkspace = existing.Path
+				a.applyActiveWorkspaceLocked()
+			}
+			settingsPath := a.settingsPath
+			settings := a.settings
+			a.mu.Unlock()
+			if settingsPath != "" {
+				_ = saveSettings(settingsPath, settings)
+			}
+			return &WorkspaceTree{Workspace: entry, Root: node}, nil
+		}
+	}
+
+	next := make([]WorkspaceEntry, 0, len(a.settings.Workspaces)+1)
+	for _, existing := range a.settings.Workspaces {
+		if pathWithinRoot(existing.Path, entry.Path) {
+			delete(a.workspaceStates, existing.ID)
+			continue
+		}
+		next = append(next, existing)
+	}
+	entry.AddedAt = now
+	entry.LastOpenedAt = now
+	next = append(next, entry)
+	a.settings.Workspaces = next
+	a.workspaceStates[entry.ID] = state
+	if activate {
+		a.settings.ActiveWorkspaceID = entry.ID
+		a.settings.LastWorkspace = entry.Path
+	}
+	a.normalizeSettingsLocked()
+	a.applyActiveWorkspaceLocked()
+	settingsPath := a.settingsPath
+	settings := a.settings
 	a.mu.Unlock()
-	a.setLastWorkspace(abs)
-	return &WorkspaceTree{Root: node}, nil
+
+	if settingsPath != "" {
+		_ = saveSettings(settingsPath, settings)
+	}
+	return &WorkspaceTree{Workspace: entry, Root: node}, nil
 }
 
 func (a *App) RefreshWorkspace() (*WorkspaceRefresh, error) {
+	refresh, err := a.RefreshWorkspaces()
+	if err != nil || refresh == nil || refresh.Collection == nil {
+		return refresh, err
+	}
+	for _, workspace := range refresh.Collection.Workspaces {
+		if workspace.Workspace.ID == refresh.Collection.ActiveWorkspaceID {
+			refresh.Tree = &workspace
+			break
+		}
+	}
+	return refresh, nil
+}
+
+func (a *App) RefreshWorkspaces() (*WorkspaceRefresh, error) {
 	a.mu.RLock()
-	root := a.workspaceRoot
-	previousSignature := a.workspaceTreeSig
+	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
+	previous := map[string]string{}
+	for id, state := range a.workspaceStates {
+		previous[id] = state.TreeSignature
+	}
+	activeID := a.settings.ActiveWorkspaceID
 	a.mu.RUnlock()
-	if root == "" {
+	if len(workspaces) == 0 {
 		return &WorkspaceRefresh{Changed: false}, nil
 	}
 
-	node, err := scanNode(root, 0)
-	if err != nil {
-		return nil, err
+	changed := false
+	trees := make([]WorkspaceTree, 0, len(workspaces))
+	states := map[string]workspaceRuntimeState{}
+	for _, workspace := range workspaces {
+		entry, node, state, err := scanWorkspaceRoot(workspace.Path)
+		if err != nil {
+			continue
+		}
+		entry.ID = workspace.ID
+		entry.AddedAt = workspace.AddedAt
+		entry.LastOpenedAt = workspace.LastOpenedAt
+		entry.Order = workspace.Order
+		entry.Name = workspace.Name
+		if entry.Name == "" {
+			entry.Name = workspaceDisplayName(entry.Path)
+		}
+		if previous[entry.ID] != state.TreeSignature {
+			changed = true
+		}
+		states[entry.ID] = state
+		trees = append(trees, WorkspaceTree{Workspace: entry, Root: node})
 	}
-	nextSignature := treeSignature(node)
-	if nextSignature == previousSignature {
+	if !changed {
 		return &WorkspaceRefresh{Changed: false}, nil
 	}
 
 	a.mu.Lock()
-	if a.workspaceRoot != root {
-		a.mu.Unlock()
-		return &WorkspaceRefresh{Changed: false}, nil
+	if a.workspaceStates == nil {
+		a.workspaceStates = map[string]workspaceRuntimeState{}
 	}
-	a.workspaceTreeSig = nextSignature
+	for id, state := range states {
+		a.workspaceStates[id] = state
+	}
+	a.applyActiveWorkspaceLocked()
 	a.mu.Unlock()
 
 	return &WorkspaceRefresh{
 		Changed: true,
-		Tree:    &WorkspaceTree{Root: node},
+		Collection: &WorkspaceCollection{
+			Workspaces:        trees,
+			ActiveWorkspaceID: activeID,
+		},
 	}, nil
 }
 
@@ -468,6 +694,7 @@ func (a *App) OpenDocument(path string) (*Document, error) {
 	if !a.isWithinWorkspace(abs) {
 		return nil, errors.New("document is outside the current workspace")
 	}
+	a.setActiveWorkspaceForPath(abs)
 	return a.renderMarkdownDocument(abs)
 }
 
@@ -520,44 +747,13 @@ func (a *App) StatDocument(path string, knownModifiedAt int64, knownSize int64) 
 }
 
 func (a *App) isWithinWorkspace(path string) bool {
-	a.mu.RLock()
-	root := a.workspaceRoot
-	realRoot := a.workspaceRootReal
-	a.mu.RUnlock()
-	if root == "" || realRoot == "" {
-		return false
-	}
-	cleanPath := filepath.Clean(path)
-	rel, err := filepath.Rel(root, cleanPath)
-	if err != nil {
-		return false
-	}
-	if rel != "." && (strings.HasPrefix(rel, "..") || filepath.IsAbs(rel)) {
-		return false
-	}
-	realPath, err := filepath.EvalSymlinks(cleanPath)
-	if err != nil {
-		return false
-	}
-	realRel, err := filepath.Rel(realRoot, filepath.Clean(realPath))
-	if err != nil {
-		return false
-	}
-	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
+	_, _, ok := a.workspaceForPath(path, true)
+	return ok
 }
 
 func (a *App) isLexicallyWithinWorkspace(path string) bool {
-	a.mu.RLock()
-	root := a.workspaceRoot
-	a.mu.RUnlock()
-	if root == "" {
-		return false
-	}
-	rel, err := filepath.Rel(root, filepath.Clean(path))
-	if err != nil {
-		return false
-	}
-	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
+	_, _, ok := a.workspaceForPath(path, false)
+	return ok
 }
 
 func (a *App) workspacePath(path string) (string, error) {
@@ -578,17 +774,124 @@ func (a *App) workspacePath(path string) (string, error) {
 }
 
 func (a *App) workspaceRelativePath(path string) (string, bool) {
-	a.mu.RLock()
-	root := a.workspaceRoot
-	a.mu.RUnlock()
-	if root == "" {
+	_, state, ok := a.workspaceForPath(path, false)
+	if !ok {
 		return "", false
 	}
-	rel, err := filepath.Rel(root, filepath.Clean(path))
+	return workspaceRelativePathFromRoot(state.Root, path)
+}
+
+func workspaceRelativePathFromRoot(root string, path string) (string, bool) {
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(path))
 	if err != nil || rel == "." || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
 		return "", false
 	}
 	return filepath.ToSlash(rel), true
+}
+
+func (a *App) workspaceForPath(path string, checkReal bool) (WorkspaceEntry, workspaceRuntimeState, bool) {
+	cleanPath := filepath.Clean(path)
+	a.mu.RLock()
+	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
+	states := map[string]workspaceRuntimeState{}
+	for id, state := range a.workspaceStates {
+		states[id] = state
+	}
+	a.mu.RUnlock()
+
+	sort.SliceStable(workspaces, func(i, j int) bool {
+		return len(workspaces[i].Path) > len(workspaces[j].Path)
+	})
+	for _, workspace := range workspaces {
+		if !pathWithinRoot(cleanPath, workspace.Path) {
+			continue
+		}
+		state := states[workspace.ID]
+		if state.Root == "" {
+			realRoot, err := filepath.EvalSymlinks(workspace.Path)
+			if err != nil {
+				continue
+			}
+			state = workspaceRuntimeState{
+				Root:     filepath.Clean(workspace.Path),
+				RealRoot: filepath.Clean(realRoot),
+			}
+		}
+		if !checkReal {
+			return workspace, state, true
+		}
+		realPath, err := filepath.EvalSymlinks(cleanPath)
+		if err != nil {
+			return WorkspaceEntry{}, workspaceRuntimeState{}, false
+		}
+		realRel, err := filepath.Rel(state.RealRoot, filepath.Clean(realPath))
+		if err != nil {
+			return WorkspaceEntry{}, workspaceRuntimeState{}, false
+		}
+		if realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel)) {
+			return workspace, state, true
+		}
+	}
+	return WorkspaceEntry{}, workspaceRuntimeState{}, false
+}
+
+func (a *App) setActiveWorkspaceForPath(path string) {
+	workspace, state, ok := a.workspaceForPath(path, false)
+	if !ok {
+		return
+	}
+	a.mu.Lock()
+	if a.workspaceStates == nil {
+		a.workspaceStates = map[string]workspaceRuntimeState{}
+	}
+	a.workspaceStates[workspace.ID] = state
+	a.settings.ActiveWorkspaceID = workspace.ID
+	a.settings.LastWorkspace = workspace.Path
+	a.applyActiveWorkspaceLocked()
+	settingsPath := a.settingsPath
+	settings := a.settings
+	a.mu.Unlock()
+	if settingsPath != "" {
+		_ = saveSettings(settingsPath, settings)
+	}
+}
+
+func (a *App) workspaceCollection(workspaces []WorkspaceEntry, activeID string) (*WorkspaceCollection, error) {
+	trees := make([]WorkspaceTree, 0, len(workspaces))
+	states := map[string]workspaceRuntimeState{}
+	for _, workspace := range workspaces {
+		entry, node, state, err := scanWorkspaceRoot(workspace.Path)
+		if err != nil {
+			continue
+		}
+		entry.ID = workspace.ID
+		entry.Name = firstNonEmpty(workspace.Name, workspaceDisplayName(entry.Path))
+		entry.Order = workspace.Order
+		entry.AddedAt = workspace.AddedAt
+		entry.LastOpenedAt = workspace.LastOpenedAt
+		states[entry.ID] = state
+		trees = append(trees, WorkspaceTree{Workspace: entry, Root: node})
+	}
+	if len(trees) == 0 {
+		return &WorkspaceCollection{}, nil
+	}
+	if activeID == "" {
+		activeID = trees[0].Workspace.ID
+	}
+	a.mu.Lock()
+	if a.workspaceStates == nil {
+		a.workspaceStates = map[string]workspaceRuntimeState{}
+	}
+	for id, state := range states {
+		a.workspaceStates[id] = state
+	}
+	a.settings.ActiveWorkspaceID = activeID
+	a.applyActiveWorkspaceLocked()
+	a.mu.Unlock()
+	return &WorkspaceCollection{
+		Workspaces:        trees,
+		ActiveWorkspaceID: activeID,
+	}, nil
 }
 
 func (a *App) revealableWorkspacePath(path string) (string, error) {
@@ -625,20 +928,17 @@ func (a *App) renameableWorkspacePath(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	a.mu.RLock()
-	root := a.workspaceRoot
-	a.mu.RUnlock()
-	if root == "" || filepath.Clean(target) == filepath.Clean(root) {
+	_, state, ok := a.workspaceForPath(target, false)
+	if !ok || filepath.Clean(target) == filepath.Clean(state.Root) {
 		return "", errors.New("workspace root cannot be renamed")
 	}
+	a.setActiveWorkspaceForPath(target)
 	return target, nil
 }
 
 func (a *App) isRenameTargetWithinRealWorkspace(sourceParent string, target string) bool {
-	a.mu.RLock()
-	realRoot := a.workspaceRootReal
-	a.mu.RUnlock()
-	if realRoot == "" {
+	_, state, ok := a.workspaceForPath(sourceParent, true)
+	if !ok || state.RealRoot == "" {
 		return false
 	}
 	realParent, err := filepath.EvalSymlinks(sourceParent)
@@ -646,7 +946,7 @@ func (a *App) isRenameTargetWithinRealWorkspace(sourceParent string, target stri
 		return false
 	}
 	realTarget := filepath.Join(realParent, filepath.Base(target))
-	realRel, err := filepath.Rel(realRoot, filepath.Clean(realTarget))
+	realRel, err := filepath.Rel(state.RealRoot, filepath.Clean(realTarget))
 	if err != nil {
 		return false
 	}
@@ -668,6 +968,266 @@ func (a *App) refreshWorkspaceTreeAfterMutation() (TreeNode, error) {
 	a.workspaceTreeSig = treeSignature(node)
 	a.mu.Unlock()
 	return node, nil
+}
+
+func scanWorkspaceRoot(root string) (WorkspaceEntry, TreeNode, workspaceRuntimeState, error) {
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
+	}
+	abs = filepath.Clean(abs)
+	info, err := os.Stat(abs)
+	if err != nil {
+		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
+	}
+	if !info.IsDir() {
+		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, errors.New("workspace path is not a directory")
+	}
+	node, err := scanNode(abs, 0)
+	if err != nil {
+		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
+	}
+	realRoot, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
+	}
+	entry := WorkspaceEntry{
+		ID:   workspaceID(abs),
+		Name: workspaceDisplayName(abs),
+		Path: abs,
+	}
+	state := workspaceRuntimeState{
+		Root:          abs,
+		RealRoot:      filepath.Clean(realRoot),
+		TreeSignature: treeSignature(node),
+	}
+	return entry, node, state, nil
+}
+
+func (a *App) scanExistingWorkspaceLocked(workspace WorkspaceEntry) (TreeNode, workspaceRuntimeState, error) {
+	_, node, state, err := scanWorkspaceRoot(workspace.Path)
+	if err != nil {
+		return TreeNode{}, workspaceRuntimeState{}, err
+	}
+	a.workspaceStates[workspace.ID] = state
+	return node, state, nil
+}
+
+func (a *App) normalizeSettingsLocked() {
+	a.settings.StorageVersion = currentSettingsVersion
+	a.settings.Locale = normalizeLocale(a.settings.Locale)
+	a.settings.Theme = normalizeTheme(a.settings.Theme)
+	if a.settings.Workspaces == nil {
+		a.settings.Workspaces = []WorkspaceEntry{}
+	}
+	if strings.TrimSpace(a.settings.LastWorkspace) != "" && len(a.settings.Workspaces) == 0 {
+		path := filepath.Clean(a.settings.LastWorkspace)
+		a.settings.Workspaces = append(a.settings.Workspaces, WorkspaceEntry{
+			ID:           workspaceID(path),
+			Name:         workspaceDisplayName(path),
+			Path:         path,
+			AddedAt:      time.Now().UnixMilli(),
+			LastOpenedAt: time.Now().UnixMilli(),
+		})
+	}
+	seen := map[string]struct{}{}
+	next := make([]WorkspaceEntry, 0, len(a.settings.Workspaces))
+	for _, workspace := range a.settings.Workspaces {
+		path := strings.TrimSpace(workspace.Path)
+		if path == "" {
+			continue
+		}
+		if abs, err := filepath.Abs(path); err == nil {
+			path = abs
+		}
+		path = filepath.Clean(path)
+		key := strings.ToLower(path)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		workspace.Path = path
+		if workspace.ID == "" {
+			workspace.ID = workspaceID(path)
+		}
+		if workspace.Name == "" {
+			workspace.Name = workspaceDisplayName(path)
+		}
+		if workspace.AddedAt == 0 {
+			workspace.AddedAt = time.Now().UnixMilli()
+		}
+		if workspace.LastOpenedAt == 0 {
+			workspace.LastOpenedAt = workspace.AddedAt
+		}
+		workspace.Order = len(next)
+		next = append(next, workspace)
+	}
+	a.settings.Workspaces = next
+	if len(next) == 0 {
+		a.settings.ActiveWorkspaceID = ""
+		a.settings.LastWorkspace = ""
+		return
+	}
+	activeExists := false
+	for _, workspace := range next {
+		if workspace.ID == a.settings.ActiveWorkspaceID {
+			activeExists = true
+			a.settings.LastWorkspace = workspace.Path
+			break
+		}
+	}
+	if !activeExists {
+		a.settings.ActiveWorkspaceID = next[0].ID
+		a.settings.LastWorkspace = next[0].Path
+	}
+}
+
+func (a *App) applyActiveWorkspaceLocked() {
+	a.normalizeSettingsLocked()
+	a.workspaceRoot = ""
+	a.workspaceRootReal = ""
+	a.workspaceTreeSig = ""
+	for _, workspace := range a.settings.Workspaces {
+		if workspace.ID != a.settings.ActiveWorkspaceID {
+			continue
+		}
+		state := a.workspaceStates[workspace.ID]
+		a.workspaceRoot = workspace.Path
+		a.workspaceRootReal = state.RealRoot
+		a.workspaceTreeSig = state.TreeSignature
+		if a.workspaceRootReal == "" {
+			a.workspaceRootReal = workspace.Path
+		}
+		return
+	}
+}
+
+func workspaceID(path string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(path))))
+	return "ws_" + fmt.Sprintf("%x", sum[:8])
+}
+
+func workspaceDisplayName(path string) string {
+	name := filepath.Base(filepath.Clean(path))
+	if name == "." || name == string(filepath.Separator) || name == "" {
+		return filepath.Clean(path)
+	}
+	return name
+}
+
+func pathWithinRoot(path string, root string) bool {
+	if strings.TrimSpace(path) == "" || strings.TrimSpace(root) == "" {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(root), filepath.Clean(path))
+	if err != nil {
+		return false
+	}
+	return rel == "." || (!strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel))
+}
+
+func (a *App) queueLaunchArgs(args []string, cwd string) error {
+	request, err := a.launchRequestFromArgs(args, cwd)
+	if err != nil || request == nil {
+		return err
+	}
+	a.mu.Lock()
+	a.pendingLaunch = request
+	a.mu.Unlock()
+	if a.ctx != nil {
+		runtime.WindowUnminimise(a.ctx)
+		runtime.WindowShow(a.ctx)
+		runtime.EventsEmit(a.ctx, "kern:launch-request")
+	}
+	return nil
+}
+
+func (a *App) ConsumeLaunchRequest() (*LaunchRequest, error) {
+	a.mu.Lock()
+	request := a.pendingLaunch
+	a.pendingLaunch = nil
+	a.mu.Unlock()
+	if request == nil {
+		return &LaunchRequest{}, nil
+	}
+	return request, nil
+}
+
+func (a *App) launchRequestFromArgs(args []string, cwd string) (*LaunchRequest, error) {
+	mode, target := launchTargetFromArgs(args)
+	if target == "" {
+		return nil, nil
+	}
+	target = resolveLaunchPath(target, cwd)
+	info, err := os.Stat(target)
+	if err != nil {
+		return nil, err
+	}
+	if mode == "workspace" || info.IsDir() {
+		collection, err := a.AddWorkspace(target)
+		if err != nil {
+			return nil, err
+		}
+		return &LaunchRequest{Collection: collection}, nil
+	}
+	if !isMarkdownFile(target) {
+		return nil, errors.New("not a markdown document")
+	}
+	if !a.isWithinWorkspace(target) {
+		if _, err := a.addWorkspacePath(filepath.Dir(target), true); err != nil {
+			return nil, err
+		}
+	} else {
+		a.setActiveWorkspaceForPath(target)
+	}
+	collection, err := a.RestoreWorkspaces()
+	if err != nil {
+		return nil, err
+	}
+	return &LaunchRequest{
+		Collection:   collection,
+		DocumentPath: filepath.Clean(target),
+	}, nil
+}
+
+func launchTargetFromArgs(args []string) (string, string) {
+	for index := 0; index < len(args); index++ {
+		arg := strings.TrimSpace(args[index])
+		switch arg {
+		case "--open-file":
+			if index+1 < len(args) {
+				return "file", args[index+1]
+			}
+		case "--add-workspace":
+			if index+1 < len(args) {
+				return "workspace", args[index+1]
+			}
+		default:
+			if !strings.HasPrefix(arg, "-") {
+				return "auto", arg
+			}
+		}
+	}
+	return "", ""
+}
+
+func resolveLaunchPath(path string, cwd string) string {
+	path = strings.Trim(path, `"`)
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	if cwd == "" {
+		cwd = mustGetwd()
+	}
+	return filepath.Clean(filepath.Join(cwd, path))
+}
+
+func mustGetwd() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return wd
 }
 
 func (a *App) assetHandler() http.Handler {
@@ -988,6 +1548,10 @@ func (a *App) initAppData(root string) error {
 	a.readingMemoryPath = readingMemoryPath
 	a.settings = settings
 	a.readingMemory = readingMemory
+	if a.workspaceStates == nil {
+		a.workspaceStates = map[string]workspaceRuntimeState{}
+	}
+	a.applyActiveWorkspaceLocked()
 	a.mu.Unlock()
 	return nil
 }
@@ -1004,8 +1568,7 @@ func (a *App) updateSettings(mutator func(*Settings)) {
 		a.settings = defaultSettings()
 	}
 	mutator(&a.settings)
-	a.settings.Locale = normalizeLocale(a.settings.Locale)
-	a.settings.Theme = normalizeTheme(a.settings.Theme)
+	a.normalizeSettingsLocked()
 	settingsPath := a.settingsPath
 	settings := a.settings
 	a.mu.Unlock()
@@ -1020,7 +1583,14 @@ func defaultSettings() Settings {
 		StorageVersion: currentSettingsVersion,
 		Locale:         "zh-CN",
 		Theme:          "system",
+		Workspaces:     []WorkspaceEntry{},
 	}
+}
+
+func normalizeSettings(settings *Settings) {
+	app := &App{settings: *settings}
+	app.normalizeSettingsLocked()
+	*settings = app.settings
 }
 
 func loadSettings(path string) (Settings, error) {
@@ -1041,13 +1611,12 @@ func loadSettings(path string) (Settings, error) {
 	if settings.StorageVersion == 0 {
 		settings.StorageVersion = currentSettingsVersion
 	}
-	settings.Locale = normalizeLocale(settings.Locale)
-	settings.Theme = normalizeTheme(settings.Theme)
+	normalizeSettings(&settings)
 	return settings, nil
 }
 
 func saveSettings(path string, settings Settings) error {
-	settings.StorageVersion = currentSettingsVersion
+	normalizeSettings(&settings)
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}

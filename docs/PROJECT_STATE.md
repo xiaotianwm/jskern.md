@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, and GitHub installer releases.
 
 ## Done
 
@@ -154,11 +154,23 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 - Windows installer `JSKernMD-Setup-0.1.10-x64.exe` was staged under `dist/releases/v0.1.10/`.
 - `SHA256SUMS.txt` was generated for the `0.1.10` installer with SHA256 `c50caf64bbad0318e64e1bd06d1b81771467129c53b47d7daa791a76e32a2840`.
 - GitHub Release `v0.1.10` publishes `JSKernMD-Setup-0.1.10-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Settings storage advanced to `storage_version: 3` and now stores an ordered `workspaces[]` collection plus `active_workspace_id`, while still migrating legacy `last_workspace`.
+- Opening a folder now adds or activates a top-level workspace instead of replacing the existing workspace tree.
+- The left directory tree now renders multiple top-level workspace roots.
+- Top-level workspace roots can be reordered with drag/drop; Go persists the final order in AppData settings.
+- Top-level workspace roots can be removed from JS Kern.md through the directory-tree context menu without deleting disk files.
+- Removing a workspace closes its open tabs in the current UI and clears that workspace's open-tab session while preserving user files.
+- Workspace search now searches across all configured workspaces and prefixes paths with the workspace name when multiple roots are present.
+- Go now handles startup and second-instance launch arguments for `--open-file`, `--add-workspace`, and direct file/folder paths.
+- Wails single-instance handling forwards Explorer/CLI launch requests to the running app and emits a frontend launch request event.
+- Windows NSIS installer now registers Explorer context-menu entries for opening Markdown files and adding folders to the workspace list.
+- Windows NSIS uninstaller now deletes only the JS Kern.md Explorer context-menu registry keys it created.
+- Product version advanced to `0.1.11` for the multi-workspace and Explorer integration release.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
-- Add visible weak feedback for context-menu copy/reveal/rename failures if user testing shows silent failures are confusing.
+- Add visible weak feedback for context-menu copy/reveal/rename/remove failures if user testing shows silent failures are confusing.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
 - Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
@@ -167,6 +179,7 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 ## Known Issues
 
 - Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
+- Multiple workspaces currently still use eager scanning for each root, so very large collections may need lazy root loading later.
 - Workspace search is currently an on-demand scan rather than an indexed search database.
 - Current-document find is DOM-based and does not match text split across separate inline elements.
 - Update downloads currently show a busy state rather than detailed byte-level progress.
@@ -179,6 +192,17 @@ Readable Markdown document MVP loop with persisted workspace, Go-owned multi-tab
 
 ## Validation
 
+- Latest validation after multi-workspace and Explorer integration v0.1.11:
+  - Product version sources were updated to `0.1.11`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.11/JSKernMD-Setup-0.1.11-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `83da01550453aa3721b0c2a313ed54b1ac7861348080f8ed2c203ad43c01f56f`.
+  - `git diff --check` passed.
+  - Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped.
 - Latest validation after manifest-owned Go version fix v0.1.10:
   - GitHub latest before the fix was verified as `v0.1.9`, confirming the repeated prompt was not caused by the Release latest marker.
   - `go test ./...` passed.

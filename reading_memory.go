@@ -108,40 +108,40 @@ func (a *App) GetReadingMemory() (*ReadingMemorySnapshot, error) {
 
 func (a *App) GetReadingSession() (*WorkspaceReadingSession, error) {
 	a.mu.RLock()
-	root := a.workspaceRoot
-	var openTabs []string
-	var activeDocument string
-	if root != "" {
-		if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil {
-			openTabs = append(openTabs, workspace.OpenTabs...)
-			activeDocument = firstNonEmpty(workspace.ActiveDocument, workspace.LastDocument)
-		}
-	}
+	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
+	activeWorkspaceID := a.settings.ActiveWorkspaceID
+	memory := a.readingMemory
 	a.mu.RUnlock()
-	if root == "" {
+	if len(workspaces) == 0 {
 		return &WorkspaceReadingSession{}, nil
 	}
-	if len(openTabs) == 0 && activeDocument != "" {
-		openTabs = []string{activeDocument}
-	}
 
-	tabs := make([]ReadingTab, 0, len(openTabs))
-	for _, relativePath := range openTabs {
-		tab, err := a.readingTabFromRelativePath(root, relativePath)
-		if err == nil {
+	tabs := []ReadingTab{}
+	activePath := ""
+	for _, workspaceEntry := range workspaces {
+		root := workspaceEntry.Path
+		workspace := memory.Workspaces[workspaceMemoryKey(root)]
+		if workspace == nil {
+			continue
+		}
+		openTabs := append([]string(nil), workspace.OpenTabs...)
+		activeDocument := firstNonEmpty(workspace.ActiveDocument, workspace.LastDocument)
+		if len(openTabs) == 0 && activeDocument != "" {
+			openTabs = []string{activeDocument}
+		}
+		for _, relativePath := range openTabs {
+			tab, err := a.readingTabFromRelativePath(root, relativePath)
+			if err != nil {
+				continue
+			}
 			tabs = append(tabs, tab)
+			if workspaceEntry.ID == activeWorkspaceID && relativePath == activeDocument {
+				activePath = tab.Path
+			}
 		}
 	}
 	if len(tabs) == 0 {
 		return &WorkspaceReadingSession{}, nil
-	}
-
-	activePath := ""
-	for _, tab := range tabs {
-		if tab.RelativePath == activeDocument {
-			activePath = tab.Path
-			break
-		}
 	}
 	if activePath == "" {
 		activePath = tabs[0].Path
@@ -162,13 +162,17 @@ func (a *App) GetReadingPosition(path string) (*ReadingPosition, error) {
 	if !isMarkdownFile(abs) || !a.isWithinWorkspace(abs) {
 		return nil, nil
 	}
-	relativePath, ok := a.workspaceRelativePath(abs)
+	_, workspaceState, ok := a.workspaceForPath(abs, true)
+	if !ok {
+		return nil, nil
+	}
+	root := workspaceState.Root
+	relativePath, ok := workspaceRelativePathFromRoot(root, abs)
 	if !ok {
 		return nil, nil
 	}
 
 	a.mu.RLock()
-	root := a.workspaceRoot
 	var state DocumentReadingState
 	var found bool
 	if workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]; workspace != nil {
@@ -186,47 +190,75 @@ func (a *App) GetReadingPosition(path string) (*ReadingPosition, error) {
 }
 
 func (a *App) SaveOpenTabs(paths []string, activePath string) error {
-	a.mu.RLock()
-	root := a.workspaceRoot
-	a.mu.RUnlock()
-	if root == "" {
-		return errors.New("workspace is not open")
+	type groupedTabs struct {
+		root string
+		tabs []string
 	}
+	a.mu.RLock()
+	configuredRoots := make([]string, 0, len(a.settings.Workspaces))
+	for _, workspace := range a.settings.Workspaces {
+		configuredRoots = append(configuredRoots, workspace.Path)
+	}
+	activeRootSnapshot := a.workspaceRoot
+	a.mu.RUnlock()
 
-	openTabs := make([]string, 0, minInt(len(paths), maxOpenReadingTabs))
-	seen := map[string]struct{}{}
+	groups := map[string]*groupedTabs{}
+	order := []string{}
 	for _, path := range paths {
-		relativePath, err := a.readingTabRelativePath(path)
+		root, relativePath, err := a.readingTabRelativePath(path)
 		if err != nil {
 			return err
 		}
-		if _, ok := seen[relativePath]; ok {
+		group := groups[root]
+		if group == nil {
+			group = &groupedTabs{root: root}
+			groups[root] = group
+			order = append(order, root)
+		}
+		if containsString(group.tabs, relativePath) {
 			continue
 		}
-		seen[relativePath] = struct{}{}
-		openTabs = append(openTabs, relativePath)
-		if len(openTabs) >= maxOpenReadingTabs {
-			break
+		if len(group.tabs) < maxOpenReadingTabs {
+			group.tabs = append(group.tabs, relativePath)
 		}
 	}
 
+	activeRoot := ""
 	activeDocument := ""
 	if strings.TrimSpace(activePath) != "" {
-		relativePath, err := a.readingTabRelativePath(activePath)
+		root, relativePath, err := a.readingTabRelativePath(activePath)
 		if err != nil {
 			return err
 		}
+		activeRoot = root
 		activeDocument = relativePath
-		if _, ok := seen[relativePath]; !ok {
-			if len(openTabs) >= maxOpenReadingTabs {
-				openTabs[len(openTabs)-1] = relativePath
+		group := groups[root]
+		if group == nil {
+			group = &groupedTabs{root: root}
+			groups[root] = group
+			order = append(order, root)
+		}
+		if !containsString(group.tabs, relativePath) {
+			if len(group.tabs) >= maxOpenReadingTabs {
+				group.tabs[len(group.tabs)-1] = relativePath
 			} else {
-				openTabs = append(openTabs, relativePath)
+				group.tabs = append(group.tabs, relativePath)
 			}
 		}
 	}
-	if activeDocument == "" && len(openTabs) > 0 {
-		activeDocument = openTabs[0]
+	if len(order) == 0 {
+		if activeRootSnapshot == "" {
+			return nil
+		}
+		groups[activeRootSnapshot] = &groupedTabs{root: activeRootSnapshot}
+		order = append(order, activeRootSnapshot)
+	}
+	for _, root := range configuredRoots {
+		if groups[root] != nil {
+			continue
+		}
+		groups[root] = &groupedTabs{root: root}
+		order = append(order, root)
 	}
 
 	a.mu.Lock()
@@ -236,24 +268,35 @@ func (a *App) SaveOpenTabs(paths []string, activePath string) error {
 	if a.readingMemory.Workspaces == nil {
 		a.readingMemory.Workspaces = map[string]*WorkspaceReadingLog{}
 	}
-	key := workspaceMemoryKey(root)
-	workspace := a.readingMemory.Workspaces[key]
-	if workspace == nil {
-		workspace = &WorkspaceReadingLog{
-			Root:      filepath.Clean(root),
-			Documents: map[string]DocumentReadingState{},
+	for _, root := range order {
+		group := groups[root]
+		key := workspaceMemoryKey(root)
+		workspace := a.readingMemory.Workspaces[key]
+		if workspace == nil {
+			workspace = &WorkspaceReadingLog{
+				Root:      filepath.Clean(root),
+				Documents: map[string]DocumentReadingState{},
+			}
+			a.readingMemory.Workspaces[key] = workspace
 		}
-		a.readingMemory.Workspaces[key] = workspace
+		if workspace.Documents == nil {
+			workspace.Documents = map[string]DocumentReadingState{}
+		}
+		workspace.Root = filepath.Clean(root)
+		workspace.OpenTabs = group.tabs
+		if root == activeRoot {
+			workspace.ActiveDocument = activeDocument
+			workspace.LastDocument = activeDocument
+		} else {
+			workspace.ActiveDocument = ""
+			if len(group.tabs) > 0 {
+				workspace.ActiveDocument = group.tabs[0]
+				workspace.LastDocument = workspace.ActiveDocument
+			}
+		}
+		pruneClosedReadingDocuments(workspace)
+		pruneReadingDocuments(workspace)
 	}
-	if workspace.Documents == nil {
-		workspace.Documents = map[string]DocumentReadingState{}
-	}
-	workspace.Root = filepath.Clean(root)
-	workspace.OpenTabs = openTabs
-	workspace.ActiveDocument = activeDocument
-	workspace.LastDocument = activeDocument
-	pruneClosedReadingDocuments(workspace)
-	pruneReadingDocuments(workspace)
 	memoryPath := a.readingMemoryPath
 	if memoryPath == "" {
 		a.mu.Unlock()
@@ -276,6 +319,19 @@ func pruneClosedReadingDocuments(workspace *WorkspaceReadingLog) {
 	}
 }
 
+func (a *App) clearReadingSessionForRootLocked(root string) {
+	if a.readingMemory.Workspaces == nil {
+		return
+	}
+	workspace := a.readingMemory.Workspaces[workspaceMemoryKey(root)]
+	if workspace == nil {
+		return
+	}
+	workspace.OpenTabs = nil
+	workspace.ActiveDocument = ""
+	workspace.LastDocument = ""
+}
+
 func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float64, headingID string, modifiedAt int64, size int64) error {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -287,7 +343,12 @@ func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float6
 	if !a.isWithinWorkspace(abs) {
 		return errors.New("document is outside the current workspace")
 	}
-	relativePath, ok := a.workspaceRelativePath(abs)
+	_, state, ok := a.workspaceForPath(abs, true)
+	if !ok {
+		return errors.New("document is outside the current workspace")
+	}
+	root := state.Root
+	relativePath, ok := workspaceRelativePathFromRoot(root, abs)
 	if !ok {
 		return errors.New("document is outside the current workspace")
 	}
@@ -312,7 +373,6 @@ func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float6
 	if a.readingMemory.Workspaces == nil {
 		a.readingMemory.Workspaces = map[string]*WorkspaceReadingLog{}
 	}
-	root := a.workspaceRoot
 	key := workspaceMemoryKey(root)
 	workspace := a.readingMemory.Workspaces[key]
 	if workspace == nil {
@@ -351,22 +411,23 @@ func (a *App) SaveReadingPosition(path string, scrollTop int, scrollRatio float6
 	return err
 }
 
-func (a *App) readingTabRelativePath(path string) (string, error) {
+func (a *App) readingTabRelativePath(path string) (string, string, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if !isMarkdownFile(abs) {
-		return "", errors.New("not a markdown document")
+		return "", "", errors.New("not a markdown document")
 	}
-	if !a.isWithinWorkspace(abs) {
-		return "", errors.New("document is outside the current workspace")
-	}
-	relativePath, ok := a.workspaceRelativePath(abs)
+	_, state, ok := a.workspaceForPath(abs, true)
 	if !ok {
-		return "", errors.New("document is outside the current workspace")
+		return "", "", errors.New("document is outside the current workspace")
 	}
-	return relativePath, nil
+	relativePath, ok := workspaceRelativePathFromRoot(state.Root, abs)
+	if !ok {
+		return "", "", errors.New("document is outside the current workspace")
+	}
+	return state.Root, relativePath, nil
 }
 
 func (a *App) readingTabFromRelativePath(root string, relativePath string) (ReadingTab, error) {

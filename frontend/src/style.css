@@ -533,6 +533,11 @@ a {
     padding: 2px 0 8px;
 }
 
+.workspace-roots {
+    display: grid;
+    gap: 2px;
+}
+
 .tree-node {
     min-width: 0;
 }
@@ -561,6 +566,16 @@ a {
 
 .tree-row.file {
     color: var(--text);
+}
+
+.tree-row.workspace-root {
+    height: 28px;
+    font-weight: 650;
+    color: var(--text);
+}
+
+.tree-row.workspace-root:active {
+    cursor: grabbing;
 }
 
 .rename-row {

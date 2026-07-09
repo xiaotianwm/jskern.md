@@ -1,5 +1,54 @@
 # 更新日志
 
+## 2026-07-09 - v0.1.11 Multi-Workspace And Explorer Integration
+
+### 新增
+
+- 新增多顶层工作区模型：`settings.json` 升级到 `storage_version: 3`，持久化 `workspaces[]`、`active_workspace_id` 和顶层排序。
+- 新增 `RestoreWorkspaces()`、`RefreshWorkspaces()`、`AddWorkspace(path)`、`RemoveWorkspace(workspaceID)`、`ReorderWorkspaces(workspaceIDs)` 和 `ConsumeLaunchRequest()` Wails API。
+- 新增旧配置迁移：已有 `last_workspace` 会自动迁移成一个工作区条目，保留原有启动恢复体验。
+- 新增顶层工作区拖拽排序，排序结果由 Go 写入 AppData。
+- 新增顶层工作区右键“移除工作区”，只从 JS Kern.md 中移除，不删除磁盘文件。
+- 新增 Windows Explorer 右键入口：
+  - Markdown 文件：`Open with JS Kern.md`
+  - 文件夹：`Add to JS Kern.md workspace`
+- 新增 Wails 单实例转发与启动参数处理，支持 `--open-file`、`--add-workspace` 和直接传入文件/文件夹路径。
+- 新增 Go 测试覆盖旧 `last_workspace` 迁移、多工作区排序/移除、Explorer/CLI 文件打开参数。
+
+### 变更
+
+- 打开文件夹现在是加入工作区集合，不再替换已有目录树。
+- 左侧目录树改为多根工作区渲染，恢复启动时不主动展开所有根目录和子目录。
+- 工作区搜索现在覆盖全部工作区；多工作区时搜索结果路径会带上工作区名称前缀。
+- 阅读会话恢复现在可以从多个已恢复工作区中收集仍有效的打开标签页，并保持活动文档。
+- `SaveOpenTabs()` 按文档所属工作区分组保存会话，避免多工作区标签页被错误归到单一根目录。
+- `OpenDocument()` 会根据文档所在工作区更新 Go 侧活动工作区，保持相对链接、资源和阅读记忆归属正确。
+- Windows NSIS 模板注册当前用户级 Explorer 菜单，并在卸载时只删除 `JSKernMD.Open` / `JSKernMD.AddWorkspace` 产品键。
+- README、产品范围、架构、约束、决策记录和项目状态已同步为多工作区与 Explorer 入口设计。
+- 将产品版本提升到 `0.1.11`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.11-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer SHA256: `83da01550453aa3721b0c2a313ed54b1ac7861348080f8ed2c203ad43c01f56f`。
+- Published release target: `v0.1.11`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.11`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.11/JSKernMD-Setup-0.1.11-x64.exe`。
+- `SHA256SUMS.txt` was generated with SHA256 `83da01550453aa3721b0c2a313ed54b1ac7861348080f8ed2c203ad43c01f56f`。
+- `git diff --check` passed。
+- Windows launch smoke test passed: `jskernmd.exe` started and remained alive after 4 seconds before being stopped。
+
+---
+
 ## 2026-07-09 - v0.1.10 Manifest-Owned Go Version Fix
 
 ### 修复

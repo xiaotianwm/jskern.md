@@ -12,7 +12,7 @@
   "business": {
     "app.subtitle": "Desktop Markdown reader",
     "action.open_workspace": "Open Folder",
-    "search.placeholder": "Search current workspace",
+    "search.placeholder": "Search all workspaces",
     "search.loading": "Searching",
     "search.empty": "No matching documents found",
     "search.file": "File",
@@ -33,6 +33,7 @@
     "context.expand": "Expand",
     "context.collapse": "Collapse",
     "context.rename": "Rename",
+    "context.remove_workspace": "Remove Workspace",
     "context.refresh_workspace": "Refresh Directory Tree",
     "context.copy_path": "Copy Path",
     "context.show_in_file_manager": "Show in File Manager",

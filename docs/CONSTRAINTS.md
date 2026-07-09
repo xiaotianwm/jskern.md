@@ -6,6 +6,7 @@
 - The product is an independent desktop app and does not use the shared Cloudflare/control-plane release system.
 - The MVP must be folder-first and directory-tree based.
 - Directory tree support is mandatory in the first usable version.
+- The workspace model supports multiple top-level folders; opening a new folder adds it to the workspace list instead of replacing the existing roots.
 - Single-file mode is secondary and must not replace workspace mode.
 
 ## Naming
@@ -33,7 +34,7 @@
 - Local Markdown images must be served through a Go-controlled workspace asset endpoint, not embedded as base64 and not read by React.
 - Relative Markdown document links must be resolved by Go against the current workspace before opening.
 - App configuration and durable reader state must be stored by Go under the system app data root for `jskernmd`; on Windows this is `%APPDATA%\jskernmd`.
-- The last opened workspace directory must be persisted and restored on startup so users do not need to reopen the same folder every launch.
+- The workspace list, active workspace, and top-level workspace order must be persisted and restored on startup so users do not need to reopen the same folders every launch.
 - Reading memory is Go-owned durable reader state and must be stored under AppData `data/reading-memory.json`, not in frontend `localStorage`.
 - Reading memory must remain workspace-scoped and directory-tree-first: restore the last document inside the restored workspace, and preserve per-document scroll position plus heading fallback when the document still exists.
 - Open document tabs and the active tab are Go-owned durable reader session state and must be stored with reading memory under AppData, not in frontend `localStorage`.
@@ -42,7 +43,8 @@
 - Reloading a changed document from the weak disk-change reminder must preserve the current reader offset with the reloaded document metadata instead of reusing stale saved memory or jumping to the top.
 - Directory tree refresh and workspace structure change detection are Go-owned responsibilities; React may ask for a refreshed tree but must not inspect the filesystem itself.
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.
-- Context-menu actions that reveal or rename files or folders must go through Go path validation and must remain restricted to the current workspace.
+- Context-menu actions that reveal, rename, or remove workspace roots must go through Go path validation. Removing a workspace only removes it from JS Kern.md and must not delete disk files.
+- Explorer right-click entry points must route through Go-owned CLI argument handling: Markdown files open with JS Kern.md, and folders join the workspace list.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
 - Update checking, ignored update versions, installer downloads, checksum verification, and opening downloaded installers are Go-owned responsibilities.
 - Current update downloads are sourced from GitHub Releases and must only accept canonical `JSKernMD-Setup-<version>-x64.exe` assets from the official `xiaotianwm/jskern.md` repository.
@@ -58,6 +60,7 @@
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
 - Frontend may render app-owned context menus for the directory tree and tab strip, including inline rename editing, but menu and rename-edit state are transient UI state only and must not become durable workspace/session state.
 - Frontend workspace auto-sync may use a weak polling loop against Go, but the loop must clean up timers, avoid overlapping requests, preserve valid expanded directories, and keep newly discovered directories collapsed by default.
+- Frontend may render top-level workspace drag sorting, but the persisted order is Go-owned AppData state.
 - Code highlighting must use Shiki.
 - Browser-default context menu, refresh, find, zoom, link/image drag, and page overscroll must be blocked.
 - Text selection is disabled by default, then re-enabled only for Markdown body, code blocks, inputs, and explicit selectable data.
@@ -96,6 +99,7 @@
 - Windows NSIS project templates must stay ASCII unless the build command explicitly configures a UTF-8 input charset; rely on NSIS built-in language tables for localized wizard text.
 - Windows installer upgrades must default to the previously installed directory by reading the app uninstall registry entry; new installs must write `InstallLocation`, and upgrades from older installers must fall back to deriving the directory from the previous `UninstallString`.
 - Windows installer metadata in `wails.json.info` must be synchronized from `product.manifest.json` before packaging so the installer and uninstall entry stay aligned with the product identity.
+- Windows installer must register Explorer context-menu entries for opening Markdown files and adding folders to the JS Kern.md workspace list, and the uninstaller must delete only the `JSKernMD.*` registry keys it created.
 - GitHub Release asset labels must match their filenames exactly; do not use vague labels such as `Windows x64 installer`.
 - Each release upload must include `SHA256SUMS.txt` for the published installer.
 - The raw `build/bin/jskernmd.exe` is a local build output only and must not be the primary GitHub Release download.
