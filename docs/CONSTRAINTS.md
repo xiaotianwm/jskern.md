@@ -60,6 +60,7 @@
 - Frontend must not maintain language dictionaries.
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
 - Frontend may render app-owned context menus for the directory tree and tab strip, including inline rename editing, but menu and rename-edit state are transient UI state only and must not become durable workspace/session state.
+- Context-menu action feedback must remain transient, use Go-provided locale strings, replace rather than stack repeated notices, and clean up its dismissal timer.
 - Frontend workspace auto-sync may use a weak polling loop against Go, but the loop must clean up timers, avoid overlapping requests, preserve valid expanded directories, and keep newly discovered directories collapsed by default.
 - Frontend may render top-level workspace drag sorting, but the persisted order is Go-owned AppData state.
 - Code highlighting must use Shiki.

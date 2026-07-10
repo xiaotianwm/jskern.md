@@ -29,6 +29,7 @@ React owns:
 - Directory tree UI.
 - Open document tab strip rendering and tab switching interactions.
 - App-owned context-menu rendering for directory tree and tab strip actions.
+- Short-lived weak feedback for context-menu action results, with copy replaced by the next notice and all timers cleaned up on unmount.
 - Markdown view rendering from Go-provided document data.
 - Outline panel rendering, current-section highlighting, outline auto-follow, and transient reading-progress display.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
@@ -62,6 +63,7 @@ workspace folder(s)
 -> file-manager reveal actions round-trip through Go workspace path validation
 -> directory-tree rename actions round-trip through Go workspace path validation and OS rename
 -> top-level workspace remove actions delete only AppData workspace membership, not disk files
+-> React renders localized success/failure feedback from the Go-provided business locale at the bottom of the reader surface
 -> top-level workspace drag sorting is sent to Go and persisted in settings
 -> React remaps transient open-tab and expansion state from the Go returned old/new paths
 -> React asks Go for current document status while the document is open

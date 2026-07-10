@@ -43,6 +43,11 @@ type ContextMenuItem = {
     separatorBefore?: boolean;
 };
 
+type ActionFeedback = {
+    kind: 'success' | 'error';
+    message: string;
+};
+
 function App() {
     const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
     const [workspaces, setWorkspaces] = useState<WorkspaceTree[]>([]);
@@ -72,6 +77,7 @@ function App() {
     const [renameDraft, setRenameDraft] = useState('');
     const [draggingWorkspaceId, setDraggingWorkspaceId] = useState('');
     const [activeHeadingId, setActiveHeadingId] = useState('');
+    const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
     const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
@@ -85,11 +91,20 @@ function App() {
     const readingNavigationFrameRef = useRef<number | null>(null);
     const readingHeadingsRef = useRef<HTMLElement[] | null>(null);
     const renameCommitBusyRef = useRef(false);
+    const actionFeedbackTimerRef = useRef<number | null>(null);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
     const brand = product?.brandParts;
     const currentTheme = bootstrap?.currentTheme ?? 'system';
+
+    useEffect(() => {
+        return () => {
+            if (actionFeedbackTimerRef.current !== null) {
+                window.clearTimeout(actionFeedbackTimerRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -748,11 +763,21 @@ function App() {
     }
 
     async function copyPath(path: string) {
-        await ClipboardSetText(path);
+        try {
+            await ClipboardSetText(path);
+            showActionFeedback(text['feedback.copy_success'], 'success');
+        } catch {
+            showActionFeedback(text['feedback.copy_failed'], 'error');
+        }
     }
 
     async function revealPath(path: string) {
-        await RevealPath(path);
+        try {
+            await RevealPath(path);
+            showActionFeedback(text['feedback.reveal_success'], 'success');
+        } catch {
+            showActionFeedback(text['feedback.reveal_failed'], 'error');
+        }
     }
 
     function beginRename(node: TreeNode) {
@@ -775,8 +800,10 @@ function App() {
             return;
         }
         renameCommitBusyRef.current = true;
+        let renamed = false;
         try {
             const result = await RenamePath(node.path, nextName);
+            renamed = true;
             if (result?.tree?.root) {
                 setWorkspaces(current => replaceWorkspaceRootForPath(current, result.oldPath, result.tree!.root));
                 setExpandedPaths(current => remapExpandedPaths(current, result.oldPath, result.newPath, result.nodeType, workspaces.map(item => item.root)));
@@ -799,8 +826,13 @@ function App() {
                     forceReload: true
                 });
             }
+            showActionFeedback(text['feedback.rename_success'], 'success');
         } catch {
             cancelRename();
+            showActionFeedback(
+                text[renamed ? 'feedback.rename_success' : 'feedback.rename_failed'],
+                renamed ? 'success' : 'error'
+            );
         } finally {
             renameCommitBusyRef.current = false;
         }
@@ -810,39 +842,72 @@ function App() {
         if (documentBusy) {
             return;
         }
-        await saveCurrentReadingPosition(document, true);
-        const removedRoot = workspace.root.path;
-        const result = await RemoveWorkspace(workspace.workspace.id);
-        applyWorkspaceCollection(result);
-        const nextTabs = tabs.filter(tab => !pathIsInsideRoot(tab.path, removedRoot));
-        const activeRemoved = document?.path ? pathIsInsideRoot(document.path, removedRoot) : false;
-        setTabs(nextTabs);
-        setExpandedPaths(current => {
-            const next = new Set<string>();
-            for (const path of current) {
-                if (!pathIsInsideRoot(path, removedRoot)) {
-                    next.add(path);
+        let removed = false;
+        try {
+            await saveCurrentReadingPosition(document, true);
+            const removedRoot = workspace.root.path;
+            const result = await RemoveWorkspace(workspace.workspace.id);
+            removed = true;
+            applyWorkspaceCollection(result);
+            const nextTabs = tabs.filter(tab => !pathIsInsideRoot(tab.path, removedRoot));
+            const activeRemoved = document?.path ? pathIsInsideRoot(document.path, removedRoot) : false;
+            setTabs(nextTabs);
+            setExpandedPaths(current => {
+                const next = new Set<string>();
+                for (const path of current) {
+                    if (!pathIsInsideRoot(path, removedRoot)) {
+                        next.add(path);
+                    }
                 }
+                return next;
+            });
+            if (!activeRemoved) {
+                await persistOpenTabs(nextTabs, document?.path ?? '');
+                showActionFeedback(text['feedback.remove_workspace_success'], 'success');
+                return;
             }
-            return next;
-        });
-        if (!activeRemoved) {
-            await persistOpenTabs(nextTabs, document?.path ?? '');
+            setDocument(null);
+            setSelectedPath('');
+            setDocumentError('');
+            setStaleStatus(null);
+            setDismissedStatusKey('');
+            if (nextTabs.length) {
+                await openDocument(nextTabs[0].path, undefined, {
+                    tabsOverride: nextTabs,
+                    savePrevious: false
+                });
+            } else {
+                await persistOpenTabs([], '');
+            }
+            showActionFeedback(text['feedback.remove_workspace_success'], 'success');
+        } catch {
+            showActionFeedback(
+                text[removed ? 'feedback.remove_workspace_success' : 'feedback.remove_workspace_failed'],
+                removed ? 'success' : 'error'
+            );
+        }
+    }
+
+    function showActionFeedback(message: string, kind: ActionFeedback['kind']) {
+        if (!message) {
             return;
         }
-        setDocument(null);
-        setSelectedPath('');
-        setDocumentError('');
-        setStaleStatus(null);
-        setDismissedStatusKey('');
-        if (nextTabs.length) {
-            await openDocument(nextTabs[0].path, undefined, {
-                tabsOverride: nextTabs,
-                savePrevious: false
-            });
-        } else {
-            await persistOpenTabs([], '');
+        if (actionFeedbackTimerRef.current !== null) {
+            window.clearTimeout(actionFeedbackTimerRef.current);
         }
+        setActionFeedback({kind, message});
+        actionFeedbackTimerRef.current = window.setTimeout(() => {
+            setActionFeedback(null);
+            actionFeedbackTimerRef.current = null;
+        }, kind === 'success' ? 2200 : 6000);
+    }
+
+    function dismissActionFeedback() {
+        if (actionFeedbackTimerRef.current !== null) {
+            window.clearTimeout(actionFeedbackTimerRef.current);
+            actionFeedbackTimerRef.current = null;
+        }
+        setActionFeedback(null);
     }
 
     function beginWorkspaceDrag(workspaceID: string, event: React.DragEvent<HTMLElement>) {
@@ -1561,22 +1626,46 @@ function App() {
                             </div>
                         )}
                     </div>
-                    {staleStatus && document && !documentError ? (
-                        <div className="reader-status-bar">
-                            <div className="document-message changed-message">
-                                <div>
-                                    <div className="message-title">{text['document.changed_title']}</div>
-                                    <div className="message-body">{text['document.changed_body']}</div>
+                    {(staleStatus && document && !documentError) || actionFeedback ? (
+                        <div className="reader-notice-stack">
+                            {staleStatus && document && !documentError ? (
+                                <div className="reader-status-bar">
+                                    <div className="document-message changed-message">
+                                        <div>
+                                            <div className="message-title">{text['document.changed_title']}</div>
+                                            <div className="message-body">{text['document.changed_body']}</div>
+                                        </div>
+                                        <div className="message-actions">
+                                            <button type="button" onClick={reloadCurrentDocumentPreservingPosition} disabled={documentBusy}>
+                                                {text['document.reload']}
+                                            </button>
+                                            <button type="button" onClick={dismissDocumentChange}>
+                                                {text['document.dismiss']}
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="message-actions">
-                                    <button type="button" onClick={reloadCurrentDocumentPreservingPosition} disabled={documentBusy}>
-                                        {text['document.reload']}
-                                    </button>
-                                    <button type="button" onClick={dismissDocumentChange}>
-                                        {text['document.dismiss']}
-                                    </button>
+                            ) : null}
+                            {actionFeedback ? (
+                                <div className="reader-feedback-bar">
+                                    <div
+                                        className={`action-feedback ${actionFeedback.kind}`}
+                                        role={actionFeedback.kind === 'error' ? 'alert' : 'status'}
+                                        aria-live={actionFeedback.kind === 'error' ? 'assertive' : 'polite'}
+                                    >
+                                        <span className="action-feedback-message">{actionFeedback.message}</span>
+                                        <button
+                                            type="button"
+                                            className="action-feedback-close"
+                                            title={text['feedback.dismiss']}
+                                            aria-label={text['feedback.dismiss']}
+                                            onClick={dismissActionFeedback}
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : null}
                         </div>
                     ) : null}
                 </article>

@@ -33,6 +33,31 @@ func TestProductInfoComesFromManifest(t *testing.T) {
 	}
 }
 
+func TestActionFeedbackLocaleKeys(t *testing.T) {
+	keys := []string{
+		"feedback.copy_success",
+		"feedback.copy_failed",
+		"feedback.reveal_success",
+		"feedback.reveal_failed",
+		"feedback.rename_success",
+		"feedback.rename_failed",
+		"feedback.remove_workspace_success",
+		"feedback.remove_workspace_failed",
+		"feedback.dismiss",
+	}
+	for _, locale := range []string{"zh-CN", "en"} {
+		messages, err := loadLocale(locale)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range keys {
+			if strings.TrimSpace(messages["business"][key]) == "" {
+				t.Fatalf("expected %s business locale to include %q", locale, key)
+			}
+		}
+	}
+}
+
 func TestCurrentManifestVersionIsNotReportedAsUpdate(t *testing.T) {
 	assetName := "JSKernMD-Setup-" + productInfo.Version + "-x64.exe"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

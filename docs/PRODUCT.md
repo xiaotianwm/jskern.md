@@ -17,6 +17,7 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Preserve each tab's reading position when switching between open Markdown documents.
 - Clear a document's saved reading position when its tab is closed, so reopening it later starts from the top.
 - Provide desktop-style right-click menus for directory-tree items and open tabs.
+- Show weak bottom-of-reader feedback for context-menu copy, reveal, rename, and workspace-removal results.
 - Rename Markdown files and folders from the directory-tree context menu through Go-controlled validation.
 - Render the selected Markdown document.
 - Show a document outline from headings, keep the current section highlighted while reading, and keep long outlines synchronized with the reader position.

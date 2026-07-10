@@ -1,5 +1,48 @@
 # 更新日志
 
+## 2026-07-10 - v0.1.14 Context Action Feedback
+
+### 新增
+
+- 目录树和标签页右键菜单的“复制路径”操作现在会显示成功或失败反馈。
+- “在文件管理器中显示”、目录树重命名和顶层工作区移除操作现在会显示对应结果。
+- 新增中文和英文反馈文案，继续由 Go Bootstrap 的 `businessLocale` 下发，前端不维护翻译字典。
+- 新增 Go 测试，确保两种语言均包含全部操作反馈和关闭提示键。
+
+### 变更
+
+- 操作反馈固定显示在中心阅读区底部，不进入 Markdown 正文流，也不受正文滚动位置影响。
+- 操作反馈与外部文档变更提醒共用底部垂直叠放容器，同时出现时不会互相遮挡。
+- 连续操作会替换当前反馈，避免多条通知堆叠；成功反馈 2.2 秒后自动收起，失败反馈保留 6 秒并支持手动关闭。
+- 反馈计时器在组件卸载时显式清理，不形成长生命周期定时器泄漏。
+- 失败反馈只展示 Go locale 下发的动作级说明，不直接暴露 Wails 返回的英文技术错误，避免中文界面混杂语言。
+- 操作反馈保持为 React 瞬时 UI 状态，不写入 AppData、`localStorage` 或阅读记忆。
+- README、产品范围、架构和约束文档已同步操作反馈行为。
+- 将产品版本提升到 `0.1.14`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.14-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7318379` bytes。
+- Installer SHA256: `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`。
+- Published release target: `v0.1.14`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.14`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有的 Shiki WASM chunk size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.14/JSKernMD-Setup-0.1.14-x64.exe`。
+- `SHA256SUMS.txt` matches installer SHA256 `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`。
+- Fresh-build launch smoke passed after isolating the single instance: the `JS Kern.md` window remained alive and responsive after 5 seconds, then the previously installed app was restarted；最终冒烟准备阶段，安装版未响应 `CloseMainWindow()`，因此在启动新构建前终止了旧实例。
+- Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff。
+
+---
+
 ## 2026-07-10 - v0.1.13 Reading Navigation Enhancements
 
 ### 新增
