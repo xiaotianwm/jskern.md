@@ -183,6 +183,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Product version advanced to `0.1.14` for the context-action feedback release.
 - Windows installer `JSKernMD-Setup-0.1.14-x64.exe` was staged under `dist/releases/v0.1.14/`.
 - `SHA256SUMS.txt` was generated for the `0.1.14` installer with SHA256 `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`.
+- GitHub Release `v0.1.14` publishes `JSKernMD-Setup-0.1.14-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
@@ -221,6 +222,8 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
   - `SHA256SUMS.txt` matches installer SHA256 `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`.
   - Fresh-build launch smoke passed after isolating the single instance: the `JS Kern.md` window remained alive and responsive after 5 seconds; the installed app was restarted afterward. The installed instance did not exit from `CloseMainWindow()` during the final smoke setup and was stopped before launching the build.
   - Wails-generated template substitutions and trailing-whitespace-only model changes were removed from the source diff.
+  - GitHub Release `v0.1.14` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.14`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.14-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`.
 - Latest validation after reading navigation enhancements v0.1.13:
   - Product version sources were updated to `0.1.13`.
   - `go test ./...` passed.

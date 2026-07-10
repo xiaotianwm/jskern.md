@@ -40,6 +40,8 @@
 - `SHA256SUMS.txt` matches installer SHA256 `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`。
 - Fresh-build launch smoke passed after isolating the single instance: the `JS Kern.md` window remained alive and responsive after 5 seconds, then the previously installed app was restarted；最终冒烟准备阶段，安装版未响应 `CloseMainWindow()`，因此在启动新构建前终止了旧实例。
 - Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff。
+- GitHub Release `v0.1.14` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.14`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.14-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`。
 
 ---
 
