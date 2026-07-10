@@ -37,7 +37,7 @@
 - Fresh-build launch smoke passed：`build/bin/jskernmd.exe` 在 5 秒后保持运行，随后停止测试进程。
 - Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff。
 - GitHub Release `v0.1.15` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.15` and verified as the latest release。
-- Release tag `v0.1.15` and `origin/main` both resolve to source commit `0227a84c5cacb94dd3bfe097b97fe57f7eab570c`。
+- Release tag `v0.1.15` resolves to source commit `0227a84c5cacb94dd3bfe097b97fe57f7eab570c`；`main` 随后仅追加发布核验文档。
 - GitHub Release asset verification passed：installer label/name are `JSKernMD-Setup-0.1.15-x64.exe`，checksum label/name are `SHA256SUMS.txt`，installer size is `7318525` bytes，and the installer digest is `sha256:ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`。
 
 ---
