@@ -701,6 +701,22 @@ a {
     background: var(--bg-hover);
 }
 
+.reader-progress-track {
+    flex: 0 0 2px;
+    height: 2px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--border) 54%, transparent);
+    pointer-events: none;
+}
+
+.reader-progress-value {
+    width: 100%;
+    height: 100%;
+    background: var(--primary);
+    transform: scaleX(0);
+    transform-origin: left center;
+}
+
 .reader-scroll {
     flex: 1 1 auto;
     min-height: 0;
@@ -1053,6 +1069,13 @@ a {
 .outline-row:hover {
     color: var(--text);
     background: var(--bg-hover);
+}
+
+.outline-row.active {
+    color: var(--text);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    box-shadow: inset 2px 0 0 var(--primary);
+    font-weight: 650;
 }
 
 ::-webkit-scrollbar {

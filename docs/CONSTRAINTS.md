@@ -55,6 +55,7 @@
 - Frontend must not read the filesystem directly.
 - Frontend must not persist business data.
 - Frontend may report transient scroll position and current heading to Go, but must not own the reading-memory storage format or write durable reading state locally.
+- Frontend may derive current-section highlighting, outline auto-follow, and visual reading progress from the rendered document scroll container; this navigation state is transient and must not become a second durable reading-memory source.
 - Frontend may render the tab strip and call Go APIs to save the open-tab list, but must not own the durable tab-session storage format or persist open tabs locally.
 - Frontend must not maintain language dictionaries.
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.

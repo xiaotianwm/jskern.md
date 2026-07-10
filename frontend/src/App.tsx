@@ -71,14 +71,19 @@ function App() {
     const [renamingPath, setRenamingPath] = useState('');
     const [renameDraft, setRenameDraft] = useState('');
     const [draggingWorkspaceId, setDraggingWorkspaceId] = useState('');
+    const [activeHeadingId, setActiveHeadingId] = useState('');
     const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
+    const readerProgressRef = useRef<HTMLDivElement | null>(null);
+    const outlineListRef = useRef<HTMLDivElement | null>(null);
     const findInputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestRef = useRef(0);
     const workspaceRefreshBusyRef = useRef(false);
     const readingSaveTimerRef = useRef<number | null>(null);
     const readingRestoreUntilRef = useRef(0);
+    const readingNavigationFrameRef = useRef<number | null>(null);
+    const readingHeadingsRef = useRef<HTMLElement[] | null>(null);
     const renameCommitBusyRef = useRef(false);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
@@ -364,6 +369,54 @@ function App() {
             reader.removeEventListener('scroll', scheduleSave);
         };
     }, [document, documentBusy]);
+
+    useEffect(() => {
+        readingHeadingsRef.current = null;
+        setActiveHeadingId('');
+        if (readerProgressRef.current) {
+            readerProgressRef.current.style.transform = 'scaleX(0)';
+        }
+        const reader = readerScrollRef.current;
+        if (!reader || !document || documentBusy) {
+            return;
+        }
+        const scheduleSync = () => scheduleReadingNavigationSync();
+        const resizeObserver = new ResizeObserver(scheduleSync);
+        reader.addEventListener('scroll', scheduleSync, {passive: true});
+        resizeObserver.observe(reader);
+        if (markdownBodyRef.current) {
+            resizeObserver.observe(markdownBodyRef.current);
+        }
+        scheduleSync();
+        return () => {
+            reader.removeEventListener('scroll', scheduleSync);
+            resizeObserver.disconnect();
+            if (readingNavigationFrameRef.current !== null) {
+                window.cancelAnimationFrame(readingNavigationFrameRef.current);
+                readingNavigationFrameRef.current = null;
+            }
+        };
+    }, [document?.path, document?.html, documentBusy]);
+
+    useEffect(() => {
+        const list = outlineListRef.current;
+        if (!list || !activeHeadingId) {
+            return;
+        }
+        const activeRow = Array.from(list.querySelectorAll<HTMLButtonElement>('.outline-row'))
+            .find(row => row.dataset.headingId === activeHeadingId);
+        if (!activeRow) {
+            return;
+        }
+        const listRect = list.getBoundingClientRect();
+        const rowRect = activeRow.getBoundingClientRect();
+        const edge = 4;
+        if (rowRect.top < listRect.top + edge) {
+            list.scrollTop -= listRect.top + edge - rowRect.top;
+        } else if (rowRect.bottom > listRect.bottom - edge) {
+            list.scrollTop += rowRect.bottom - (listRect.bottom - edge);
+        }
+    }, [activeHeadingId, document?.path]);
 
     useEffect(() => {
         if (!workspaces.length) {
@@ -1065,7 +1118,7 @@ function App() {
         const maxScroll = Math.max(1, reader.scrollHeight - reader.clientHeight);
         const scrollTop = Math.max(0, Math.round(reader.scrollTop));
         const scrollRatio = Math.min(1, Math.max(0, scrollTop / maxScroll));
-        const headingId = currentHeadingId(reader, markdownBodyRef.current);
+        const headingId = currentHeadingId(reader, readingHeadingElements());
         return {
             path: currentDocument.path,
             relativePath: '',
@@ -1095,6 +1148,43 @@ function App() {
             currentDocument.size
         ).catch(() => {
             // Reading memory is a weak convenience; direct document opens still surface real errors.
+        });
+    }
+
+    function readingHeadingElements() {
+        if (readingHeadingsRef.current !== null) {
+            return readingHeadingsRef.current;
+        }
+        const root = markdownBodyRef.current;
+        readingHeadingsRef.current = root
+            ? Array.from(root.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]'))
+            : [];
+        return readingHeadingsRef.current;
+    }
+
+    function scheduleReadingNavigationSync() {
+        if (readingNavigationFrameRef.current !== null) {
+            return;
+        }
+        readingNavigationFrameRef.current = window.requestAnimationFrame(() => {
+            readingNavigationFrameRef.current = null;
+            const reader = readerScrollRef.current;
+            const root = markdownBodyRef.current;
+            if (!reader || !root) {
+                setActiveHeadingId('');
+                if (readerProgressRef.current) {
+                    readerProgressRef.current.style.transform = 'scaleX(0)';
+                }
+                return;
+            }
+            const maxScroll = Math.max(0, reader.scrollHeight - reader.clientHeight);
+            const progress = maxScroll === 0 ? 1 : Math.min(1, Math.max(0, reader.scrollTop / maxScroll));
+            if (readerProgressRef.current) {
+                readerProgressRef.current.style.transform = `scaleX(${progress})`;
+            }
+            const headings = readingHeadingElements();
+            const nextHeadingId = currentHeadingId(reader, headings) || headings[0]?.id || '';
+            setActiveHeadingId(current => current === nextHeadingId ? current : nextHeadingId);
         });
     }
 
@@ -1179,6 +1269,7 @@ function App() {
             const targetTop = position.scrollTop > maxScroll ? ratioTop : position.scrollTop;
             reader.scrollTop = Math.max(0, Math.min(maxScroll, targetTop));
             reader.scrollLeft = 0;
+            scheduleReadingNavigationSync();
             return;
         }
         if (!heading && position?.headingId) {
@@ -1190,11 +1281,13 @@ function App() {
                 const targetTop = target.getBoundingClientRect().top - reader.getBoundingClientRect().top + reader.scrollTop;
                 reader.scrollTop = Math.max(0, targetTop);
                 reader.scrollLeft = 0;
+                scheduleReadingNavigationSync();
                 return;
             }
         }
         reader.scrollTop = 0;
         reader.scrollLeft = 0;
+        scheduleReadingNavigationSync();
     }
 
     const hasWorkspace = useMemo(() => workspaces.length > 0, [workspaces]);
@@ -1403,6 +1496,11 @@ function App() {
                             })}
                         </div>
                     ) : null}
+                    {document ? (
+                        <div className="reader-progress-track" aria-hidden="true">
+                            <div className="reader-progress-value" ref={readerProgressRef}/>
+                        </div>
+                    ) : null}
                     {findOpen && document ? (
                         <div className="find-bar">
                             <input
@@ -1486,13 +1584,15 @@ function App() {
                 <aside className="outline-panel">
                     <div className="panel-heading">{text['panel.outline']}</div>
                     {document?.outline?.length ? (
-                        <div className="outline-list">
+                        <div className="outline-list" ref={outlineListRef}>
                             {document.outline.map((heading, index) => (
                                 <button
                                     type="button"
                                     key={`${heading.id}-${index}`}
-                                    className="outline-row"
+                                    className={`outline-row ${heading.id === activeHeadingId ? 'active' : ''}`}
                                     style={{'--level': heading.level} as React.CSSProperties}
+                                    data-heading-id={heading.id}
+                                    aria-current={heading.id === activeHeadingId ? 'location' : undefined}
                                     onClick={() => scrollToHeading(heading)}
                                 >
                                     {heading.text}
@@ -1551,11 +1651,10 @@ function documentStatusKey(status: DocumentStatus) {
     return `${status.exists}:${status.isDocument}:${status.modifiedAt}:${status.size}`;
 }
 
-function currentHeadingId(reader: HTMLElement, root: HTMLElement | null) {
-    if (!root) {
+function currentHeadingId(reader: HTMLElement, headings: HTMLElement[]) {
+    if (!headings.length) {
         return '';
     }
-    const headings = Array.from(root.querySelectorAll<HTMLElement>('h1[id], h2[id], h3[id], h4[id], h5[id], h6[id]'));
     const readerTop = reader.getBoundingClientRect().top;
     let current = '';
     for (const heading of headings) {

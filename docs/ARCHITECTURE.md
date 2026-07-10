@@ -30,7 +30,7 @@ React owns:
 - Open document tab strip rendering and tab switching interactions.
 - App-owned context-menu rendering for directory tree and tab strip actions.
 - Markdown view rendering from Go-provided document data.
-- Outline panel rendering.
+- Outline panel rendering, current-section highlighting, outline auto-follow, and transient reading-progress display.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
 
 React must not directly access the filesystem, maintain translation dictionaries, parse durable business state, or persist business data.
@@ -51,6 +51,8 @@ workspace folder(s)
 -> Go rewrites relative Markdown links to workspace-relative document actions
 -> React renders reading view
 -> Shiki highlights code blocks
+-> React derives the visible heading and reading progress from the rendered document scroll container
+-> React highlights and scrolls the Go-provided outline without persisting this transient navigation state
 -> React reports debounced reading position and nearest heading to Go
 -> Go persists workspace-scoped reading memory under AppData
 -> React reports open tab order and active tab to Go

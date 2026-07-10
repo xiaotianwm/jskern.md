@@ -19,7 +19,8 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Provide desktop-style right-click menus for directory-tree items and open tabs.
 - Rename Markdown files and folders from the directory-tree context menu through Go-controlled validation.
 - Render the selected Markdown document.
-- Show a document outline from headings.
+- Show a document outline from headings, keep the current section highlighted while reading, and keep long outlines synchronized with the reader position.
+- Show a lightweight document reading-progress indicator without turning the reader surface into a dashboard.
 - Resolve local images and relative links safely.
 - Highlight code blocks with Shiki.
 - Support Chinese and English UI through Go-managed i18n.

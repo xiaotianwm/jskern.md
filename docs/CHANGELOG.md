@@ -1,5 +1,48 @@
 # 更新日志
 
+## 2026-07-10 - v0.1.13 Reading Navigation Enhancements
+
+### 新增
+
+- 新增正文与大纲联动：滚动 Markdown 正文时，右侧大纲自动高亮当前章节。
+- 新增长大纲自动跟随：当前章节离开大纲可视区域时，大纲列表自动滚动到对应标题。
+- 新增阅读进度线：标签页下方显示两像素的轻量进度线，反映当前文档整体阅读进度。
+
+### 变更
+
+- 复用 Go 已生成的稳定 heading ID 和现有 `currentHeadingId()` 位置判断，不增加第二套标题解析逻辑。
+- 标签页切换、启动恢复、阅读位置恢复、外部变更重新加载和大纲点击跳转后，都会立即同步当前大纲高亮和阅读进度。
+- 阅读导航滚动更新通过 `requestAnimationFrame` 合并，避免在长文档滚动时频繁触发 React 更新。
+- 使用 `ResizeObserver` 监听阅读区和 Markdown 正文尺寸变化，图片加载或 Shiki 高亮改变文档高度后会重新计算进度。
+- 大纲高亮和阅读进度保持为 React 瞬时 UI 状态，不写入 `localStorage`，也不形成新的持久化数据源。
+- README、产品范围、架构和约束文档已同步阅读导航行为。
+- 将产品版本提升到 `0.1.13`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.13-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer SHA256: `d9caa9bf163e2cbda3856f693e06ac151091ab9597c17c7bc54476b58bce5ac4`。
+- Published release target: `v0.1.13`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.13`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.13/JSKernMD-Setup-0.1.13-x64.exe`。
+- `SHA256SUMS.txt` was generated with SHA256 `d9caa9bf163e2cbda3856f693e06ac151091ab9597c17c7bc54476b58bce5ac4`。
+- `git diff --check` passed after reverting unrelated Wails-generated whitespace-only file rewrites。
+- 已验证单实例行为：安装版运行时，第二个构建进程正常转发请求后退出。
+- 关闭安装版后，新构建 `build/bin/jskernmd.exe` 独立启动并在 5 秒后保持运行，窗口标题为 `JS Kern.md`。
+- 在 Windows 150% DPI 下通过 CLI 单实例入口打开 `03_术语表.md`，截图验证首章节高亮、滚动章节高亮、长大纲跟随到末段以及进度线增长均正常，未出现布局重叠。
+- GitHub Release `v0.1.13` 已准备上传 `JSKernMD-Setup-0.1.13-x64.exe` 和 `SHA256SUMS.txt`。
+
+---
+
 ## 2026-07-09 - v0.1.12 Titlebar And Workspace Drag Fixes
 
 ### 修复

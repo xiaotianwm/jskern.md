@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
 
 ## Done
 
@@ -170,6 +170,12 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - The desktop drag guard now keeps blocking web-style image/link drags but allows marked top-level workspace roots to use HTML5 drag/drop sorting.
 - Workspace root cursor feedback now switches to `grabbing` only while a real workspace drag is active, not on normal click or right-click.
 - Product version advanced to `0.1.12` for the titlebar and workspace drag interaction fix release.
+- Reader scrolling now derives the current visible heading from the rendered Markdown heading IDs and highlights the matching Go-provided outline entry.
+- Long outline lists now automatically keep the current heading visible while preserving manual outline scrolling when the active row already remains in view.
+- Tab switches, reading-position restore, changed-document reload, and direct heading navigation now immediately synchronize the active outline entry.
+- The reader surface now shows a restrained two-pixel document progress line driven by the current scroll ratio.
+- Reading-navigation updates are coalesced with `requestAnimationFrame`, while `ResizeObserver` refreshes progress after images or code highlighting change document height.
+- Product version advanced to `0.1.13` for the reading navigation enhancement release.
 
 ## Next
 
@@ -180,6 +186,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
 - Add drag-reorder for open tabs only if normal reading use shows tab order needs manual adjustment.
 - Manually verify the titlebar/window-control click behavior on additional Windows display scaling and multi-monitor setups if users still report missed clicks.
+- Add keyboard previous/next heading navigation only if long-document use shows the outline click and scroll-follow flow is not enough.
 
 ## Known Issues
 
@@ -197,6 +204,20 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after reading navigation enhancements v0.1.13:
+  - Product version sources were updated to `0.1.13`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.13/JSKernMD-Setup-0.1.13-x64.exe`.
+  - `SHA256SUMS.txt` was generated with SHA256 `d9caa9bf163e2cbda3856f693e06ac151091ab9597c17c7bc54476b58bce5ac4`.
+  - `git diff --check` passed after reverting unrelated Wails-generated whitespace-only file rewrites.
+  - Single-instance smoke behavior was verified: a second build invocation forwarded and exited while the installed instance was open.
+  - Fresh-build launch smoke test passed after closing the installed instance: `build/bin/jskernmd.exe` remained alive after 5 seconds with a visible `JS Kern.md` window.
+  - Windows 150% DPI visual smoke verification opened `03_术语表.md` through the single-instance CLI route and confirmed the initial outline highlight, scrolling section highlight, outline auto-follow to the final section, and reader progress growth without layout overlap.
+  - GitHub Release `v0.1.13` is prepared for `JSKernMD-Setup-0.1.13-x64.exe` and `SHA256SUMS.txt`.
 - Latest validation after titlebar and workspace drag fixes v0.1.12:
   - Product version sources were updated to `0.1.12`.
   - `go test ./...` passed.
