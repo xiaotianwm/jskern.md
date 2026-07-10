@@ -217,7 +217,8 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
   - Single-instance smoke behavior was verified: a second build invocation forwarded and exited while the installed instance was open.
   - Fresh-build launch smoke test passed after closing the installed instance: `build/bin/jskernmd.exe` remained alive after 5 seconds with a visible `JS Kern.md` window.
   - Windows 150% DPI visual smoke verification opened `03_术语表.md` through the single-instance CLI route and confirmed the initial outline highlight, scrolling section highlight, outline auto-follow to the final section, and reader progress growth without layout overlap.
-  - GitHub Release `v0.1.13` is prepared for `JSKernMD-Setup-0.1.13-x64.exe` and `SHA256SUMS.txt`.
+  - GitHub Release `v0.1.13` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.13`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.13-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:d9caa9bf163e2cbda3856f693e06ac151091ab9597c17c7bc54476b58bce5ac4`.
 - Latest validation after titlebar and workspace drag fixes v0.1.12:
   - Product version sources were updated to `0.1.12`.
   - `go test ./...` passed.

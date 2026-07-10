@@ -39,7 +39,8 @@
 - 已验证单实例行为：安装版运行时，第二个构建进程正常转发请求后退出。
 - 关闭安装版后，新构建 `build/bin/jskernmd.exe` 独立启动并在 5 秒后保持运行，窗口标题为 `JS Kern.md`。
 - 在 Windows 150% DPI 下通过 CLI 单实例入口打开 `03_术语表.md`，截图验证首章节高亮、滚动章节高亮、长大纲跟随到末段以及进度线增长均正常，未出现布局重叠。
-- GitHub Release `v0.1.13` 已准备上传 `JSKernMD-Setup-0.1.13-x64.exe` 和 `SHA256SUMS.txt`。
+- GitHub Release `v0.1.13` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.13`。
+- GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.13-x64.exe`, checksum label/name are `SHA256SUMS.txt`, and the installer digest is `sha256:d9caa9bf163e2cbda3856f693e06ac151091ab9597c17c7bc54476b58bce5ac4`。
 
 ---
 
