@@ -1,5 +1,44 @@
 # 更新日志
 
+## 2026-07-10 - v0.1.15 Markdown Body Select All
+
+### 修复
+
+- 修复在阅读区按 `Ctrl/Cmd + A` 时，文档标题、路径、工具栏、搜索区、左右侧栏和大纲可能一并进入全选范围的问题。
+- 应用级全选现在只为当前渲染的 `.markdown-body` 创建 DOM Range，选区边界不会扩散到正文容器之外。
+- 搜索框、文内查找框、重命名输入框、文本域和可编辑区域获得焦点时不拦截快捷键，继续使用控件自身的原生全选行为。
+
+### 变更
+
+- `Ctrl/Cmd + A` 的分流继续留在 React 的短期交互层，不增加 Go API、持久化字段、前端语言字典或第三方依赖。
+- README、产品范围、架构和约束文档已同步 Markdown 正文专属全选行为。
+- 将产品版本提升到 `0.1.15`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.15-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7318525` bytes。
+- Installer SHA256: `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`。
+- Published release target: `v0.1.15`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.15`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有的 Shiki WASM chunk size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- Wails browser mode DOM validation passed against the restored `03_术语表.md` document：选区 Range 起点、终点和公共祖先均位于 `.markdown-body` 内，`.document-header`、`.document-path`、`.toolbar` 和 `.search-input` 均未与选区相交。
+- Focused workspace-search validation passed：16 字符测试值的 `selectionStart=0`、`selectionEnd=16`，确认输入框继续执行自身原生全选。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.15/JSKernMD-Setup-0.1.15-x64.exe`。
+- `SHA256SUMS.txt` matches installer SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`。
+- Fresh-build launch smoke passed：`build/bin/jskernmd.exe` 在 5 秒后保持运行，随后停止测试进程。
+- Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff。
+
+---
+
 ## 2026-07-10 - v0.1.14 Context Action Feedback
 
 ### 新增

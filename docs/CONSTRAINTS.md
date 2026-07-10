@@ -66,6 +66,7 @@
 - Code highlighting must use Shiki.
 - Browser-default context menu, refresh, find, zoom, link/image drag, and page overscroll must be blocked.
 - Text selection is disabled by default, then re-enabled only for Markdown body, code blocks, inputs, and explicit selectable data.
+- App-level `Ctrl/Cmd+A` outside text inputs must select only the Markdown body; document headers, paths, toolbars, search UI, sidebars, and outline rows must stay outside that selection range.
 
 ## Window And UI
 

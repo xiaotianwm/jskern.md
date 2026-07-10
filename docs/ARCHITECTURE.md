@@ -31,6 +31,7 @@ React owns:
 - App-owned context-menu rendering for directory tree and tab strip actions.
 - Short-lived weak feedback for context-menu action results, with copy replaced by the next notice and all timers cleaned up on unmount.
 - Markdown view rendering from Go-provided document data.
+- App-level `Ctrl/Cmd+A` routing that selects only the rendered Markdown body unless a text input currently owns focus.
 - Outline panel rendering, current-section highlighting, outline auto-follow, and transient reading-progress display.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
 

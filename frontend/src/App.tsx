@@ -213,6 +213,11 @@ function App() {
             if (!isCommand) {
                 return;
             }
+            if (key === 'a' && document && !isTextInputTarget(event.target)) {
+                event.preventDefault();
+                selectMarkdownBody();
+                return;
+            }
             if (key === 'w' && document) {
                 event.preventDefault();
                 void closeTab(document.path);
@@ -1157,6 +1162,18 @@ function App() {
         }, 0);
     }
 
+    function selectMarkdownBody() {
+        const root = markdownBodyRef.current;
+        const selection = window.getSelection();
+        if (!root || !selection) {
+            return;
+        }
+        const range = root.ownerDocument.createRange();
+        range.selectNodeContents(root);
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+
     function handleTitlebarDoubleClick(event: React.MouseEvent<HTMLElement>) {
         const target = event.target;
         if (target instanceof Element && target.closest('.window-controls')) {
@@ -1765,6 +1782,10 @@ function errorMessage(error: unknown, fallback: string) {
         return error;
     }
     return fallback;
+}
+
+function isTextInputTarget(target: EventTarget | null) {
+    return target instanceof Element && Boolean(target.closest('input, textarea, [contenteditable="true"]'));
 }
 
 function hasLaunchRequest(request: LaunchRequest | null | undefined): request is LaunchRequest {

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, localized weak context-action feedback, workspace search, current-document find, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, localized weak context-action feedback, workspace search, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
 
 ## Done
 
@@ -184,6 +184,12 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Windows installer `JSKernMD-Setup-0.1.14-x64.exe` was staged under `dist/releases/v0.1.14/`.
 - `SHA256SUMS.txt` was generated for the `0.1.14` installer with SHA256 `33d58c7dd87263969e61528c201a5f00885d0893a6cd54bc59fa7597a9b959da`.
 - GitHub Release `v0.1.14` publishes `JSKernMD-Setup-0.1.14-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- App-level `Ctrl/Cmd+A` now creates a DOM selection range over the rendered `.markdown-body` only.
+- Document title, document path, toolbar, workspace search, sidebars, and outline stay outside the app-owned select-all range.
+- Focused `input`, `textarea`, and `[contenteditable="true"]` elements keep their native control-local select-all behavior.
+- Product version advanced to `0.1.15` for the Markdown-body-only select-all release.
+- Windows installer `JSKernMD-Setup-0.1.15-x64.exe` was staged under `dist/releases/v0.1.15/`.
+- `SHA256SUMS.txt` was generated for the `0.1.15` installer with SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
 
 ## Next
 
@@ -211,6 +217,19 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after Markdown-body-only select-all v0.1.15:
+  - Product version sources were updated to `0.1.15`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Wails browser-mode DOM validation passed against the restored `03_术语表.md` document: the selection range start, end, and common ancestor were inside `.markdown-body`, while `.document-header`, `.document-path`, `.toolbar`, and `.search-input` did not intersect the selection.
+  - Focused workspace-search validation passed: `Ctrl+A` selected the complete 16-character test value with `selectionStart=0` and `selectionEnd=16`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.15/JSKernMD-Setup-0.1.15-x64.exe`.
+  - Installer size is `7318525` bytes and `SHA256SUMS.txt` matches SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
+  - Fresh-build launch smoke passed: `build/bin/jskernmd.exe` remained alive after 5 seconds before the test process was stopped.
+  - Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff.
 - Latest validation after context-action feedback v0.1.14:
   - Product version sources were updated to `0.1.14`.
   - `go test ./...` passed.
