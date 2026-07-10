@@ -190,6 +190,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Product version advanced to `0.1.15` for the Markdown-body-only select-all release.
 - Windows installer `JSKernMD-Setup-0.1.15-x64.exe` was staged under `dist/releases/v0.1.15/`.
 - `SHA256SUMS.txt` was generated for the `0.1.15` installer with SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
+- GitHub Release `v0.1.15` publishes `JSKernMD-Setup-0.1.15-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 
 ## Next
 
@@ -230,6 +231,9 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
   - Installer size is `7318525` bytes and `SHA256SUMS.txt` matches SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
   - Fresh-build launch smoke passed: `build/bin/jskernmd.exe` remained alive after 5 seconds before the test process was stopped.
   - Wails-generated installer-template substitutions and trailing-whitespace-only model rewrites were removed from the source diff.
+  - GitHub Release `v0.1.15` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.15` and verified as the latest release.
+  - Release tag `v0.1.15` and `origin/main` both resolve to source commit `0227a84c5cacb94dd3bfe097b97fe57f7eab570c`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.15-x64.exe`, checksum label/name are `SHA256SUMS.txt`, installer size is `7318525` bytes, and the installer digest is `sha256:ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
 - Latest validation after context-action feedback v0.1.14:
   - Product version sources were updated to `0.1.14`.
   - `go test ./...` passed.
