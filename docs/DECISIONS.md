@@ -108,3 +108,9 @@ Consequence: JS Kern.md supports multiple top-level workspace folders. Opening a
 Reason: Users should be able to open Markdown files or add folders from Windows Explorer, and those OS hooks must be removed with the app.
 
 Consequence: Windows Explorer integration belongs to the installer/uninstaller lifecycle. The installer registers current-user context-menu keys for opening Markdown files with JS Kern.md and adding folders to the workspace list. The uninstaller deletes only those product-specific keys and must not remove user documents, AppData, or broad file associations.
+
+## 2026-07-11: Load Workspace Trees One Directory Level At A Time
+
+Reason: Recursively scanning every configured workspace during startup and every weak refresh makes the folder-first core scale with the entire library even when most directories remain collapsed.
+
+Consequence: Workspace restore validates only each root. React requests `LoadDirectory(path)` when a directory is expanded, Go validates and reads only that directory's immediate children, and weak refresh scans only directory levels already loaded into the Go runtime tree. Search remains a separate bounded on-demand scan and no index database is introduced.

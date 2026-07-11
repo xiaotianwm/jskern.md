@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, localized weak context-action feedback, workspace search with hit line numbers and open-result focus, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned one-level-at-a-time directory loading and loaded-tree auto-sync, Go-owned multi-tab reading sessions, reading-position restore, desktop context menus, localized weak context-action feedback, workspace search with hit line numbers and open-result focus, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
 
 ## Done
 
@@ -193,12 +193,20 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - `SHA256SUMS.txt` was generated for the `0.1.15` installer with SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
 - GitHub Release `v0.1.15` publishes `JSKernMD-Setup-0.1.15-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
 - Product version advanced to `0.1.17` for workspace search hit navigation.
+- Workspace startup, restore, and multi-root collection rebuild now validate root directories without recursively scanning descendants.
+- Added Go-owned `LoadDirectory(path)` so expanding a directory reads only its immediate Markdown files and child directories.
+- Directory nodes expose a Go-provided `loaded` state so React distinguishes unloaded folders from loaded empty folders without inspecting the filesystem.
+- Go keeps the loaded runtime tree and `RefreshWorkspaces()` now scans only directory levels the user has expanded.
+- Directory rename preserves loaded descendant state and remaps cached paths before refreshing visible levels.
+- Frontend directory expansion updates only the returned tree branch and ignores stale weak-refresh responses after expand, rename, or workspace reorder operations.
+- Added localized Chinese and English directory-load failure feedback.
+- Added tests for on-demand levels, invalid targets, loaded-only refresh, rename compatibility, and large-directory benchmarks.
+- Product version advanced to `0.1.18` for large-workspace directory loading performance.
 
 ## Next
 
 - Keep JS Kern.md as an independent desktop app with GitHub Releases as the update and installer distribution source.
 - Add update download progress and cancellation if installer downloads become large enough to need more than the current busy-state prompt.
-- Add lazy or incremental directory scanning if large workspaces become visibly slow.
 - Tune reading-position restore heuristics if large image-heavy Markdown files make raw scroll offsets less stable than heading anchors.
 - Add drag-reorder for open tabs only if normal reading use shows tab order needs manual adjustment.
 - Manually verify the titlebar/window-control click behavior on additional Windows display scaling and multi-monitor setups if users still report missed clicks.
@@ -206,8 +214,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Known Issues
 
-- Directory tree currently scans eagerly with a depth cap of 8 and skips common heavy folders.
-- Multiple workspaces currently still use eager scanning for each root, so very large collections may need lazy root loading later.
+- A single directory containing tens of thousands of direct children is loaded as one level; the `50,000`-entry benchmark completed in about `141 ms` in Go, but UI virtualization may be needed if real libraries use such unusually wide folders.
 - Workspace search is currently an on-demand scan rather than an indexed search database.
 - Current-document find is DOM-based and does not match text split across separate inline elements.
 - Workspace search result focusing reuses DOM find highlighting and may fall back to the first rendered query match if a very long truncated snippet cannot be matched exactly.
@@ -221,6 +228,23 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after large-workspace lazy directory loading v0.1.18:
+  - Product version sources were updated to `0.1.18`.
+  - `go test ./...` passed.
+  - `go vet ./...` passed.
+  - `wails generate module` passed and generated `LoadDirectory(path)` plus `TreeNode.loaded` bindings.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `git diff --check` passed after removing Wails-generated trailing whitespace.
+  - `go test -race ./...` could not run because this Windows Go environment has `CGO_ENABLED=0` and no C compiler; ordinary tests, lock-order review, and `go vet` passed.
+  - `go test -run '^$' -bench '^BenchmarkWorkspaceDirectoryLoading$' -benchtime=1x -benchmem` passed on Windows amd64.
+  - Root validation stayed approximately `1-2 ms` at `1,000`, `10,000`, and `50,000` direct entries because it no longer reads descendants.
+  - One-level loading measured about `6.9 ms` for `1,000`, `32.3 ms` for `10,000`, and `140.9 ms` for `50,000` direct entries.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.18/JSKernMD-Setup-0.1.18-x64.exe`.
+  - Installer size is `7327696` bytes and `SHA256SUMS.txt` matches SHA256 `894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`.
+  - Installer metadata verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.18`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+  - Fresh-build launch smoke was not run because the installed single-instance app was active at `D:\JS Kern.md\jskernmd.exe`; the user's running app was intentionally not terminated.
 - Latest validation after workspace search hit navigation v0.1.17:
   - Product version sources were updated to `0.1.17`.
   - `go test ./...` passed.

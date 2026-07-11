@@ -46,6 +46,7 @@ func TestActionFeedbackLocaleKeys(t *testing.T) {
 		"feedback.rename_failed",
 		"feedback.remove_workspace_success",
 		"feedback.remove_workspace_failed",
+		"feedback.load_directory_failed",
 		"feedback.dismiss",
 	}
 	for _, locale := range []string{"zh-CN", "en"} {
@@ -272,6 +273,9 @@ func TestRenamePathRenamesWorkspaceDocumentAndRefreshesTree(t *testing.T) {
 	if _, err := app.ScanWorkspace(dir); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := app.LoadDirectory(dir); err != nil {
+		t.Fatal(err)
+	}
 	result, err := app.RenamePath(docPath, "Guide.md")
 	if err != nil {
 		t.Fatal(err)
@@ -303,6 +307,12 @@ func TestRenamePathRenamesWorkspaceDirectory(t *testing.T) {
 	if _, err := app.ScanWorkspace(dir); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := app.LoadDirectory(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(nested); err != nil {
+		t.Fatal(err)
+	}
 	result, err := app.RenamePath(nested, "notes")
 	if err != nil {
 		t.Fatal(err)
@@ -328,6 +338,9 @@ func TestRenamePathRejectsUnsafeTargets(t *testing.T) {
 
 	app := NewApp()
 	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(dir); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"", "../escape.md", "notes/guide.md", "guide.txt", "bad:name.md", "exists.md"} {
@@ -356,6 +369,9 @@ func TestRefreshWorkspaceDetectsStructureChangesOnly(t *testing.T) {
 
 	app := NewApp()
 	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(dir); err != nil {
 		t.Fatal(err)
 	}
 
@@ -402,6 +418,144 @@ func TestRefreshWorkspaceDetectsStructureChangesOnly(t *testing.T) {
 	}
 }
 
+func TestWorkspaceTreeLoadsDirectoriesOnDemand(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	docPath := filepath.Join(nested, "guide.md")
+	if err := os.WriteFile(docPath, []byte("# Guide\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	tree, err := app.ScanWorkspace(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tree.Root.Loaded || len(tree.Root.Children) != 0 || treeContainsPath(tree.Root, docPath) {
+		t.Fatalf("expected initial workspace scan to return only an unloaded root, got %+v", tree.Root)
+	}
+
+	root, err := app.LoadDirectory(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !root.Loaded || !treeContainsPath(*root, nested) || treeContainsPath(*root, docPath) {
+		t.Fatalf("expected root load to read one directory level, got %+v", root)
+	}
+	docs, err := app.LoadDirectory(nested)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !docs.Loaded || !treeContainsPath(*docs, docPath) {
+		t.Fatalf("expected nested load to return its Markdown child, got %+v", docs)
+	}
+}
+
+func TestLoadDirectoryRejectsInvalidTargets(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs", "nested")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	docPath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(docPath, []byte("# Home\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(docPath); err == nil {
+		t.Fatal("expected Markdown file directory load to be rejected")
+	}
+	if _, err := app.LoadDirectory(nested); err == nil {
+		t.Fatal("expected unloaded descendant directory to be rejected")
+	}
+	if _, err := app.LoadDirectory(t.TempDir()); err == nil {
+		t.Fatal("expected outside workspace directory to be rejected")
+	}
+}
+
+func TestRefreshWorkspaceOnlyScansLoadedDirectories(t *testing.T) {
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "docs")
+	if err := os.MkdirAll(nested, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "first.md"), []byte("# First\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	app := NewApp()
+	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(dir); err != nil {
+		t.Fatal(err)
+	}
+	second := filepath.Join(nested, "second.md")
+	if err := os.WriteFile(second, []byte("# Second\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err := app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refresh.Changed {
+		t.Fatalf("expected changes below an unloaded directory to stay out of refresh, got %+v", refresh)
+	}
+
+	if _, err := app.LoadDirectory(nested); err != nil {
+		t.Fatal(err)
+	}
+	third := filepath.Join(nested, "third.md")
+	if err := os.WriteFile(third, []byte("# Third\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	refresh, err = app.RefreshWorkspace()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !refresh.Changed || refresh.Tree == nil || !treeContainsPath(refresh.Tree.Root, third) {
+		t.Fatalf("expected loaded directory changes to refresh, got %+v", refresh)
+	}
+}
+
+func BenchmarkWorkspaceDirectoryLoading(b *testing.B) {
+	for _, size := range []int{1_000, 10_000, 50_000} {
+		dir := b.TempDir()
+		for index := 0; index < size; index++ {
+			name := fmt.Sprintf("document-%05d.md", index)
+			if err := os.WriteFile(filepath.Join(dir, name), nil, 0o600); err != nil {
+				b.Fatal(err)
+			}
+		}
+
+		b.Run(fmt.Sprintf("root-%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ReportMetric(float64(size), "entries")
+			for iteration := 0; iteration < b.N; iteration++ {
+				if _, _, _, err := scanWorkspaceRoot(dir); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+		b.Run(fmt.Sprintf("level-%d", size), func(b *testing.B) {
+			b.ReportAllocs()
+			b.ReportMetric(float64(size), "entries")
+			for iteration := 0; iteration < b.N; iteration++ {
+				if _, err := scanDirectoryLevel(dir); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 func TestRefreshWorkspaceIgnoresSkippedDirectories(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# Home\n"), 0o600); err != nil {
@@ -410,6 +564,9 @@ func TestRefreshWorkspaceIgnoresSkippedDirectories(t *testing.T) {
 
 	app := NewApp()
 	if _, err := app.ScanWorkspace(dir); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := app.LoadDirectory(dir); err != nil {
 		t.Fatal(err)
 	}
 

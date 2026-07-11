@@ -20,6 +20,8 @@ export function GetReadingPosition(arg1:string):Promise<main.ReadingPosition>;
 
 export function GetReadingSession():Promise<main.WorkspaceReadingSession>;
 
+export function LoadDirectory(arg1:string):Promise<main.TreeNode>;
+
 export function OpenDocument(arg1:string):Promise<main.Document>;
 
 export function OpenDownloadedUpdate(arg1:string):Promise<void>;

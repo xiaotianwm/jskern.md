@@ -39,6 +39,7 @@ var productInfo = mustLoadProductInfo()
 type App struct {
 	ctx               context.Context
 	mu                sync.RWMutex
+	workspaceScanMu   sync.Mutex
 	workspaceRoot     string
 	workspaceRootReal string
 	workspaceTreeSig  string
@@ -110,6 +111,7 @@ type workspaceRuntimeState struct {
 	Root          string
 	RealRoot      string
 	TreeSignature string
+	Tree          TreeNode
 }
 
 type WorkspaceTree struct {
@@ -139,6 +141,7 @@ type TreeNode struct {
 	Name     string     `json:"name"`
 	Path     string     `json:"path"`
 	Type     string     `json:"type"`
+	Loaded   bool       `json:"loaded"`
 	Children []TreeNode `json:"children,omitempty"`
 }
 
@@ -364,6 +367,9 @@ func (a *App) RevealPath(path string) error {
 }
 
 func (a *App) RenamePath(path string, newName string) (*RenameResult, error) {
+	a.workspaceScanMu.Lock()
+	defer a.workspaceScanMu.Unlock()
+
 	source, err := a.renameableWorkspacePath(path)
 	if err != nil {
 		return nil, err
@@ -400,7 +406,7 @@ func (a *App) RenamePath(path string, newName string) (*RenameResult, error) {
 		return nil, err
 	}
 
-	node, err := a.refreshWorkspaceTreeAfterMutation()
+	node, err := a.refreshWorkspaceTreeAfterMutation(source, target, treeNodeType(info))
 	if err != nil {
 		return nil, err
 	}
@@ -434,6 +440,7 @@ func (a *App) RemoveWorkspace(workspaceID string) (*WorkspaceCollection, error) 
 	if workspaceID == "" {
 		return nil, errors.New("empty workspace id")
 	}
+	a.workspaceScanMu.Lock()
 
 	var removedRoot string
 	a.mu.Lock()
@@ -448,6 +455,7 @@ func (a *App) RemoveWorkspace(workspaceID string) (*WorkspaceCollection, error) 
 	}
 	if removedRoot == "" {
 		a.mu.Unlock()
+		a.workspaceScanMu.Unlock()
 		return nil, errors.New("workspace was not found")
 	}
 	a.settings.Workspaces = next
@@ -465,6 +473,7 @@ func (a *App) RemoveWorkspace(workspaceID string) (*WorkspaceCollection, error) 
 	memoryPath := a.readingMemoryPath
 	memory := a.readingMemory
 	a.mu.Unlock()
+	a.workspaceScanMu.Unlock()
 
 	if settingsPath != "" {
 		_ = saveSettings(settingsPath, settings)
@@ -479,6 +488,7 @@ func (a *App) ReorderWorkspaces(workspaceIDs []string) (*WorkspaceCollection, er
 	if len(workspaceIDs) == 0 {
 		return a.RestoreWorkspaces()
 	}
+	a.workspaceScanMu.Lock()
 	a.mu.Lock()
 	byID := map[string]WorkspaceEntry{}
 	for _, workspace := range a.settings.Workspaces {
@@ -508,6 +518,7 @@ func (a *App) ReorderWorkspaces(workspaceIDs []string) (*WorkspaceCollection, er
 	settingsPath := a.settingsPath
 	settings := a.settings
 	a.mu.Unlock()
+	a.workspaceScanMu.Unlock()
 	if settingsPath != "" {
 		_ = saveSettings(settingsPath, settings)
 	}
@@ -538,6 +549,46 @@ func (a *App) RestoreWorkspaces() (*WorkspaceCollection, error) {
 	return a.workspaceCollection(workspaces, activeID)
 }
 
+func (a *App) LoadDirectory(path string) (*TreeNode, error) {
+	a.workspaceScanMu.Lock()
+	defer a.workspaceScanMu.Unlock()
+
+	target, err := a.revealableWorkspacePath(path)
+	if err != nil {
+		return nil, err
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, errors.New("workspace path is not a directory")
+	}
+	workspace, _, ok := a.workspaceForPath(target, true)
+	if !ok {
+		return nil, errors.New("directory is outside the current workspace")
+	}
+
+	a.mu.RLock()
+	state, ok := a.workspaceStates[workspace.ID]
+	a.mu.RUnlock()
+	if !ok || state.Root == "" {
+		return nil, errors.New("workspace is not open")
+	}
+
+	loaded, directory, err := loadTreeDirectory(state.Tree, target)
+	if err != nil {
+		return nil, err
+	}
+	state.Tree = loaded
+	state.TreeSignature = treeSignature(loaded)
+	a.mu.Lock()
+	a.workspaceStates[workspace.ID] = state
+	a.applyActiveWorkspaceLocked()
+	a.mu.Unlock()
+	return &directory, nil
+}
+
 func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 	tree, err := a.addWorkspacePath(root, true)
 	if err != nil {
@@ -547,6 +598,9 @@ func (a *App) ScanWorkspace(root string) (*WorkspaceTree, error) {
 }
 
 func (a *App) addWorkspacePath(root string, activate bool) (*WorkspaceTree, error) {
+	a.workspaceScanMu.Lock()
+	defer a.workspaceScanMu.Unlock()
+
 	entry, node, state, err := scanWorkspaceRoot(root)
 	if err != nil {
 		return nil, err
@@ -626,11 +680,14 @@ func (a *App) RefreshWorkspace() (*WorkspaceRefresh, error) {
 }
 
 func (a *App) RefreshWorkspaces() (*WorkspaceRefresh, error) {
+	a.workspaceScanMu.Lock()
+	defer a.workspaceScanMu.Unlock()
+
 	a.mu.RLock()
 	workspaces := append([]WorkspaceEntry(nil), a.settings.Workspaces...)
-	previous := map[string]string{}
+	previous := map[string]workspaceRuntimeState{}
 	for id, state := range a.workspaceStates {
-		previous[id] = state.TreeSignature
+		previous[id] = state
 	}
 	activeID := a.settings.ActiveWorkspaceID
 	a.mu.RUnlock()
@@ -639,26 +696,27 @@ func (a *App) RefreshWorkspaces() (*WorkspaceRefresh, error) {
 	}
 
 	changed := false
-	trees := make([]WorkspaceTree, 0, len(workspaces))
 	states := map[string]workspaceRuntimeState{}
 	for _, workspace := range workspaces {
-		entry, node, state, err := scanWorkspaceRoot(workspace.Path)
+		state, existed := previous[workspace.ID]
+		if !existed || state.Root == "" {
+			_, _, state, _ = scanWorkspaceRoot(workspace.Path)
+			changed = changed || state.Root != ""
+		}
+		if state.Root == "" {
+			continue
+		}
+		node, err := refreshLoadedTree(state.Tree)
 		if err != nil {
 			continue
 		}
-		entry.ID = workspace.ID
-		entry.AddedAt = workspace.AddedAt
-		entry.LastOpenedAt = workspace.LastOpenedAt
-		entry.Order = workspace.Order
-		entry.Name = workspace.Name
-		if entry.Name == "" {
-			entry.Name = workspaceDisplayName(entry.Path)
-		}
-		if previous[entry.ID] != state.TreeSignature {
+		nextSignature := treeSignature(node)
+		if state.TreeSignature != nextSignature {
 			changed = true
 		}
-		states[entry.ID] = state
-		trees = append(trees, WorkspaceTree{Workspace: entry, Root: node})
+		state.Tree = node
+		state.TreeSignature = nextSignature
+		states[workspace.ID] = state
 	}
 	if !changed {
 		return &WorkspaceRefresh{Changed: false}, nil
@@ -672,14 +730,12 @@ func (a *App) RefreshWorkspaces() (*WorkspaceRefresh, error) {
 		a.workspaceStates[id] = state
 	}
 	a.applyActiveWorkspaceLocked()
+	allStates := cloneWorkspaceStates(a.workspaceStates)
 	a.mu.Unlock()
 
 	return &WorkspaceRefresh{
-		Changed: true,
-		Collection: &WorkspaceCollection{
-			Workspaces:        trees,
-			ActiveWorkspaceID: activeID,
-		},
+		Changed:    true,
+		Collection: workspaceCollectionFromStates(workspaces, activeID, allStates),
 	}, nil
 }
 
@@ -844,7 +900,9 @@ func (a *App) setActiveWorkspaceForPath(path string) {
 	if a.workspaceStates == nil {
 		a.workspaceStates = map[string]workspaceRuntimeState{}
 	}
-	a.workspaceStates[workspace.ID] = state
+	if existing, exists := a.workspaceStates[workspace.ID]; !exists || existing.Root == "" {
+		a.workspaceStates[workspace.ID] = state
+	}
 	a.settings.ActiveWorkspaceID = workspace.ID
 	a.settings.LastWorkspace = workspace.Path
 	a.applyActiveWorkspaceLocked()
@@ -857,10 +915,15 @@ func (a *App) setActiveWorkspaceForPath(path string) {
 }
 
 func (a *App) workspaceCollection(workspaces []WorkspaceEntry, activeID string) (*WorkspaceCollection, error) {
-	trees := make([]WorkspaceTree, 0, len(workspaces))
+	a.workspaceScanMu.Lock()
+	defer a.workspaceScanMu.Unlock()
+
+	a.mu.RLock()
+	previous := cloneWorkspaceStates(a.workspaceStates)
+	a.mu.RUnlock()
 	states := map[string]workspaceRuntimeState{}
 	for _, workspace := range workspaces {
-		entry, node, state, err := scanWorkspaceRoot(workspace.Path)
+		entry, _, state, err := scanWorkspaceRoot(workspace.Path)
 		if err != nil {
 			continue
 		}
@@ -869,14 +932,22 @@ func (a *App) workspaceCollection(workspaces []WorkspaceEntry, activeID string) 
 		entry.Order = workspace.Order
 		entry.AddedAt = workspace.AddedAt
 		entry.LastOpenedAt = workspace.LastOpenedAt
+		if existing, ok := previous[entry.ID]; ok && samePath(existing.Root, entry.Path) {
+			state.Tree = existing.Tree
+			state.TreeSignature = existing.TreeSignature
+		}
 		states[entry.ID] = state
-		trees = append(trees, WorkspaceTree{Workspace: entry, Root: node})
 	}
-	if len(trees) == 0 {
+	if len(states) == 0 {
 		return &WorkspaceCollection{}, nil
 	}
 	if activeID == "" {
-		activeID = trees[0].Workspace.ID
+		for _, workspace := range workspaces {
+			if _, ok := states[workspace.ID]; ok {
+				activeID = workspace.ID
+				break
+			}
+		}
 	}
 	a.mu.Lock()
 	if a.workspaceStates == nil {
@@ -888,10 +959,7 @@ func (a *App) workspaceCollection(workspaces []WorkspaceEntry, activeID string) 
 	a.settings.ActiveWorkspaceID = activeID
 	a.applyActiveWorkspaceLocked()
 	a.mu.Unlock()
-	return &WorkspaceCollection{
-		Workspaces:        trees,
-		ActiveWorkspaceID: activeID,
-	}, nil
+	return workspaceCollectionFromStates(workspaces, activeID, states), nil
 }
 
 func (a *App) revealableWorkspacePath(path string) (string, error) {
@@ -953,19 +1021,21 @@ func (a *App) isRenameTargetWithinRealWorkspace(sourceParent string, target stri
 	return realRel == "." || (!strings.HasPrefix(realRel, "..") && !filepath.IsAbs(realRel))
 }
 
-func (a *App) refreshWorkspaceTreeAfterMutation() (TreeNode, error) {
-	a.mu.RLock()
-	root := a.workspaceRoot
-	a.mu.RUnlock()
-	if root == "" {
+func (a *App) refreshWorkspaceTreeAfterMutation(oldPath string, newPath string, nodeType string) (TreeNode, error) {
+	workspace, state, ok := a.workspaceForPath(newPath, false)
+	if !ok || state.Root == "" {
 		return TreeNode{}, errors.New("workspace is not open")
 	}
-	node, err := scanNode(root, 0)
+	node := remapTreePaths(state.Tree, oldPath, newPath, nodeType)
+	node, err := refreshLoadedTree(node)
 	if err != nil {
 		return TreeNode{}, err
 	}
+	state.Tree = node
+	state.TreeSignature = treeSignature(node)
 	a.mu.Lock()
-	a.workspaceTreeSig = treeSignature(node)
+	a.workspaceStates[workspace.ID] = state
+	a.applyActiveWorkspaceLocked()
 	a.mu.Unlock()
 	return node, nil
 }
@@ -983,10 +1053,7 @@ func scanWorkspaceRoot(root string) (WorkspaceEntry, TreeNode, workspaceRuntimeS
 	if !info.IsDir() {
 		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, errors.New("workspace path is not a directory")
 	}
-	node, err := scanNode(abs, 0)
-	if err != nil {
-		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
-	}
+	node := TreeNode{Name: info.Name(), Path: abs, Type: "directory"}
 	realRoot, err := filepath.EvalSymlinks(abs)
 	if err != nil {
 		return WorkspaceEntry{}, TreeNode{}, workspaceRuntimeState{}, err
@@ -1000,11 +1067,22 @@ func scanWorkspaceRoot(root string) (WorkspaceEntry, TreeNode, workspaceRuntimeS
 		Root:          abs,
 		RealRoot:      filepath.Clean(realRoot),
 		TreeSignature: treeSignature(node),
+		Tree:          node,
 	}
 	return entry, node, state, nil
 }
 
 func (a *App) scanExistingWorkspaceLocked(workspace WorkspaceEntry) (TreeNode, workspaceRuntimeState, error) {
+	if state, ok := a.workspaceStates[workspace.ID]; ok && state.Root != "" {
+		node, err := refreshLoadedTree(state.Tree)
+		if err != nil {
+			return TreeNode{}, workspaceRuntimeState{}, err
+		}
+		state.Tree = node
+		state.TreeSignature = treeSignature(node)
+		a.workspaceStates[workspace.ID] = state
+		return cloneTreeNode(node), state, nil
+	}
 	_, node, state, err := scanWorkspaceRoot(workspace.Path)
 	if err != nil {
 		return TreeNode{}, workspaceRuntimeState{}, err
@@ -1657,24 +1735,13 @@ func backupBadFile(path string) error {
 	return os.Rename(path, backupPath)
 }
 
-func scanNode(path string, depth int) (TreeNode, error) {
+func scanDirectoryLevel(path string) (TreeNode, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		return TreeNode{}, err
 	}
-
-	nodeType := "file"
-	if info.IsDir() {
-		nodeType = "directory"
-	}
-	node := TreeNode{Name: info.Name(), Path: path, Type: nodeType}
 	if !info.IsDir() {
-		return node, nil
-	}
-
-	// ponytail: bounded eager scan; switch to lazy child loading when huge workspaces need it.
-	if depth >= 8 {
-		return node, nil
+		return TreeNode{}, errors.New("workspace path is not a directory")
 	}
 
 	entries, err := os.ReadDir(path)
@@ -1692,11 +1759,11 @@ func scanNode(path string, depth int) (TreeNode, error) {
 		if !entry.IsDir() && !isMarkdownFile(name) {
 			continue
 		}
-		child, err := scanNode(childPath, depth+1)
-		if err != nil {
-			continue
+		childType := "file"
+		if entry.IsDir() {
+			childType = "directory"
 		}
-		children = append(children, child)
+		children = append(children, TreeNode{Name: name, Path: childPath, Type: childType})
 	}
 
 	sort.Slice(children, func(i, j int) bool {
@@ -1705,8 +1772,145 @@ func scanNode(path string, depth int) (TreeNode, error) {
 		}
 		return strings.ToLower(children[i].Name) < strings.ToLower(children[j].Name)
 	})
-	node.Children = children
-	return node, nil
+	return TreeNode{
+		Name:     info.Name(),
+		Path:     filepath.Clean(path),
+		Type:     "directory",
+		Loaded:   true,
+		Children: children,
+	}, nil
+}
+
+func loadTreeDirectory(root TreeNode, target string) (TreeNode, TreeNode, error) {
+	target = filepath.Clean(target)
+	if samePath(root.Path, target) {
+		loaded, err := scanDirectoryLevel(target)
+		if err != nil {
+			return TreeNode{}, TreeNode{}, err
+		}
+		loaded = preserveLoadedChildren(loaded, root)
+		return loaded, cloneTreeNode(loaded), nil
+	}
+	if root.Type != "directory" || !root.Loaded || !pathWithinRoot(target, root.Path) {
+		return TreeNode{}, TreeNode{}, errors.New("directory is not present in the loaded workspace tree")
+	}
+
+	next := cloneTreeNode(root)
+	for index, child := range next.Children {
+		if child.Type != "directory" || !pathWithinRoot(target, child.Path) {
+			continue
+		}
+		updated, loaded, err := loadTreeDirectory(child, target)
+		if err != nil {
+			return TreeNode{}, TreeNode{}, err
+		}
+		next.Children[index] = updated
+		return next, loaded, nil
+	}
+	return TreeNode{}, TreeNode{}, errors.New("directory is not present in the loaded workspace tree")
+}
+
+func refreshLoadedTree(root TreeNode) (TreeNode, error) {
+	if root.Type != "directory" || !root.Loaded {
+		return cloneTreeNode(root), nil
+	}
+	fresh, err := scanDirectoryLevel(root.Path)
+	if err != nil {
+		return TreeNode{}, err
+	}
+	fresh = preserveLoadedChildren(fresh, root)
+	for index, child := range fresh.Children {
+		if child.Type != "directory" || !child.Loaded {
+			continue
+		}
+		refreshed, err := refreshLoadedTree(child)
+		if err != nil {
+			continue
+		}
+		fresh.Children[index] = refreshed
+	}
+	return fresh, nil
+}
+
+func preserveLoadedChildren(fresh TreeNode, current TreeNode) TreeNode {
+	loaded := map[string]TreeNode{}
+	for _, child := range current.Children {
+		if child.Type == "directory" && child.Loaded {
+			loaded[pathKey(child.Path)] = child
+		}
+	}
+	for index, child := range fresh.Children {
+		if existing, ok := loaded[pathKey(child.Path)]; ok {
+			fresh.Children[index] = cloneTreeNode(existing)
+		}
+	}
+	return fresh
+}
+
+func remapTreePaths(root TreeNode, oldPath string, newPath string, nodeType string) TreeNode {
+	next := cloneTreeNode(root)
+	if mapped, ok := remapTreePath(next.Path, oldPath, newPath, nodeType); ok {
+		next.Path = mapped
+		next.Name = filepath.Base(mapped)
+	}
+	for index, child := range next.Children {
+		next.Children[index] = remapTreePaths(child, oldPath, newPath, nodeType)
+	}
+	return next
+}
+
+func remapTreePath(path string, oldPath string, newPath string, nodeType string) (string, bool) {
+	if samePath(path, oldPath) {
+		return filepath.Clean(newPath), true
+	}
+	if nodeType != "directory" || !pathWithinRoot(path, oldPath) {
+		return path, false
+	}
+	relative, err := filepath.Rel(filepath.Clean(oldPath), filepath.Clean(path))
+	if err != nil || relative == "." {
+		return path, false
+	}
+	return filepath.Join(filepath.Clean(newPath), relative), true
+
+}
+
+func workspaceCollectionFromStates(workspaces []WorkspaceEntry, activeID string, states map[string]workspaceRuntimeState) *WorkspaceCollection {
+	trees := make([]WorkspaceTree, 0, len(workspaces))
+	for _, workspace := range workspaces {
+		state, ok := states[workspace.ID]
+		if !ok || state.Root == "" {
+			continue
+		}
+		workspace.Path = state.Root
+		workspace.Name = firstNonEmpty(workspace.Name, workspaceDisplayName(state.Root))
+		trees = append(trees, WorkspaceTree{Workspace: workspace, Root: cloneTreeNode(state.Tree)})
+	}
+	return &WorkspaceCollection{Workspaces: trees, ActiveWorkspaceID: activeID}
+}
+
+func cloneWorkspaceStates(states map[string]workspaceRuntimeState) map[string]workspaceRuntimeState {
+	cloned := make(map[string]workspaceRuntimeState, len(states))
+	for id, state := range states {
+		state.Tree = cloneTreeNode(state.Tree)
+		cloned[id] = state
+	}
+	return cloned
+}
+
+func cloneTreeNode(node TreeNode) TreeNode {
+	node.Children = append([]TreeNode(nil), node.Children...)
+	for index := range node.Children {
+		node.Children[index] = cloneTreeNode(node.Children[index])
+	}
+	return node
+}
+
+func samePath(first string, second string) bool {
+	return strings.EqualFold(filepath.Clean(first), filepath.Clean(second))
+}
+
+func pathKey(path string) string {
+	return strings.ToLower(filepath.Clean(path))
 }
 
 func treeSignature(root TreeNode) string {

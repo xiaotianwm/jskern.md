@@ -47,6 +47,7 @@
     "feedback.rename_failed": "Could not rename this item; check the name or whether the target already exists",
     "feedback.remove_workspace_success": "Workspace removed; files were left on disk",
     "feedback.remove_workspace_failed": "Could not remove the workspace; it may already be gone or settings could not be saved",
+    "feedback.load_directory_failed": "Could not load the folder; it may have moved or become unavailable",
     "feedback.dismiss": "Dismiss notification",
     "update.available": "Update available",
     "update.version": "Version",

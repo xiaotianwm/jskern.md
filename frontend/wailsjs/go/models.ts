@@ -179,6 +179,7 @@ export namespace main {
 	    name: string;
 	    path: string;
 	    type: string;
+	    loaded: boolean;
 	    children?: TreeNode[];
 
 	    static createFrom(source: any = {}) {
@@ -190,6 +191,7 @@ export namespace main {
 	        this.name = source["name"];
 	        this.path = source["path"];
 	        this.type = source["type"];
+	        this.loaded = source["loaded"];
 	        this.children = this.convertValues(source["children"], TreeNode);
 	    }
 

@@ -1,5 +1,60 @@
 # 更新日志
 
+## 2026-07-11 - v0.1.18 Large Workspace Lazy Directory Loading
+
+### 新增
+
+- 新增 Go-owned `LoadDirectory(path)` Wails API：用户展开目录时只读取该目录的直接 Markdown 文件和直接子目录。
+- `TreeNode` 新增 `loaded` 字段，用于区分“尚未读取子项”和“已经读取但为空”的目录。
+- 新增 Go 运行时树缓存，记录当前会话已经加载的目录层级，不写入 AppData 或前端持久化。
+- 新增中文和英文目录加载失败提示，继续由 Go Bootstrap locale 下发。
+- 新增目录性能基准，覆盖 `1千 / 1万 / 5万` 个直接 Markdown 子项。
+
+### 修复
+
+- 修复启动、恢复、添加已有工作区和每三秒弱刷新都会递归扫描全部工作区至八层的问题。
+- `RestoreWorkspaces()` 现在只验证各工作区根路径并返回轻量根节点，启动成本不再与整库文件数线性增长。
+- `RefreshWorkspaces()` 现在只扫描用户已经展开加载的目录层级，未展开的深层目录不会进入周期性轮询。
+- 目录重命名现在先重映射 Go 缓存树内的旧路径，再刷新已加载层级，避免按需加载后丢失可见子树。
+- 前端会忽略目录展开、重命名或工作区排序之前发出的旧刷新响应，避免乱序响应覆盖较新的目录树。
+
+### 变更
+
+- 移除原有八层递归扫描深度上限；目录深度改为按用户展开自然增长。
+- 搜索继续使用独立的有界按需扫描，不引入索引数据库、文件监听器或新依赖。
+- 折叠已经加载的目录不会再次访问磁盘；重新展开直接复用当前 Go 返回树，后续结构变化由弱刷新同步。
+- 极端单目录宽度暂不分页：`50,000` 个直接子项的 Go 单层加载约 `141 ms`，真实使用出现 UI 卡顿后再考虑虚拟列表。
+- README、产品范围、架构、约束、决策记录和项目状态已同步按层目录加载边界。
+- 将产品版本提升到 `0.1.18`。
+
+### 验证
+
+- `go test ./...` passed。
+- `go vet ./...` passed。
+- `wails generate module` passed，前端绑定包含 `LoadDirectory(path)` 和 `TreeNode.loaded`。
+- `npm.cmd run build` passed from `frontend/`；保留既有的 Shiki WASM chunk size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `git diff --check` passed after cleaning Wails-generated trailing whitespace。
+- `go test -race ./...` 未执行：当前 Windows Go 环境为 `CGO_ENABLED=0` 且没有 C 编译器；普通测试、锁顺序审查和 `go vet` 均通过。
+- `go test -run '^$' -bench '^BenchmarkWorkspaceDirectoryLoading$' -benchtime=1x -benchmem` passed：
+  - 根目录验证：`1,000` 条目约 `2.2 ms`，`10,000` 条目约 `1.2 ms`，`50,000` 条目约 `1.0 ms`。
+  - 单层目录加载：`1,000` 条目约 `6.9 ms`，`10,000` 条目约 `32.3 ms`，`50,000` 条目约 `140.9 ms`。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.18/JSKernMD-Setup-0.1.18-x64.exe`。
+- Installer size is `7327696` bytes；`SHA256SUMS.txt` matches SHA256 `894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`。
+- Installer metadata verification passed：`ProductName=JS Kern.md`，`ProductVersion=0.1.18`，`FileDescription=JS Kern.md Installer`，`CompanyName=JS Labs`。
+- 未执行新构建独立启动冒烟：已安装的单实例应用正在从 `D:\JS Kern.md\jskernmd.exe` 运行，为避免中断用户会话没有终止该进程。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.18-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7327696` bytes。
+- Installer SHA256: `894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`。
+- Published release target: `v0.1.18`。
+
+---
+
 ## 2026-07-11 - v0.1.17 Workspace Search Hit Navigation
 
 ### 修复

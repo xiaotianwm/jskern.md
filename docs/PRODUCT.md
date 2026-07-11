@@ -9,6 +9,7 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Open one or more folders as workspaces.
 - Show a persistent multi-root directory tree containing Markdown files.
 - Keep the open workspace directory trees synchronized when Markdown files or folders are added, deleted, or renamed.
+- Load workspace directories one level at a time so startup and restore do not recursively scan large libraries.
 - Persist the workspace list and top-level workspace order across launches.
 - Let users remove a top-level workspace from JS Kern.md without deleting disk files.
 - Let Windows users open Markdown files or add folders from Explorer context menus.

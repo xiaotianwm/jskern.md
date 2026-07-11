@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {ClipboardSetText, EventsOn, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, ConsumeLaunchRequest, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspaces, RemoveWorkspace, RenamePath, ReorderWorkspaces, RestoreWorkspaces, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
+import {CheckForUpdates, ConsumeLaunchRequest, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, LoadDirectory, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspaces, RemoveWorkspace, RenamePath, ReorderWorkspaces, RestoreWorkspaces, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -96,6 +96,8 @@ function App() {
     const findInputRef = useRef<HTMLInputElement | null>(null);
     const searchRequestRef = useRef(0);
     const workspaceRefreshBusyRef = useRef(false);
+    const workspaceTreeVersionRef = useRef(0);
+    const loadingDirectoryPathsRef = useRef(new Set<string>());
     const readingSaveTimerRef = useRef<number | null>(null);
     const readingRestoreUntilRef = useRef(0);
     const readingNavigationFrameRef = useRef<number | null>(null);
@@ -506,6 +508,7 @@ function App() {
 
     function applyWorkspaceCollection(collection: WorkspaceCollection | null | undefined) {
         const nextWorkspaces = collection?.workspaces ?? [];
+        workspaceTreeVersionRef.current += 1;
         setWorkspaces(nextWorkspaces);
         setExpandedPaths(current => preserveExpandedWorkspacePaths(current, nextWorkspaces));
     }
@@ -528,9 +531,10 @@ function App() {
             return;
         }
         workspaceRefreshBusyRef.current = true;
+        const treeVersion = workspaceTreeVersionRef.current;
         try {
             const refresh = await RefreshWorkspaces();
-            if (!shouldApply() || !refresh?.changed || !refresh.collection?.workspaces) {
+            if (!shouldApply() || treeVersion !== workspaceTreeVersionRef.current || !refresh?.changed || !refresh.collection?.workspaces) {
                 return;
             }
             applyWorkspaceCollection(refresh.collection);
@@ -764,16 +768,36 @@ function App() {
         setReaderPosition(heading.id);
     }
 
-    function toggleDirectory(path: string) {
-        setExpandedPaths(current => {
-            const next = new Set(current);
-            if (next.has(path)) {
+    async function toggleDirectory(path: string) {
+        if (expandedPaths.has(path)) {
+            setExpandedPaths(current => {
+                const next = new Set(current);
                 next.delete(path);
-            } else {
-                next.add(path);
+                return next;
+            });
+            return;
+        }
+        const node = findTreeNode(workspaces, path);
+        if (!node || loadingDirectoryPathsRef.current.has(path)) {
+            return;
+        }
+        if (!node.loaded) {
+            workspaceTreeVersionRef.current += 1;
+            loadingDirectoryPathsRef.current.add(path);
+            try {
+                const loaded = await LoadDirectory(path);
+                if (!loaded) {
+                    return;
+                }
+                setWorkspaces(current => replaceTreeNode(current, loaded));
+            } catch {
+                showActionFeedback(text['feedback.load_directory_failed'], 'error');
+                return;
+            } finally {
+                loadingDirectoryPathsRef.current.delete(path);
             }
-            return next;
-        });
+        }
+        setExpandedPaths(current => new Set(current).add(path));
     }
 
     function openTreeContextMenu(node: TreeNode, event: React.MouseEvent<HTMLElement>) {
@@ -828,6 +852,7 @@ function App() {
             return;
         }
         renameCommitBusyRef.current = true;
+        workspaceTreeVersionRef.current += 1;
         let renamed = false;
         try {
             const result = await RenamePath(node.path, nextName);
@@ -973,6 +998,7 @@ function App() {
         }
         ids.splice(from, 1);
         ids.splice(to, 0, sourceWorkspaceID);
+        workspaceTreeVersionRef.current += 1;
         const byID = new Map(workspaces.map(workspace => [workspace.workspace.id, workspace]));
         setWorkspaces(ids.map(id => byID.get(id)).filter(Boolean) as WorkspaceTree[]);
         const result = await ReorderWorkspaces(ids);
@@ -1930,6 +1956,49 @@ function replaceWorkspaceRootForPath(workspaces: WorkspaceTree[], path: string, 
         : workspace);
 }
 
+function findTreeNode(workspaces: WorkspaceTree[], path: string) {
+    for (const workspace of workspaces) {
+        const found = findNode(workspace.root, path);
+        if (found) {
+            return found;
+        }
+    }
+    return null;
+}
+
+function findNode(node: TreeNode, path: string): TreeNode | null {
+    if (normalizePathForCompare(node.path) === normalizePathForCompare(path)) {
+        return node;
+    }
+    for (const child of node.children ?? []) {
+        const found = findNode(child, path);
+        if (found) {
+            return found;
+        }
+    }
+    return null;
+}
+
+function replaceTreeNode(workspaces: WorkspaceTree[], replacement: TreeNode) {
+    return workspaces.map(workspace => ({
+        ...workspace,
+        root: replaceNode(workspace.root, replacement)
+    } as WorkspaceTree));
+}
+
+function replaceNode(node: TreeNode, replacement: TreeNode): TreeNode {
+    if (normalizePathForCompare(node.path) === normalizePathForCompare(replacement.path)) {
+        return replacement;
+    }
+    if (!node.children?.length || !pathIsInsideRoot(replacement.path, node.path)) {
+        return node;
+    }
+    return {
+        ...node,
+        children: node.children.map(child => replaceNode(child, replacement))
+    } as TreeNode;
+}
+
 function pathIsInsideRoot(path: string, root: string) {
     const normalizedPath = normalizePathForCompare(path);
     const normalizedRoot = normalizePathForCompare(root);
@@ -2168,7 +2237,7 @@ function TreeView({
     onRenameDraftChange: (value: string) => void;
     onCommitRename: (node: TreeNode) => void;
     onCancelRename: () => void;
-    onToggleDirectory: (path: string) => void;
+    onToggleDirectory: (path: string) => void | Promise<void>;
     onOpenDocument: (path: string) => void;
     onOpenContextMenu: (node: TreeNode, event: React.MouseEvent<HTMLElement>) => void;
     onWorkspaceDragStart?: (workspaceID: string, event: React.DragEvent<HTMLElement>) => void;

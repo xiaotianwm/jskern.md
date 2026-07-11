@@ -38,6 +38,10 @@ export function GetReadingSession() {
   return window['go']['main']['App']['GetReadingSession']();
 }
 
+export function LoadDirectory(arg1) {
+  return window['go']['main']['App']['LoadDirectory'](arg1);
+}
+
 export function OpenDocument(arg1) {
   return window['go']['main']['App']['OpenDocument'](arg1);
 }

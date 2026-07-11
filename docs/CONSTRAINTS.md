@@ -42,6 +42,8 @@
 - Closing a document tab must remove that document's saved reading position from Go-owned reading memory; reopening a closed document from the directory tree must start at the top unless it is still part of the current open-tab session.
 - Reloading a changed document from the weak disk-change reminder must preserve the current reader offset with the reloaded document metadata instead of reusing stale saved memory or jumping to the top.
 - Directory tree refresh and workspace structure change detection are Go-owned responsibilities; React may ask for a refreshed tree but must not inspect the filesystem itself.
+- Workspace restore must validate roots without recursively scanning descendants; directory children are loaded one level at a time through Go when React requests expansion.
+- Automatic directory-tree refresh must scan only directory levels already loaded into the Go-owned runtime tree; unopened descendants remain out of the polling path.
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.
 - Context-menu actions that reveal, rename, or remove workspace roots must go through Go path validation. Removing a workspace only removes it from JS Kern.md and must not delete disk files.
 - Explorer right-click entry points must route through Go-owned CLI argument handling: Markdown files open with JS Kern.md, and folders join the workspace list.

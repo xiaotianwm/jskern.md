@@ -47,6 +47,7 @@
     "feedback.rename_failed": "重命名失败，请检查名称是否有效或目标是否已存在",
     "feedback.remove_workspace_success": "工作区已移除，磁盘文件未删除",
     "feedback.remove_workspace_failed": "移除工作区失败，该工作区可能已被移除或配置无法保存",
+    "feedback.load_directory_failed": "目录加载失败，该目录可能已移动或无法访问",
     "feedback.dismiss": "关闭提示",
     "update.available": "发现新版本",
     "update.version": "版本",
