@@ -23,6 +23,7 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Rename Markdown files and folders from the directory-tree context menu through Go-controlled validation.
 - Render the selected Markdown document.
 - Make `Ctrl/Cmd+A` select only the rendered Markdown body while preserving native select-all inside focused text inputs.
+- Show workspace content-search hit line numbers and jump to the highlighted hit when opening a content result.
 - Show a document outline from headings, keep the current section highlighted while reading, and keep long outlines synchronized with the reader position.
 - Show a lightweight document reading-progress indicator without turning the reader surface into a dashboard.
 - Resolve local images and relative links safely.

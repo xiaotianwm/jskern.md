@@ -522,7 +522,7 @@ func TestSearchWorkspaceFindsFileNamesAndContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(results) != 1 || results[0].Kind != "content" || results[0].Name != "README.md" {
+	if len(results) != 1 || results[0].Kind != "content" || results[0].Name != "README.md" || results[0].MatchLine != 3 {
 		t.Fatalf("expected one content hit in README.md, got %+v", results)
 	}
 	if strings.Contains(results[0].RelativePath, "node_modules") {
@@ -533,7 +533,7 @@ func TestSearchWorkspaceFindsFileNamesAndContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(results) == 0 || results[0].Kind != "file" || results[0].RelativePath != "docs/guide.md" {
+	if len(results) == 0 || results[0].Kind != "file" || results[0].RelativePath != "docs/guide.md" || results[0].MatchLine != 0 {
 		t.Fatalf("expected file-name hit for docs/guide.md, got %+v", results)
 	}
 }

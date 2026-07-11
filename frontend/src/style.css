@@ -478,6 +478,7 @@ a {
 
 .search-result-name,
 .search-result-path,
+.search-result-line,
 .search-result-snippet {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -490,6 +491,7 @@ a {
 }
 
 .search-result-path,
+.search-result-line,
 .search-result-snippet {
     color: var(--text-muted);
     font-size: 11px;

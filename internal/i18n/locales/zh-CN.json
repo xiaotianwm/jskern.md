@@ -17,6 +17,7 @@
     "search.empty": "没有找到匹配的文档",
     "search.file": "文件",
     "search.content": "正文",
+    "search.line": "第 {line} 行",
     "search.error": "搜索失败",
     "find.placeholder": "查找当前文档",
     "find.previous": "上一个",

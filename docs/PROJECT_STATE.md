@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, localized weak context-action feedback, workspace search, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned multi-tab reading sessions, reading-position restore, Go-owned directory-tree auto-sync, desktop context menus, localized weak context-action feedback, workspace search with hit line numbers and open-result focus, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
 
 ## Done
 
@@ -161,6 +161,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Top-level workspace roots can be removed from JS Kern.md through the directory-tree context menu without deleting disk files.
 - Removing a workspace closes its open tabs in the current UI and clears that workspace's open-tab session while preserving user files.
 - Workspace search now searches across all configured workspaces and prefixes paths with the workspace name when multiple roots are present.
+- Workspace content-search results now include the first matching line number and can open the document focused on the highlighted hit.
 - Go now handles startup and second-instance launch arguments for `--open-file`, `--add-workspace`, and direct file/folder paths.
 - Wails single-instance handling forwards Explorer/CLI launch requests to the running app and emits a frontend launch request event.
 - Windows NSIS installer now registers Explorer context-menu entries for opening Markdown files and adding folders to the workspace list.
@@ -191,6 +192,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Windows installer `JSKernMD-Setup-0.1.15-x64.exe` was staged under `dist/releases/v0.1.15/`.
 - `SHA256SUMS.txt` was generated for the `0.1.15` installer with SHA256 `ff8a9341229566b56244d94c186eebdaf56ab03e2ef8189f83b19c59175cafaf`.
 - GitHub Release `v0.1.15` publishes `JSKernMD-Setup-0.1.15-x64.exe` and `SHA256SUMS.txt` with asset labels matching filenames exactly.
+- Product version advanced to `0.1.17` for workspace search hit navigation.
 
 ## Next
 
@@ -208,6 +210,7 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Multiple workspaces currently still use eager scanning for each root, so very large collections may need lazy root loading later.
 - Workspace search is currently an on-demand scan rather than an indexed search database.
 - Current-document find is DOM-based and does not match text split across separate inline elements.
+- Workspace search result focusing reuses DOM find highlighting and may fall back to the first rendered query match if a very long truncated snippet cannot be matched exactly.
 - Update downloads currently show a busy state rather than detailed byte-level progress.
 - Aero Snap, high-DPI, and multi-monitor titlebar behavior still need manual UX verification beyond the current launch smoke test.
 - SVG images are not served yet because they need a stricter sanitization policy than bitmap formats.
@@ -218,6 +221,16 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after workspace search hit navigation v0.1.17:
+  - Product version sources were updated to `0.1.17`.
+  - `go test ./...` passed.
+  - `wails generate module` passed.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.17/JSKernMD-Setup-0.1.17-x64.exe`.
+  - Installer size is `7319654` bytes and `SHA256SUMS.txt` matches SHA256 `3306a6bbd828f3a44ce79c788aa6c3f0682fa4ef73f0710740710f44763f118c`.
+  - `git diff --check` passed after removing Wails-generated trailing-whitespace template changes.
 - Latest validation after Markdown-body-only select-all v0.1.15:
   - Product version sources were updated to `0.1.15`.
   - `go test ./...` passed.

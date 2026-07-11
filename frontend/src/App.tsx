@@ -32,6 +32,13 @@ type OpenDocumentOptions = {
     persistTabs?: boolean;
     savePrevious?: boolean;
     forceReload?: boolean;
+    searchTarget?: SearchTarget;
+};
+
+type SearchTarget = {
+    path: string;
+    query: string;
+    snippet: string;
 };
 
 type ContextMenuState =
@@ -95,6 +102,8 @@ function App() {
     const readingHeadingsRef = useRef<HTMLElement[] | null>(null);
     const renameCommitBusyRef = useRef(false);
     const actionFeedbackTimerRef = useRef<number | null>(null);
+    const searchTargetRef = useRef<SearchTarget | null>(null);
+    const documentPathRef = useRef('');
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -561,8 +570,13 @@ function App() {
             return;
         }
         if (!options.forceReload && document?.path === path) {
+            if (options.searchTarget) {
+                searchTargetRef.current = options.searchTarget;
+                scheduleSearchTargetFocus();
+            }
             return;
         }
+        searchTargetRef.current = options.searchTarget ?? null;
         const shouldSavePrevious = options.savePrevious ?? Boolean(document?.path && document.path !== path);
         if (shouldSavePrevious) {
             await saveCurrentReadingPosition(document, true);
@@ -583,9 +597,15 @@ function App() {
                 await persistOpenTabs(nextTabs, result.path);
             }
             setDocument(result);
+            documentPathRef.current = result.path;
             setSelectedPath(result.path);
             scheduleReaderPosition('', position, result);
+            if (options.searchTarget) {
+                scheduleSearchTargetFocus();
+            }
         } catch (error) {
+            searchTargetRef.current = null;
+            documentPathRef.current = '';
             setDocument(null);
             setDocumentError(errorMessage(error, text['document.error_unknown']));
         } finally {
@@ -1101,7 +1121,12 @@ function App() {
     }
 
     async function openSearchResult(result: SearchResult) {
-        await openDocument(result.path);
+        const query = searchQuery.trim();
+        await openDocument(result.path, null, {
+            searchTarget: result.kind === 'content' && query
+                ? {path: result.path, query, snippet: result.snippet}
+                : undefined
+        });
         setSearchQuery('');
         setSearchResults([]);
         setSearchError('');
@@ -1375,6 +1400,29 @@ function App() {
         scheduleReadingNavigationSync();
     }
 
+    function scheduleSearchTargetFocus() {
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                const target = searchTargetRef.current;
+                const root = markdownBodyRef.current;
+                const reader = readerScrollRef.current;
+                if (!target || !root || !reader || documentPathRef.current !== target.path) {
+                    return;
+                }
+                clearFindMarks(root);
+                const matches = applyFindMarks(root, target.query);
+                const match = searchTargetMatch(root, matches, target.snippet) ?? matches[0];
+                if (!match) {
+                    return;
+                }
+                match.classList.add(FIND_CURRENT_CLASS);
+                const targetTop = match.getBoundingClientRect().top - reader.getBoundingClientRect().top + reader.scrollTop - 80;
+                reader.scrollTop = Math.max(0, targetTop);
+                scheduleReadingNavigationSync();
+            });
+        });
+    }
+
     function beginSidebarResize(event: React.PointerEvent<HTMLDivElement>) {
         const sidebar = event.currentTarget.closest<HTMLElement>('.sidebar');
         if (!sidebar) {
@@ -1458,10 +1506,11 @@ function App() {
                                         onClick={() => openSearchResult(result)}
                                     >
                                         <span className="search-result-kind">{text[`search.${result.kind}`]}</span>
-                                        <span className="search-result-main">
-                                            <span className="search-result-name">{result.name}</span>
-                                            <span className="search-result-path">{result.relativePath}</span>
-                                            {result.snippet ? <span className="search-result-snippet">{result.snippet}</span> : null}
+                                            <span className="search-result-main">
+                                                <span className="search-result-name">{result.name}</span>
+                                                <span className="search-result-path">{result.relativePath}</span>
+                                                {result.matchLine ? <span className="search-result-line">{formatLineLabel(text['search.line'], result.matchLine)}</span> : null}
+                                                {result.snippet ? <span className="search-result-snippet">{result.snippet}</span> : null}
                                         </span>
                                     </button>
                                 ))
@@ -2009,6 +2058,31 @@ function applyFindMarks(root: HTMLElement, query: string) {
         node.replaceWith(fragment);
     }
     return marks;
+}
+
+function searchTargetMatch(root: HTMLElement, matches: HTMLElement[], snippet: string) {
+    const compactSnippet = compactSearchText(snippet);
+    if (!compactSnippet) {
+        return null;
+    }
+    return matches.find(match => {
+        let element = match.parentElement;
+        while (element && element !== root) {
+            if (compactSearchText(element.textContent ?? '').includes(compactSnippet)) {
+                return true;
+            }
+            element = element.parentElement;
+        }
+        return false;
+    }) ?? null;
+}
+
+function compactSearchText(value: string) {
+    return value.replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+}
+
+function formatLineLabel(template: string | undefined, line: number) {
+    return (template || 'Line {line}').replace('{line}', String(line));
 }
 
 function updateCurrentFindMatch(matches: HTMLElement[], index: number) {

@@ -17,6 +17,7 @@
     "search.empty": "No matching documents found",
     "search.file": "File",
     "search.content": "Content",
+    "search.line": "Line {line}",
     "search.error": "Search failed",
     "find.placeholder": "Find in current document",
     "find.previous": "Previous",

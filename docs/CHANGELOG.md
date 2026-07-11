@@ -1,5 +1,41 @@
 # 更新日志
 
+## 2026-07-11 - v0.1.17 Workspace Search Hit Navigation
+
+### 修复
+
+- 补齐上一轮残留的 Wails 绑定同步：`SearchResult` 的 TypeScript 模型现在包含 Go 返回的 `matchLine` 字段。
+- 工作区正文搜索结果现在显示第一处命中的行号。
+- 点击正文搜索结果后，会打开对应 Markdown 文档，并复用现有文内查找高亮能力滚动到命中位置。
+
+### 变更
+
+- Go 搜索仍然保持按需扫描，不引入索引库或额外依赖。
+- 文件名/路径命中继续显示为文件结果，正文命中才显示行号。
+- 搜索命中定位保持为 React 短期交互状态，不写入 AppData、`localStorage` 或阅读记忆。
+- README 和产品范围文档已同步搜索命中行号与打开后定位行为。
+- 将产品版本提升到 `0.1.17`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.17-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7319654` bytes。
+- Installer SHA256: `3306a6bbd828f3a44ce79c788aa6c3f0682fa4ef73f0710740710f44763f118c`。
+
+### 验证
+
+- `go test ./...` passed。
+- `wails generate module` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有的 Shiki WASM chunk size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.17/JSKernMD-Setup-0.1.17-x64.exe`。
+- `SHA256SUMS.txt` matches installer SHA256 `3306a6bbd828f3a44ce79c788aa6c3f0682fa4ef73f0710740710f44763f118c`。
+- `git diff --check` passed。
+
+---
+
 ## 2026-07-11 - v0.1.16 Sidebar Open Documents
 
 ### 新增

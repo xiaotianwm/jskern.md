@@ -448,6 +448,7 @@ export namespace main {
 	    relativePath: string;
 	    kind: string;
 	    snippet: string;
+	    matchLine: number;
 
 	    static createFrom(source: any = {}) {
 	        return new SearchResult(source);
@@ -460,6 +461,7 @@ export namespace main {
 	        this.relativePath = source["relativePath"];
 	        this.kind = source["kind"];
 	        this.snippet = source["snippet"];
+	        this.matchLine = source["matchLine"];
 	    }
 	}
 

@@ -15,6 +15,7 @@ type SearchResult struct {
 	RelativePath string `json:"relativePath"`
 	Kind         string `json:"kind"`
 	Snippet      string `json:"snippet"`
+	MatchLine    int    `json:"matchLine"`
 }
 
 func (a *App) SearchWorkspace(query string) ([]SearchResult, error) {
@@ -72,6 +73,7 @@ func (a *App) SearchWorkspace(query string) ([]SearchResult, error) {
 					RelativePath: displayRel,
 					Kind:         "file",
 					Snippet:      displayRel,
+					MatchLine:    0,
 				})
 				if len(results) >= maxSearchResults {
 					return filepath.SkipAll
@@ -86,13 +88,14 @@ func (a *App) SearchWorkspace(query string) ([]SearchResult, error) {
 			if err != nil {
 				return nil
 			}
-			if snippet, ok := searchSnippet(string(data), query); ok {
+			if snippet, matchLine, ok := searchSnippet(string(data), query); ok {
 				results = append(results, SearchResult{
 					Path:         abs,
 					Name:         name,
 					RelativePath: displayRel,
 					Kind:         "content",
 					Snippet:      snippet,
+					MatchLine:    matchLine,
 				})
 				if len(results) >= maxSearchResults {
 					return filepath.SkipAll
@@ -110,18 +113,18 @@ func (a *App) SearchWorkspace(query string) ([]SearchResult, error) {
 	return results, nil
 }
 
-func searchSnippet(content string, query string) (string, bool) {
+func searchSnippet(content string, query string) (string, int, bool) {
 	lowerQuery := strings.ToLower(query)
-	for _, line := range strings.Split(content, "\n") {
+	for index, line := range strings.Split(content, "\n") {
 		compact := strings.Join(strings.Fields(line), " ")
 		if compact == "" || !strings.Contains(strings.ToLower(compact), lowerQuery) {
 			continue
 		}
 		runes := []rune(compact)
 		if len(runes) <= 180 {
-			return compact, true
+			return compact, index + 1, true
 		}
-		return string(runes[:177]) + "...", true
+		return string(runes[:177]) + "...", index + 1, true
 	}
-	return "", false
+	return "", 0, false
 }
