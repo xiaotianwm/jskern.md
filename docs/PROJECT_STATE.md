@@ -245,6 +245,9 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
   - Installer size is `7327696` bytes and `SHA256SUMS.txt` matches SHA256 `894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`.
   - Installer metadata verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.18`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
   - Fresh-build launch smoke was not run because the installed single-instance app was active at `D:\JS Kern.md\jskernmd.exe`; the user's running app was intentionally not terminated.
+  - GitHub Release `v0.1.18` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.18` and verified as the latest release.
+  - Release tag `v0.1.18` resolves to source commit `eb36df51d90a413d3b725095c4929aa7b3166167`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.18-x64.exe`, checksum label/name are `SHA256SUMS.txt`, installer size is `7327696` bytes, and the installer digest is `sha256:894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`.
 - Latest validation after workspace search hit navigation v0.1.17:
   - Product version sources were updated to `0.1.17`.
   - `go test ./...` passed.

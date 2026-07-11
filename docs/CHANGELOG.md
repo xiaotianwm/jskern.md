@@ -52,6 +52,9 @@
 - Installer size: `7327696` bytes。
 - Installer SHA256: `894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`。
 - Published release target: `v0.1.18`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.18`。
+- GitHub Release `v0.1.18` 已核验为 Latest，标签解析到提交 `eb36df51d90a413d3b725095c4929aa7b3166167`。
+- 远端资产核验通过：安装包 label/name 均为 `JSKernMD-Setup-0.1.18-x64.exe`，大小为 `7327696` bytes，digest 为 `sha256:894d79faec84af5fa5d2321bbfff7776f3cc8269638c47b132ec292f974299d4`；校验文件 label/name 均为 `SHA256SUMS.txt`。
 
 ---
 
