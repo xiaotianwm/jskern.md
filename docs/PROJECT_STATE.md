@@ -231,6 +231,9 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
   - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.17/JSKernMD-Setup-0.1.17-x64.exe`.
   - Installer size is `7319654` bytes and `SHA256SUMS.txt` matches SHA256 `3306a6bbd828f3a44ce79c788aa6c3f0682fa4ef73f0710740710f44763f118c`.
   - `git diff --check` passed after removing Wails-generated trailing-whitespace template changes.
+  - GitHub Release `v0.1.17` was created at `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.17` and verified as the latest release.
+  - Release tag `v0.1.17` resolves to source commit `5fa2dd638716f87ccf82bebf947f990a88e1c043`.
+  - GitHub Release asset verification passed: installer label/name are `JSKernMD-Setup-0.1.17-x64.exe`, checksum label/name are `SHA256SUMS.txt`, installer size is `7319654` bytes, and the installer digest is `sha256:3306a6bbd828f3a44ce79c788aa6c3f0682fa4ef73f0710740710f44763f118c`.
 - Latest validation after Markdown-body-only select-all v0.1.15:
   - Product version sources were updated to `0.1.15`.
   - `go test ./...` passed.
