@@ -14,6 +14,8 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Let Windows users open Markdown files or add folders from Explorer context menus.
 - Restore the last opened document and reading position inside the restored workspace.
 - Restore the last open document tabs and active tab inside the restored workspace.
+- Show all currently open documents in the upper left sidebar section, including workspace documents and documents opened through Explorer/CLI entry points.
+- Keep the lower left sidebar section as the multi-root workspace directory tree, separated by a draggable horizontal divider.
 - Preserve each tab's reading position when switching between open Markdown documents.
 - Clear a document's saved reading position when its tab is closed, so reopening it later starts from the top.
 - Provide desktop-style right-click menus for directory-tree items and open tabs.

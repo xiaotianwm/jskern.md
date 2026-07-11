@@ -1,5 +1,36 @@
 # 更新日志
 
+## 2026-07-11 - v0.1.16 Sidebar Open Documents
+
+### 新增
+
+- 左侧栏新增上半区“已打开”，显示当前所有打开的 Markdown 文档。
+- “已打开”列表复用现有打开标签页状态，点击条目会切换到对应文档，关闭按钮会走原有标签关闭流程。
+- “已打开”列表支持和标签页一致的右键菜单，包括切换、关闭、关闭其他、关闭右侧、复制路径和在文件管理器中显示。
+- 左侧栏新增可拖拽水平分隔条，用于调整“已打开”和“工作区”两块区域的可视高度。
+- 新增中文和英文文案：`panel.open_documents`、`empty.open_documents`、`tabs.external`。
+
+### 变更
+
+- 左侧栏下半区继续保留原有多顶层工作区目录树，工作区排序、目录展开状态、目录右键菜单和目录滚动行为保持不变。
+- “已打开”只是现有 Go-owned open-tabs 会话的 React 短期投影，不引入第二套持久化结构，也不写入 `localStorage`。
+- 侧栏分隔条高度保持为 React 临时 UI 状态，本版不写入 AppData，避免把布局偏好混入阅读记忆。
+- 文档属于当前工作区时，“已打开”条目显示对应工作区名称；不属于任何当前工作区时预留显示外部文档标记。
+- README、产品范围、架构和约束文档已同步“已打开 / 工作区”分栏模型。
+- 将产品版本提升到 `0.1.16`。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.16-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+
+### 验证
+
+- `go test ./...` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有的 Shiki WASM chunk size warning，没有新增构建错误。
+
+---
+
 ## 2026-07-10 - v0.1.15 Markdown Body Select All
 
 ### 修复

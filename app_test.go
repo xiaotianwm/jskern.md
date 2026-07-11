@@ -35,6 +35,9 @@ func TestProductInfoComesFromManifest(t *testing.T) {
 
 func TestActionFeedbackLocaleKeys(t *testing.T) {
 	keys := []string{
+		"tabs.external",
+		"panel.open_documents",
+		"empty.open_documents",
 		"feedback.copy_success",
 		"feedback.copy_failed",
 		"feedback.reveal_success",

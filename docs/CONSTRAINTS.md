@@ -57,6 +57,8 @@
 - Frontend may report transient scroll position and current heading to Go, but must not own the reading-memory storage format or write durable reading state locally.
 - Frontend may derive current-section highlighting, outline auto-follow, and visual reading progress from the rendered document scroll container; this navigation state is transient and must not become a second durable reading-memory source.
 - Frontend may render the tab strip and call Go APIs to save the open-tab list, but must not own the durable tab-session storage format or persist open tabs locally.
+- The left sidebar must separate session navigation from workspace browsing: the upper section is a transient projection of Go-owned open tabs, and the lower section remains the persistent multi-root workspace directory tree.
+- The sidebar divider height is transient React UI state only and must not become a durable AppData setting unless a later explicit preference feature is added.
 - Frontend must not maintain language dictionaries.
 - Frontend must not download update installers directly; it may only render Go-provided update metadata, busy/error state, and user actions.
 - Frontend may render app-owned context menus for the directory tree and tab strip, including inline rename editing, but menu and rename-edit state are transient UI state only and must not become durable workspace/session state.
@@ -75,7 +77,7 @@
 - Windows should enable Mica or a Wails-supported fallback.
 - macOS should use transparent titlebar / vibrancy-capable configuration where supported.
 - The first screen must be the actual reader shell, not a landing page.
-- Layout must be dense and desktop-like: left workspace tree, central reader, right outline.
+- Layout must be dense and desktop-like: left open-documents/session list above the workspace tree, central reader, right outline.
 
 ## i18n
 

@@ -28,6 +28,7 @@ React owns:
 - Shell rendering.
 - Directory tree UI.
 - Open document tab strip rendering and tab switching interactions.
+- Open-documents sidebar list rendering as a transient projection of the current open-tab state.
 - App-owned context-menu rendering for directory tree and tab strip actions.
 - Short-lived weak feedback for context-menu action results, with copy replaced by the next notice and all timers cleaned up on unmount.
 - Markdown view rendering from Go-provided document data.
@@ -59,6 +60,8 @@ workspace folder(s)
 -> Go persists workspace-scoped reading memory under AppData
 -> React reports open tab order and active tab to Go
 -> Go persists workspace-scoped tab session state with reading memory under AppData
+-> React renders the same open-tab session in the upper left sidebar as an open-documents list
+-> React keeps the lower left sidebar as the multi-root workspace directory tree
 -> user right-clicks a directory-tree row or tab
 -> React renders a transient app-owned context menu
 -> file-manager reveal actions round-trip through Go workspace path validation

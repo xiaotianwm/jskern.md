@@ -510,7 +510,7 @@ a {
 
 .sidebar {
     display: grid;
-    grid-template-rows: 34px minmax(0, 1fr);
+    grid-template-rows: minmax(92px, var(--open-documents-h, 168px)) 7px minmax(132px, 1fr);
     border-right: 1px solid var(--border);
 }
 
@@ -532,6 +532,129 @@ a {
 .empty-state {
     padding: 12px;
     line-height: 1.6;
+}
+
+.empty-state.compact {
+    padding: 8px 12px;
+}
+
+.sidebar-section {
+    display: grid;
+    grid-template-rows: 34px minmax(0, 1fr);
+    min-height: 0;
+}
+
+.open-documents-section {
+    min-height: 92px;
+}
+
+.workspace-section {
+    min-height: 132px;
+}
+
+.sidebar-splitter {
+    position: relative;
+    cursor: row-resize;
+}
+
+.sidebar-splitter::before {
+    content: "";
+    position: absolute;
+    top: 3px;
+    right: 10px;
+    left: 10px;
+    height: 1px;
+    background: var(--border);
+}
+
+.sidebar-splitter:hover::before,
+.resizing-sidebar .sidebar-splitter::before {
+    background: color-mix(in srgb, var(--primary) 62%, var(--border));
+}
+
+.resizing-sidebar {
+    cursor: row-resize;
+}
+
+.open-documents-scroll {
+    min-height: 0;
+    overflow: auto;
+    padding: 2px 0 8px;
+}
+
+.open-documents-list {
+    display: grid;
+    gap: 2px;
+}
+
+.open-document-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24px;
+    align-items: center;
+    height: 34px;
+    margin: 0 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
+}
+
+.open-document-row:hover,
+.open-document-row.active {
+    color: var(--text);
+    background: var(--bg-hover);
+}
+
+.open-document-row.active {
+    box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.open-document-main,
+.open-document-close {
+    height: 100%;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: default;
+}
+
+.open-document-main {
+    display: grid;
+    min-width: 0;
+    grid-template-rows: 16px 13px;
+    align-content: center;
+    gap: 1px;
+    padding: 0 4px 0 8px;
+    text-align: left;
+}
+
+.open-document-name,
+.open-document-meta {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.open-document-name {
+    color: inherit;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.open-document-meta {
+    color: var(--text-muted);
+    font-size: 10.5px;
+}
+
+.open-document-close {
+    width: 24px;
+    padding: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.open-document-close:hover {
+    color: var(--text);
+    background: color-mix(in srgb, var(--bg-hover) 78%, transparent);
 }
 
 .tree-scroll {

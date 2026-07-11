@@ -19,6 +19,8 @@ type LaunchRequest = main.LaunchRequest;
 
 const FIND_MATCH_CLASS = 'kern-find-match';
 const FIND_CURRENT_CLASS = 'kern-find-current';
+const OPEN_DOCS_MIN_HEIGHT = 92;
+const WORKSPACE_MIN_HEIGHT = 132;
 
 type DocumentTab = {
     path: string;
@@ -77,6 +79,7 @@ function App() {
     const [renameDraft, setRenameDraft] = useState('');
     const [draggingWorkspaceId, setDraggingWorkspaceId] = useState('');
     const [activeHeadingId, setActiveHeadingId] = useState('');
+    const [openDocumentsHeight, setOpenDocumentsHeight] = useState(168);
     const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
     const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
@@ -1372,6 +1375,30 @@ function App() {
         scheduleReadingNavigationSync();
     }
 
+    function beginSidebarResize(event: React.PointerEvent<HTMLDivElement>) {
+        const sidebar = event.currentTarget.closest<HTMLElement>('.sidebar');
+        if (!sidebar) {
+            return;
+        }
+        event.preventDefault();
+        const rect = sidebar.getBoundingClientRect();
+        const maxHeight = Math.max(OPEN_DOCS_MIN_HEIGHT, rect.height - WORKSPACE_MIN_HEIGHT);
+        const handlePointerMove = (moveEvent: PointerEvent) => {
+            const nextHeight = Math.min(maxHeight, Math.max(OPEN_DOCS_MIN_HEIGHT, moveEvent.clientY - rect.top));
+            setOpenDocumentsHeight(Math.round(nextHeight));
+        };
+        const stopResize = () => {
+            globalThis.document.body.classList.remove('resizing-sidebar');
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerup', stopResize);
+            window.removeEventListener('pointercancel', stopResize);
+        };
+        globalThis.document.body.classList.add('resizing-sidebar');
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerup', stopResize);
+        window.addEventListener('pointercancel', stopResize);
+    }
+
     const hasWorkspace = useMemo(() => workspaces.length > 0, [workspaces]);
     const showSearchPanel = searchQuery.trim().length >= 2 && hasWorkspace;
 
@@ -1507,40 +1534,88 @@ function App() {
             </section>
 
             <section className="workspace-layout">
-                <aside className="sidebar">
-                    <div className="panel-heading">{text['panel.workspace']}</div>
-                    <div className="tree-scroll">
-                        {hasWorkspace ? (
-                            <div className="workspace-roots">
-                                {workspaces.map(workspace => (
-                                    <TreeView
-                                        key={workspace.workspace.id}
-                                        node={workspace.root}
-                                        depth={0}
-                                        workspaceId={workspace.workspace.id}
-                                        isWorkspaceRoot
-                                        selectedPath={selectedPath}
-                                        expandedPaths={expandedPaths}
-                                        renamingPath={renamingPath}
-                                        renameDraft={renameDraft}
-                                        onRenameDraftChange={setRenameDraft}
-                                        onCommitRename={commitRename}
-                                        onCancelRename={cancelRename}
-                                        onToggleDirectory={toggleDirectory}
-                                        onOpenDocument={openDocument}
-                                        onOpenContextMenu={openTreeContextMenu}
-                                        onWorkspaceDragStart={beginWorkspaceDrag}
-                                        onWorkspaceDragOver={allowWorkspaceDrop}
-                                        onWorkspaceDrop={dropWorkspace}
-                                        onWorkspaceDragEnd={clearWorkspaceDrag}
-                                        draggingWorkspaceId={draggingWorkspaceId}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="empty-state">{text['empty.workspace']}</div>
-                        )}
-                    </div>
+                <aside className="sidebar" style={{'--open-documents-h': `${openDocumentsHeight}px`} as React.CSSProperties}>
+                    <section className="sidebar-section open-documents-section">
+                        <div className="panel-heading">{text['panel.open_documents']}</div>
+                        <div className="open-documents-scroll">
+                            {tabs.length ? (
+                                <div className="open-documents-list" role="list" aria-label={text['tabs.label']}>
+                                    {tabs.map(tab => {
+                                        const active = tab.path === document?.path;
+                                        const workspace = workspaceForDocumentPath(workspaces, tab.path);
+                                        const external = !workspace;
+                                        return (
+                                            <div
+                                                className={`open-document-row ${active ? 'active' : ''}`}
+                                                key={tab.path}
+                                                role="listitem"
+                                                onContextMenu={event => openTabContextMenu(tab, event)}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="open-document-main"
+                                                    title={tab.path}
+                                                    onClick={() => openDocument(tab.path)}
+                                                >
+                                                    <span className="open-document-name">{tab.name}</span>
+                                                    <span className="open-document-meta">
+                                                        {external ? text['tabs.external'] : workspace.workspace.name}
+                                                    </span>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="open-document-close"
+                                                    title={text['tabs.close']}
+                                                    aria-label={`${text['tabs.close']} ${tab.name}`}
+                                                    onClick={event => closeTab(tab.path, event)}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="empty-state compact">{text['empty.open_documents']}</div>
+                            )}
+                        </div>
+                    </section>
+                    <div className="sidebar-splitter" role="separator" aria-orientation="horizontal" onPointerDown={beginSidebarResize}/>
+                    <section className="sidebar-section workspace-section">
+                        <div className="panel-heading">{text['panel.workspace']}</div>
+                        <div className="tree-scroll">
+                            {hasWorkspace ? (
+                                <div className="workspace-roots">
+                                    {workspaces.map(workspace => (
+                                        <TreeView
+                                            key={workspace.workspace.id}
+                                            node={workspace.root}
+                                            depth={0}
+                                            workspaceId={workspace.workspace.id}
+                                            isWorkspaceRoot
+                                            selectedPath={selectedPath}
+                                            expandedPaths={expandedPaths}
+                                            renamingPath={renamingPath}
+                                            renameDraft={renameDraft}
+                                            onRenameDraftChange={setRenameDraft}
+                                            onCommitRename={commitRename}
+                                            onCancelRename={cancelRename}
+                                            onToggleDirectory={toggleDirectory}
+                                            onOpenDocument={openDocument}
+                                            onOpenContextMenu={openTreeContextMenu}
+                                            onWorkspaceDragStart={beginWorkspaceDrag}
+                                            onWorkspaceDragOver={allowWorkspaceDrop}
+                                            onWorkspaceDrop={dropWorkspace}
+                                            onWorkspaceDragEnd={clearWorkspaceDrag}
+                                            draggingWorkspaceId={draggingWorkspaceId}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="empty-state">{text['empty.workspace']}</div>
+                            )}
+                        </div>
+                    </section>
                 </aside>
 
                 <article className="reader-surface">
@@ -1794,6 +1869,10 @@ function hasLaunchRequest(request: LaunchRequest | null | undefined): request is
 
 function workspaceForRootPath(workspaces: WorkspaceTree[], path: string) {
     return workspaces.find(workspace => normalizePathForCompare(workspace.root.path) === normalizePathForCompare(path));
+}
+
+function workspaceForDocumentPath(workspaces: WorkspaceTree[], path: string) {
+    return workspaces.find(workspace => pathIsInsideRoot(path, workspace.root.path));
 }
 
 function replaceWorkspaceRootForPath(workspaces: WorkspaceTree[], path: string, root: TreeNode) {
