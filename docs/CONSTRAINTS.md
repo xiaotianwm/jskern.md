@@ -47,6 +47,7 @@
 - Workspace structure refresh must distinguish directory/file structure changes from active document content changes. Content changes stay in the current-document status reminder flow.
 - Context-menu actions that reveal, rename, or remove workspace roots must go through Go path validation. Removing a workspace only removes it from JS Kern.md and must not delete disk files.
 - Explorer right-click entry points must route through Go-owned CLI argument handling: Markdown files open with JS Kern.md, and folders join the workspace list.
+- Windows Markdown association status and opening the official default-app settings page are Go-owned native integration responsibilities; React must not read or write the registry.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
 - Update checking, ignored update versions, installer downloads, checksum verification, and opening downloaded installers are Go-owned responsibilities.
 - Current update downloads are sourced from GitHub Releases and must only accept canonical `JSKernMD-Setup-<version>-x64.exe` assets from the official `xiaotianwm/jskern.md` repository.
@@ -67,6 +68,7 @@
 - Context-menu action feedback must remain transient, use Go-provided locale strings, replace rather than stack repeated notices, and clean up its dismissal timer.
 - Frontend workspace auto-sync may use a weak polling loop against Go, but the loop must clean up timers, avoid overlapping requests, preserve valid expanded directories, and keep newly discovered directories collapsed by default.
 - Frontend may render top-level workspace drag sorting, but the persisted order is Go-owned AppData state.
+- Frontend may render the settings dialog and its loading/error state, but language/theme persistence and Windows association state remain Go-owned.
 - Code highlighting must use Shiki.
 - Browser-default context menu, refresh, find, zoom, link/image drag, and page overscroll must be blocked.
 - Text selection is disabled by default, then re-enabled only for Markdown body, code blocks, inputs, and explicit selectable data.
@@ -80,6 +82,7 @@
 - macOS should use transparent titlebar / vibrancy-capable configuration where supported.
 - The first screen must be the actual reader shell, not a landing page.
 - Layout must be dense and desktop-like: left open-documents/session list above the workspace tree, central reader, right outline.
+- The toolbar must expose one settings button instead of separate language and theme controls; the settings dialog must remain keyboard dismissible and restore focus to its trigger.
 
 ## i18n
 
@@ -106,7 +109,9 @@
 - Windows NSIS project templates must stay ASCII unless the build command explicitly configures a UTF-8 input charset; rely on NSIS built-in language tables for localized wizard text.
 - Windows installer upgrades must default to the previously installed directory by reading the app uninstall registry entry; new installs must write `InstallLocation`, and upgrades from older installers must fall back to deriving the directory from the previous `UninstallString`.
 - Windows installer metadata in `wails.json.info` must be synchronized from `product.manifest.json` before packaging so the installer and uninstall entry stay aligned with the product identity.
-- Windows installer must register Explorer context-menu entries for opening Markdown files and adding folders to the JS Kern.md workspace list, and the uninstaller must delete only the `JSKernMD.*` registry keys it created.
+- Windows installer must use its existing administrator elevation to register machine-wide Explorer context-menu entries and JS Kern.md as a candidate for `.md`, `.markdown`, and `.mdown` default-app selection.
+- Windows installer and application code must never write the protected per-user `UserChoice` key; choosing the actual default remains an explicit Windows user action.
+- Windows uninstaller must remove only product-owned ProgID, capabilities, application-registration, OpenWith value, and `JSKernMD.*` context-menu entries without deleting shared extension keys or user documents.
 - GitHub Release asset labels must match their filenames exactly; do not use vague labels such as `Windows x64 installer`.
 - Each release upload must include `SHA256SUMS.txt` for the published installer.
 - The raw `build/bin/jskernmd.exe` is a local build output only and must not be the primary GitHub Release download.

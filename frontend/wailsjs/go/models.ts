@@ -332,6 +332,22 @@ export namespace main {
 		}
 	}
 
+	export class MarkdownAssociationStatus {
+	    supported: boolean;
+	    registered: boolean;
+	    default: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new MarkdownAssociationStatus(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.supported = source["supported"];
+	        this.registered = source["registered"];
+	        this.default = source["default"];
+	    }
+	}
 
 	export class ReadingPosition {
 	    path: string;

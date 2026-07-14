@@ -26,6 +26,10 @@ export function GetBootstrap(arg1) {
   return window['go']['main']['App']['GetBootstrap'](arg1);
 }
 
+export function GetMarkdownAssociationStatus() {
+  return window['go']['main']['App']['GetMarkdownAssociationStatus']();
+}
+
 export function GetReadingMemory() {
   return window['go']['main']['App']['GetReadingMemory']();
 }
@@ -48,6 +52,10 @@ export function OpenDocument(arg1) {
 
 export function OpenDownloadedUpdate(arg1) {
   return window['go']['main']['App']['OpenDownloadedUpdate'](arg1);
+}
+
+export function OpenMarkdownDefaultAppsSettings() {
+  return window['go']['main']['App']['OpenMarkdownDefaultAppsSettings']();
 }
 
 export function OpenWorkspace() {

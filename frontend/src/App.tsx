@@ -1,6 +1,7 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
+import {ExternalLink, FileText, Settings, X} from 'lucide-react';
 import {ClipboardSetText, EventsOn, Quit, WindowMinimise, WindowToggleMaximise} from '../wailsjs/runtime/runtime';
-import {CheckForUpdates, ConsumeLaunchRequest, DismissUpdate, DownloadUpdate, GetBootstrap, GetReadingMemory, GetReadingPosition, GetReadingSession, LoadDirectory, OpenDocument, OpenDownloadedUpdate, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspaces, RemoveWorkspace, RenamePath, ReorderWorkspaces, RestoreWorkspaces, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
+import {CheckForUpdates, ConsumeLaunchRequest, DismissUpdate, DownloadUpdate, GetBootstrap, GetMarkdownAssociationStatus, GetReadingMemory, GetReadingPosition, GetReadingSession, LoadDirectory, OpenDocument, OpenDownloadedUpdate, OpenMarkdownDefaultAppsSettings, OpenWorkspace, OpenWorkspaceDocument, RefreshWorkspaces, RemoveWorkspace, RenamePath, ReorderWorkspaces, RestoreWorkspaces, SaveOpenTabs, SaveReadingPosition, SearchWorkspace, StatDocument, SwitchLanguage, SwitchTheme, RevealPath} from '../wailsjs/go/main/App';
 import type {main} from '../wailsjs/go/models';
 import {highlightCodeBlocks} from './codeHighlighter';
 
@@ -16,6 +17,7 @@ type ReadingPosition = main.ReadingPosition;
 type SearchResult = main.SearchResult;
 type UpdateInfo = main.UpdateInfo;
 type LaunchRequest = main.LaunchRequest;
+type MarkdownAssociationStatus = main.MarkdownAssociationStatus;
 
 const FIND_MATCH_CLASS = 'kern-find-match';
 const FIND_CURRENT_CLASS = 'kern-find-current';
@@ -88,6 +90,12 @@ function App() {
     const [activeHeadingId, setActiveHeadingId] = useState('');
     const [openDocumentsHeight, setOpenDocumentsHeight] = useState(168);
     const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [settingsBusy, setSettingsBusy] = useState(false);
+    const [settingsErrorKey, setSettingsErrorKey] = useState('');
+    const [associationStatus, setAssociationStatus] = useState<MarkdownAssociationStatus | null>(null);
+    const [associationChecking, setAssociationChecking] = useState(false);
+    const [associationBusy, setAssociationBusy] = useState(false);
     const draggingWorkspaceIdRef = useRef('');
     const markdownBodyRef = useRef<HTMLDivElement | null>(null);
     const readerScrollRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +114,8 @@ function App() {
     const actionFeedbackTimerRef = useRef<number | null>(null);
     const searchTargetRef = useRef<SearchTarget | null>(null);
     const documentPathRef = useRef('');
+    const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+    const settingsDialogRef = useRef<HTMLDialogElement | null>(null);
     const shell = bootstrap?.shellLocale ?? {};
     const text = bootstrap?.businessLocale ?? {};
     const product = bootstrap?.product;
@@ -193,6 +203,52 @@ function App() {
     }, [currentTheme]);
 
     useEffect(() => {
+        const dialog = settingsDialogRef.current;
+        if (!dialog) {
+            return;
+        }
+        if (settingsOpen && !dialog.open) {
+            dialog.showModal();
+        } else if (!settingsOpen && dialog.open) {
+            dialog.close();
+        }
+    }, [settingsOpen]);
+
+    useEffect(() => {
+        if (!settingsOpen) {
+            return;
+        }
+        let cancelled = false;
+        const refreshAssociationStatus = () => {
+            setAssociationChecking(true);
+            void GetMarkdownAssociationStatus()
+                .then(status => {
+                    if (!cancelled) {
+                        setAssociationStatus(status);
+                        setSettingsErrorKey(key => key === 'settings.association_status_error' ? '' : key);
+                    }
+                })
+                .catch(() => {
+                    if (!cancelled) {
+                        setAssociationStatus(null);
+                        setSettingsErrorKey('settings.association_status_error');
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) {
+                        setAssociationChecking(false);
+                    }
+                });
+        };
+        refreshAssociationStatus();
+        window.addEventListener('focus', refreshAssociationStatus);
+        return () => {
+            cancelled = true;
+            window.removeEventListener('focus', refreshAssociationStatus);
+        };
+    }, [settingsOpen]);
+
+    useEffect(() => {
         const root = markdownBodyRef.current;
         if (!root || !document?.html) {
             return;
@@ -208,7 +264,7 @@ function App() {
 
     useEffect(() => {
         const openFind = () => {
-            if (!document) {
+            if (!document || settingsOpen) {
                 return;
             }
             setFindOpen(true);
@@ -218,10 +274,13 @@ function App() {
         return () => {
             window.removeEventListener('kern:find', openFind);
         };
-    }, [document]);
+    }, [document, settingsOpen]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (settingsOpen) {
+                return;
+            }
             const key = event.key.toLowerCase();
             const isCommand = event.ctrlKey || event.metaKey;
             if (!isCommand) {
@@ -246,7 +305,7 @@ function App() {
         return () => {
             window.removeEventListener('keydown', handleKeyDown, true);
         };
-    }, [document, tabs, documentBusy]);
+    }, [document, tabs, documentBusy, settingsOpen]);
 
     useEffect(() => {
         if (!contextMenu) {
@@ -1159,13 +1218,50 @@ function App() {
     }
 
     async function switchLanguage(locale: string) {
-        const data = await SwitchLanguage(locale);
-        setBootstrap(data);
+        setSettingsBusy(true);
+        setSettingsErrorKey('');
+        try {
+            const data = await SwitchLanguage(locale);
+            setBootstrap(data);
+        } catch {
+            setSettingsErrorKey('settings.preference_error');
+        } finally {
+            setSettingsBusy(false);
+        }
     }
 
     async function switchTheme(theme: string) {
-        const data = await SwitchTheme(theme);
-        setBootstrap(data);
+        setSettingsBusy(true);
+        setSettingsErrorKey('');
+        try {
+            const data = await SwitchTheme(theme);
+            setBootstrap(data);
+        } catch {
+            setSettingsErrorKey('settings.preference_error');
+        } finally {
+            setSettingsBusy(false);
+        }
+    }
+
+    function openSettings() {
+        setContextMenu(null);
+        setUpdatePanelOpen(false);
+        setSettingsErrorKey('');
+        setAssociationStatus(null);
+        setAssociationChecking(true);
+        setSettingsOpen(true);
+    }
+
+    async function openMarkdownDefaultAppsSettings() {
+        setAssociationBusy(true);
+        setSettingsErrorKey('');
+        try {
+            await OpenMarkdownDefaultAppsSettings();
+        } catch {
+            setSettingsErrorKey('settings.association_open_error');
+        } finally {
+            setAssociationBusy(false);
+        }
     }
 
     function handleSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -1582,30 +1678,16 @@ function App() {
                         ) : null}
                     </div>
                 ) : null}
-                <label className="toolbar-select">
-                    <span>{shell['menu.language']}</span>
-                    <select
-                        value={bootstrap.currentLocale}
-                        aria-label={shell['menu.language']}
-                        onChange={event => void switchLanguage(event.currentTarget.value)}
-                    >
-                        {product?.languages?.map(language => (
-                            <option key={language.code} value={language.code}>{language.label}</option>
-                        ))}
-                    </select>
-                </label>
-                <label className="toolbar-select">
-                    <span>{shell['menu.theme']}</span>
-                    <select
-                        value={currentTheme}
-                        aria-label={shell['menu.theme']}
-                        onChange={event => void switchTheme(event.currentTarget.value)}
-                    >
-                        <option value="system">{shell['theme.system']}</option>
-                        <option value="light">{shell['theme.light']}</option>
-                        <option value="dark">{shell['theme.dark']}</option>
-                    </select>
-                </label>
+                <button
+                    ref={settingsButtonRef}
+                    type="button"
+                    className="toolbar-icon-button"
+                    title={shell['menu.settings']}
+                    aria-label={shell['menu.settings']}
+                    onClick={openSettings}
+                >
+                    <Settings size={16} strokeWidth={1.8} aria-hidden="true"/>
+                </button>
             </section>
 
             <section className="workspace-layout">
@@ -1860,6 +1942,110 @@ function App() {
                     )}
                 </aside>
             </section>
+            <dialog
+                ref={settingsDialogRef}
+                className="settings-dialog"
+                aria-labelledby="settings-dialog-title"
+                onCancel={event => {
+                    event.preventDefault();
+                    setSettingsOpen(false);
+                }}
+                onClose={() => {
+                    setSettingsOpen(false);
+                    settingsButtonRef.current?.focus();
+                }}
+                onClick={event => {
+                    if (event.target === event.currentTarget) {
+                        setSettingsOpen(false);
+                    }
+                }}
+            >
+                <header className="settings-header">
+                    <h2 id="settings-dialog-title">{shell['settings.title']}</h2>
+                    <button
+                        type="button"
+                        className="settings-close-button"
+                        title={shell['settings.close']}
+                        aria-label={shell['settings.close']}
+                        onClick={() => setSettingsOpen(false)}
+                    >
+                        <X size={17} strokeWidth={1.8} aria-hidden="true"/>
+                    </button>
+                </header>
+                <div className="settings-content">
+                    <section className="settings-section" aria-labelledby="settings-appearance-title">
+                        <h3 id="settings-appearance-title">{shell['settings.appearance']}</h3>
+                        <div className="settings-row">
+                            <label htmlFor="settings-language">{shell['menu.language']}</label>
+                            <select
+                                id="settings-language"
+                                value={bootstrap.currentLocale}
+                                disabled={settingsBusy}
+                                onChange={event => void switchLanguage(event.currentTarget.value)}
+                            >
+                                {product?.languages?.map(language => (
+                                    <option key={language.code} value={language.code}>{language.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="settings-row">
+                            <span className="settings-row-label" id="settings-theme-label">{shell['menu.theme']}</span>
+                            <div className="segmented-control" role="group" aria-labelledby="settings-theme-label">
+                                {(['system', 'light', 'dark'] as const).map(theme => (
+                                    <button
+                                        type="button"
+                                        key={theme}
+                                        className={currentTheme === theme ? 'active' : ''}
+                                        aria-pressed={currentTheme === theme}
+                                        disabled={settingsBusy}
+                                        onClick={() => void switchTheme(theme)}
+                                    >
+                                        {shell[`theme.${theme}`]}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {(associationStatus === null || associationStatus.supported) ? (
+                        <section className="settings-section association-section" aria-labelledby="settings-association-title">
+                            <h3 id="settings-association-title">{shell['settings.association_title']}</h3>
+                            <div className="association-row">
+                                <div className="association-status-icon" aria-hidden="true">
+                                    <FileText size={18} strokeWidth={1.7}/>
+                                </div>
+                                <div className="association-status-copy" aria-live="polite">
+                                    <span className="association-status-title">
+                                        {associationStatus === null
+                                            ? shell[associationChecking
+                                                ? 'settings.association_checking'
+                                                : 'settings.association_unavailable']
+                                            : associationStatus.default
+                                                ? shell['settings.association_default']
+                                                : associationStatus.registered
+                                                    ? shell['settings.association_registered']
+                                                    : shell['settings.association_missing']}
+                                    </span>
+                                    <span className="association-extensions">.md · .markdown · .mdown</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="settings-action-button"
+                                    disabled={associationBusy || associationStatus === null || !associationStatus.registered}
+                                    onClick={() => void openMarkdownDefaultAppsSettings()}
+                                >
+                                    <ExternalLink size={15} strokeWidth={1.8} aria-hidden="true"/>
+                                    <span>{associationBusy ? shell['settings.association_opening'] : shell['settings.association_open']}</span>
+                                </button>
+                            </div>
+                        </section>
+                    ) : null}
+
+                    {settingsErrorKey ? (
+                        <div className="settings-error" role="alert">{shell[settingsErrorKey]}</div>
+                    ) : null}
+                </div>
+            </dialog>
             {contextMenu ? (
                 <ContextMenu
                     x={contextMenu.x}

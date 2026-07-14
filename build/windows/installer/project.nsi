@@ -35,6 +35,9 @@ Unicode true
 !include "wails_tools.nsh"
 !include "LogicLib.nsh"
 
+!define MARKDOWN_PROGID "JSKernMD.Markdown"
+!define MARKDOWN_CAPABILITIES_KEY "Software\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}\Capabilities"
+
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -133,32 +136,78 @@ noInstallLocation:
 donePreviousInstallDir:
 FunctionEnd
 
-Function RegisterExplorerMenus
+Function RegisterWindowsIntegration
     SetRegView 64
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "" "Open with JS Kern.md"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
-    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
-    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    WriteRegStr HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
-    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
-    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
-    WriteRegStr HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
-FunctionEnd
 
-Function un.UnregisterExplorerMenus
-    SetRegView 64
+    # Remove current-user keys created by releases before machine-wide registration.
     DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open"
     DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open"
     DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open"
     DeleteRegKey HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace"
     DeleteRegKey HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace"
+
+    WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}" "" "JS Kern.md Markdown Document"
+    WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+    WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+
+    WriteRegStr HKLM "Software\Classes\.md\OpenWithProgids" "${MARKDOWN_PROGID}" ""
+    WriteRegStr HKLM "Software\Classes\.markdown\OpenWithProgids" "${MARKDOWN_PROGID}" ""
+    WriteRegStr HKLM "Software\Classes\.mdown\OpenWithProgids" "${MARKDOWN_PROGID}" ""
+
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}" "FriendlyAppName" "${INFO_PRODUCTNAME}"
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".md" ""
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".markdown" ""
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".mdown" ""
+
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}" "ApplicationName" "${INFO_PRODUCTNAME}"
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}" "ApplicationDescription" "Desktop Markdown reader"
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}" "ApplicationIcon" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}\FileAssociations" ".md" "${MARKDOWN_PROGID}"
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}\FileAssociations" ".markdown" "${MARKDOWN_PROGID}"
+    WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}\FileAssociations" ".mdown" "${MARKDOWN_PROGID}"
+    WriteRegStr HKLM "Software\RegisteredApplications" "${INFO_PRODUCTNAME}" "${MARKDOWN_CAPABILITIES_KEY}"
+
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "" "Open with JS Kern.md"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
+    WriteRegStr HKLM "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
+    WriteRegStr HKLM "Software\Classes\Directory\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\Directory\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
+    WriteRegStr HKLM "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "" "Add to JS Kern.md workspace"
+    WriteRegStr HKLM "Software\Classes\Folder\shell\JSKernMD.AddWorkspace" "Icon" "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    WriteRegStr HKLM "Software\Classes\Folder\shell\JSKernMD.AddWorkspace\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --add-workspace "%1"'
+
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+FunctionEnd
+
+Function un.UnregisterWindowsIntegration
+    SetRegView 64
+    DeleteRegValue HKLM "Software\Classes\.md\OpenWithProgids" "${MARKDOWN_PROGID}"
+    DeleteRegValue HKLM "Software\Classes\.markdown\OpenWithProgids" "${MARKDOWN_PROGID}"
+    DeleteRegValue HKLM "Software\Classes\.mdown\OpenWithProgids" "${MARKDOWN_PROGID}"
+    DeleteRegKey HKLM "Software\Classes\${MARKDOWN_PROGID}"
+    DeleteRegKey HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}"
+    DeleteRegValue HKLM "Software\RegisteredApplications" "${INFO_PRODUCTNAME}"
+    DeleteRegKey HKLM "Software\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
+    DeleteRegKey HKLM "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open"
+    DeleteRegKey HKLM "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open"
+    DeleteRegKey HKLM "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open"
+    DeleteRegKey HKLM "Software\Classes\Directory\shell\JSKernMD.AddWorkspace"
+    DeleteRegKey HKLM "Software\Classes\Folder\shell\JSKernMD.AddWorkspace"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.md\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.markdown\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.mdown\shell\JSKernMD.Open"
+    DeleteRegKey HKCU "Software\Classes\Directory\shell\JSKernMD.AddWorkspace"
+    DeleteRegKey HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace"
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 FunctionEnd
 
 Section
@@ -175,7 +224,7 @@ Section
 
     !insertmacro wails.associateFiles
     !insertmacro wails.associateCustomProtocols
-    Call RegisterExplorerMenus
+    Call RegisterWindowsIntegration
 
     !insertmacro wails.writeUninstaller
     SetRegView 64
@@ -195,7 +244,7 @@ Section "uninstall"
 
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols
-    Call un.UnregisterExplorerMenus
+    Call un.UnregisterWindowsIntegration
 
     !insertmacro wails.deleteUninstaller
 SectionEnd

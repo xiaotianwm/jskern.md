@@ -30,6 +30,8 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Resolve local images and relative links safely.
 - Highlight code blocks with Shiki.
 - Support Chinese and English UI through Go-managed i18n.
+- Keep language and theme controls in one focused settings dialog opened from the main toolbar.
+- On Windows, register JS Kern.md as a Markdown default-app candidate during installation and let users repair or choose the default through the official Windows Settings page.
 - Preserve a frameless, anti-web desktop shell.
 
 ## Explicit Non-Goals For MVP
@@ -39,6 +41,7 @@ Build a native-feeling desktop Markdown reader for folders of Markdown documents
 - Plugin marketplace.
 - Multi-window document management.
 - Remote collaboration.
+- Silently forcing Windows protected per-user default-app choices.
 
 ## Product Principle
 

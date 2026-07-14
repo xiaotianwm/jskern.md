@@ -14,6 +14,8 @@ export function DownloadUpdate(arg1:string,arg2:string):Promise<main.UpdateInfo>
 
 export function GetBootstrap(arg1:string):Promise<main.Bootstrap>;
 
+export function GetMarkdownAssociationStatus():Promise<main.MarkdownAssociationStatus>;
+
 export function GetReadingMemory():Promise<main.ReadingMemorySnapshot>;
 
 export function GetReadingPosition(arg1:string):Promise<main.ReadingPosition>;
@@ -25,6 +27,8 @@ export function LoadDirectory(arg1:string):Promise<main.TreeNode>;
 export function OpenDocument(arg1:string):Promise<main.Document>;
 
 export function OpenDownloadedUpdate(arg1:string):Promise<void>;
+
+export function OpenMarkdownDefaultAppsSettings():Promise<void>;
 
 export function OpenWorkspace():Promise<main.WorkspaceCollection>;
 

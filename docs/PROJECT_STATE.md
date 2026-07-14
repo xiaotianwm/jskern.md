@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned one-level-at-a-time directory loading and loaded-tree auto-sync, Go-owned multi-tab reading sessions, reading-position restore, desktop context menus, localized weak context-action feedback, workspace search with hit line numbers and open-result focus, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, persisted language/theme preferences, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
+Readable Markdown document MVP loop with persisted multi-root workspaces, Go-owned one-level-at-a-time directory loading and loaded-tree auto-sync, Go-owned multi-tab reading sessions, reading-position restore, desktop context menus, localized weak context-action feedback, workspace search with hit line numbers and open-result focus, current-document find, Markdown-body-only select-all, local relative resource support, Shiki code highlighting, product app icon assets, document status notices, a focused settings dialog for persisted language/theme preferences and Windows Markdown default-app management, Go-owned update checks/downloads, reader layout/titlebar fixes, directory-tree rename, closed-tab reading-memory cleanup, manifest-owned Go product version, Windows Explorer context-menu entry points, titlebar/window-control and workspace drag interaction fixes, synchronized outline navigation and reading progress, and GitHub installer releases.
 
 ## Done
 
@@ -202,6 +202,13 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Added localized Chinese and English directory-load failure feedback.
 - Added tests for on-demand levels, invalid targets, loaded-only refresh, rename compatibility, and large-directory benchmarks.
 - Product version advanced to `0.1.18` for large-workspace directory loading performance.
+- Toolbar language and theme controls were consolidated into one icon-only settings button with localized accessible naming.
+- Added a native settings dialog containing language selection, a three-mode theme segmented control, and Windows Markdown file-association status.
+- Added `GetMarkdownAssociationStatus()` and `OpenMarkdownDefaultAppsSettings()` as Go-owned native integration APIs.
+- Windows installer now registers `JSKernMD.Markdown`, `Applications\jskernmd.exe`, app capabilities, `RegisteredApplications`, and `.md/.markdown/.mdown` OpenWith candidates under HKLM.
+- Windows association management opens the official default-app Settings page and never writes the protected user `UserChoice` key.
+- Explorer context-menu registration moved from legacy current-user keys to the existing administrator installer lifecycle; upgrades clean the legacy keys and uninstall remains product-scoped.
+- Product version advanced to `0.1.19` for the settings and Markdown association release.
 
 ## Next
 
@@ -225,9 +232,24 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Reading memory depends on stable generated heading IDs for changed-document heading fallback.
 - Tab-session restore intentionally drops tabs whose files no longer exist or no longer validate inside the current workspace.
 - The raw Wails application executable currently has empty Windows PE version fields even though the installer metadata is productized; handle raw exe PE resource productization separately if Windows file properties or task-manager details become user-facing.
+- Windows intentionally requires the user to confirm the actual `.md` default app in system Settings; installation only registers JS Kern.md as an eligible candidate.
 
 ## Validation
 
+- Latest validation after settings and Markdown association v0.1.19:
+  - Product version sources were updated to `0.1.19`.
+  - `go test ./...` passed, including settings locale coverage and NSIS registry ownership/symmetry checks.
+  - `go vet ./...` passed.
+  - `wails generate module` passed and generated both new Go APIs plus `MarkdownAssociationStatus` bindings.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Local browser-mode Wails-binding simulation verified the modal in dark and light themes, complete control layout, association status, and trigger-focus restoration after close.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Fresh-build hidden launch smoke passed: the process remained alive after 5 seconds, then only the test-started process was stopped.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.19/JSKernMD-Setup-0.1.19-x64.exe`.
+  - Installer size is `7330992` bytes and `SHA256SUMS.txt` matches SHA256 `f678d94c284d43f16fc795492be42af7f9756ae736b664bc0c90a1a92fdce078`.
+  - Installer metadata verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.19`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+  - `git diff --check` passed after removing Wails-generated template substitutions and trailing whitespace.
 - Latest validation after large-workspace lazy directory loading v0.1.18:
   - Product version sources were updated to `0.1.18`.
   - `go test ./...` passed.

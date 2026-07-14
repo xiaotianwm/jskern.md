@@ -62,6 +62,37 @@ func TestActionFeedbackLocaleKeys(t *testing.T) {
 	}
 }
 
+func TestSettingsLocaleKeys(t *testing.T) {
+	keys := []string{
+		"menu.settings",
+		"settings.title",
+		"settings.close",
+		"settings.appearance",
+		"settings.association_title",
+		"settings.association_checking",
+		"settings.association_default",
+		"settings.association_registered",
+		"settings.association_missing",
+		"settings.association_unavailable",
+		"settings.association_open",
+		"settings.association_opening",
+		"settings.association_status_error",
+		"settings.association_open_error",
+		"settings.preference_error",
+	}
+	for _, locale := range []string{"zh-CN", "en"} {
+		messages, err := loadLocale(locale)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range keys {
+			if strings.TrimSpace(messages["shell"][key]) == "" {
+				t.Fatalf("expected %s shell locale to include %q", locale, key)
+			}
+		}
+	}
+}
+
 func TestCurrentManifestVersionIsNotReportedAsUpdate(t *testing.T) {
 	assetName := "JSKernMD-Setup-" + productInfo.Version + "-x64.exe"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

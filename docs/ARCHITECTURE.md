@@ -21,6 +21,7 @@ Go owns:
 - App config, recent workspace state, reading memory, theme, language, and persistence.
 - Open document tab session state, including the active tab for each workspace.
 - Update checks, installer download, checksum verification, ignored update version, and opening the downloaded installer.
+- Windows Markdown association status and launching the official Windows default-app settings page.
 - i18n dictionaries and final dynamic user-visible messages.
 
 React owns:
@@ -34,6 +35,7 @@ React owns:
 - Markdown view rendering from Go-provided document data.
 - App-level `Ctrl/Cmd+A` routing that selects only the rendered Markdown body unless a text input currently owns focus.
 - Outline panel rendering, current-section highlighting, outline auto-follow, and transient reading-progress display.
+- Settings dialog rendering, focus handling, and short-lived preference/association loading or error state.
 - Short-lived UI interaction state such as hover, focus, pending buttons, selection, and current-document find highlights.
 
 React must not directly access the filesystem, maintain translation dictionaries, parse durable business state, or persist business data.
@@ -84,6 +86,11 @@ workspace folder(s)
 -> React may run transient in-document find highlighting over the already-rendered Markdown DOM
 -> React may show an update reminder from Go-provided release metadata
 -> Go downloads and verifies the installer into AppData temp storage when the user requests it
+-> user opens the settings dialog from the toolbar
+-> React changes language/theme only through Go preference APIs
+-> React asks Go for the installed Windows Markdown association status
+-> Go reads product registration and the current `.md` UserChoice without mutating either
+-> React can ask Go to open the official Windows default-app settings page
 ```
 
 Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.
@@ -102,6 +109,7 @@ Supported initial locales: `zh-CN`, `en`.
 ## Initial Wails APIs
 
 - `GetBootstrap(locale)`
+- `GetMarkdownAssociationStatus()`
 - `OpenWorkspace()`
 - `AddWorkspace(path)`
 - `ScanWorkspace(path)`
@@ -130,6 +138,7 @@ Supported initial locales: `zh-CN`, `en`.
 - `DismissUpdate(version)`
 - `DownloadUpdate(downloadURL, sha256)`
 - `OpenDownloadedUpdate(path)`
+- `OpenMarkdownDefaultAppsSettings()`
 
 ## AppData Storage
 
@@ -207,4 +216,4 @@ The Windows installer writes `InstallLocation` to the HKLM uninstall registry en
 
 Before packaging, `scripts/package-windows.ps1` synchronizes `wails.json.info` from `product.manifest.json`, keeping Wails installer metadata aligned with the manifest-driven product identity.
 
-The Windows installer registers Explorer context-menu entries under current-user `Software\Classes` for Markdown file opening and folder workspace addition. The uninstaller removes only the `JSKernMD.Open` and `JSKernMD.AddWorkspace` keys it created.
+The administrator-level Windows installer registers machine-wide Explorer context-menu entries, the `JSKernMD.Markdown` ProgID, `Applications\jskernmd.exe`, application capabilities, `RegisteredApplications`, and OpenWith candidates for `.md`, `.markdown`, and `.mdown`. It does not write the protected per-user `UserChoice`; the settings dialog opens Windows Settings so the user can explicitly choose the default. The uninstaller removes only product-owned keys and values, including legacy current-user context-menu keys from older releases.

@@ -114,3 +114,9 @@ Consequence: Windows Explorer integration belongs to the installer/uninstaller l
 Reason: Recursively scanning every configured workspace during startup and every weak refresh makes the folder-first core scale with the entire library even when most directories remain collapsed.
 
 Consequence: Workspace restore validates only each root. React requests `LoadDirectory(path)` when a directory is expanded, Go validates and reads only that directory's immediate children, and weak refresh scans only directory levels already loaded into the Go runtime tree. Search remains a separate bounded on-demand scan and no index database is introduced.
+
+## 2026-07-14: Register Markdown Capability In The Installer Without Forcing The Default
+
+Reason: JS Kern.md should appear as a normal Windows default-app candidate, but Windows protects each user's actual file-type choice through the hashed `UserChoice` key.
+
+Consequence: The administrator-level NSIS installer registers the product ProgID, application capabilities, `RegisteredApplications`, supported Markdown extensions, and Explorer entry points under HKLM. The application may read association status and open the official Windows default-app settings page, but neither installer nor application may write `UserChoice`. Uninstall removes only JS Kern.md-owned keys and values.

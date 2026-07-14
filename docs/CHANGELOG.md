@@ -1,5 +1,51 @@
 # 更新日志
 
+## 2026-07-14 - v0.1.19 Settings And Markdown Association
+
+### 新增
+
+- 新增独立设置弹窗，原工具栏语言和主题下拉框收拢为一个 Lucide 设置图标按钮。
+- 设置弹窗内保留语言选择，并将主题改为“跟随系统 / 浅色 / 深色”三段式控件。
+- 新增 `GetMarkdownAssociationStatus()`：Windows 下读取机器级应用能力注册及当前用户 `.md` 默认 ProgID，其他平台返回不支持。
+- 新增 `OpenMarkdownDefaultAppsSettings()`：打开 Windows 官方默认应用页面并定位到机器级注册的 JS Kern.md。
+- 新增中英文设置、关联状态、忙碌和错误文案，继续由 Go Bootstrap shell locale 下发。
+- 新增 locale 完整性测试以及 NSIS 注册/卸载对称性测试。
+
+### 变更
+
+- Windows 管理员安装器现在注册 `JSKernMD.Markdown` ProgID、`Applications\jskernmd.exe`、带应用图标的 Capabilities、`RegisteredApplications` 以及 `.md/.markdown/.mdown` OpenWith 候选。
+- 默认状态识别同时接受自定义 ProgID 与 Windows“打开方式”可能写入的 `Applications\jskernmd.exe`，避免误报。
+- Explorer Markdown 打开与文件夹加入工作区入口从旧版 HKCU 键迁移到 HKLM；升级时清理旧键，卸载时同时清理产品自己的新旧键。
+- 安装和运行时都不写 Windows 受保护的 `UserChoice`；真正的默认应用选择仍由用户在 Windows 设置中确认。
+- 设置弹窗支持 `Escape`、点击遮罩和关闭按钮退出，关闭后焦点返回工具栏设置按钮；关联状态会在窗口重新获得焦点后刷新。
+- 设置控件包含忙碌禁用、错误提示、辅助技术状态播报和可见键盘焦点样式。
+- README、产品范围、架构、约束、决策记录和项目状态已同步设置与文件关联边界。
+- 将产品版本提升到 `0.1.19`。
+
+### 验证
+
+- `go test ./...` passed，包含设置 locale、NSIS 注册/卸载对称性、共享扩展键保护以及禁止 `UserChoice` 写入测试。
+- `go vet ./...` passed。
+- `wails generate module` passed，前端绑定包含 `GetMarkdownAssociationStatus()`、`OpenMarkdownDefaultAppsSettings()` 和 `MarkdownAssociationStatus`。
+- `npm.cmd run build` passed from `frontend/`；保留既有 Shiki WASM chunk-size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- 本地 Wails 绑定模拟视觉检查通过：设置弹窗在深色和浅色主题均无重叠，控件和长按钮文案完整可见，关闭后焦点返回设置按钮。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- 新构建隐藏启动冒烟通过：`jskernmd.exe` 在 5 秒后保持运行，随后只停止了本次测试启动的进程。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass`；新增 HKLM 注册脚本通过 `makensis` 编译。
+- Installer metadata verification passed：`ProductName=JS Kern.md`，`ProductVersion=0.1.19`，`FileDescription=JS Kern.md Installer`，`CompanyName=JS Labs`。
+- `git diff --check` passed after cleaning Wails-generated template substitutions and trailing whitespace。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.19-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7330992` bytes。
+- Installer SHA256: `f678d94c284d43f16fc795492be42af7f9756ae736b664bc0c90a1a92fdce078`。
+- Published release target: `v0.1.19`。
+
+---
+
 ## 2026-07-11 - v0.1.18 Large Workspace Lazy Directory Loading
 
 ### 新增
