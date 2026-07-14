@@ -36,6 +36,9 @@
 - Installer size: `7331324` bytes。
 - Installer SHA256: `3054cf4acf21e7f7866cbffa3ac8ccb3f3b93ff4fe4d6976272f7ed7975825eb`。
 - Published release target: `v0.1.20`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.20`。
+- GitHub Release `v0.1.20` 已核验为 Latest，标签解析到提交 `09f1ed958deff1c66e48892c430652b48a7d1560`。
+- 远端资产核验通过：安装包 label/name 均为 `JSKernMD-Setup-0.1.20-x64.exe`，大小为 `7331324` bytes，digest 为 `sha256:3054cf4acf21e7f7866cbffa3ac8ccb3f3b93ff4fe4d6976272f7ed7975825eb`；校验文件 label/name 均为 `SHA256SUMS.txt`。
 
 ---
 
