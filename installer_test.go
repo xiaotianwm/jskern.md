@@ -47,6 +47,40 @@ func TestWindowsInstallerDoesNotWriteProtectedUserChoice(t *testing.T) {
 	}
 }
 
+func TestWindowsInstallerUsesDedicatedMarkdownFileIcon(t *testing.T) {
+	script := readInstallerScript(t)
+	icon, err := os.Stat(`build/windows/markdown-file.ico`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if icon.Size() == 0 {
+		t.Fatal("dedicated Markdown icon is empty")
+	}
+
+	required := []string{
+		`!define MARKDOWN_FILE_ICON "markdown-file.ico"`,
+		`File /oname=${MARKDOWN_FILE_ICON} "..\markdown-file.ico"`,
+		`WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" '"$INSTDIR\${MARKDOWN_FILE_ICON}",0'`,
+		`WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\DefaultIcon" "" '"$INSTDIR\${MARKDOWN_FILE_ICON}",0'`,
+		`WriteRegStr HKLM "${MARKDOWN_CAPABILITIES_KEY}" "ApplicationIcon" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'`,
+	}
+	for _, value := range required {
+		if !strings.Contains(script, value) {
+			t.Errorf("installer is missing dedicated Markdown icon behavior %q", value)
+		}
+	}
+
+	legacy := []string{
+		`WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'`,
+		`WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'`,
+	}
+	for _, value := range legacy {
+		if strings.Contains(script, value) {
+			t.Fatalf("Markdown documents must not reuse the application executable icon: %q", value)
+		}
+	}
+}
+
 func readInstallerScript(t *testing.T) string {
 	t.Helper()
 	content, err := os.ReadFile(`build/windows/installer/project.nsi`)

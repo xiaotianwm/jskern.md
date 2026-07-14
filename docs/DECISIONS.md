@@ -126,3 +126,9 @@ Consequence: The administrator-level NSIS installer registers the product ProgID
 Reason: Passing an `ms-settings:` URI to `explorer.exe` can make Windows interpret it as a filesystem path and open a folder instead of Settings.
 
 Consequence: Go opens Windows shell-protocol URIs through `ShellExecuteW`. The Markdown default-app action first opens the registered-app URI and falls back to the generic default-app Settings page only if native launch returns an error.
+
+## 2026-07-14: Use A Dedicated Markdown Document Icon
+
+Reason: Reusing the JS Kern.md application icon for registered Markdown files makes documents look like application shortcuts in Windows Explorer.
+
+Consequence: The installer ships a separate multi-resolution `markdown-file.ico` based on the CC0 Markdown Mark and assigns it to both file-association ProgID variants that Windows may store in `UserChoice`. Capabilities application identity, shortcuts, and command icons remain tied to `jskernmd.exe`.

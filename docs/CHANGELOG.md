@@ -1,5 +1,46 @@
 # 更新日志
 
+## 2026-07-14 - v0.1.21 Dedicated Markdown File Icon
+
+### 新增
+
+- 新增独立的 `markdown-file-icon.svg` 源图标：浅色文档页、深色 Markdown 标记和与应用品牌呼应的琥珀色折角。
+- Markdown 标记采用 Dustin Curtis `dcurtis/markdown-mark` 的 CC0 公共领域素材，不引入额外署名或再分发限制。
+- 新增 1024 像素 PNG 以及包含 `16 / 20 / 24 / 32 / 40 / 48 / 64 / 128 / 256` 像素层级的 Windows ICO。
+- 新增安装器测试，锁定独立文件图标的复制路径、两种可能的 ProgID 注册值以及应用身份图标保持不变的边界。
+
+### 变更
+
+- Windows 安装器现在将 `markdown-file.ico` 复制到安装目录，并让 `JSKernMD.Markdown` 与 `Applications\jskernmd.exe` 两种可能写入 `UserChoice` 的 ProgID 都使用该文件。
+- Capabilities 应用身份、快捷方式和 Explorer 命令继续使用主程序图标，文件身份与应用身份不再混淆。
+- 未修改 `.md/.markdown/.mdown` 的候选注册、受保护的 `UserChoice` 或默认应用确认流程。
+- README、产品范围、架构、约束、决策记录和项目状态已同步独立文件图标边界。
+- 将产品版本提升到 `0.1.21`。
+
+### 验证
+
+- 视觉检查通过：16 像素仍可辨认文档轮廓，24/32 像素的 `M↓` 标记清晰，且与应用图标明显不同。
+- ICO 结构检查通过：包含全部 9 个目标尺寸层级和有效透明通道。
+- `go test ./...` passed，包含独立 Markdown 文件图标安装器测试。
+- `go vet ./...` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有 Shiki WASM chunk-size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.21/JSKernMD-Setup-0.1.21-x64.exe`。
+- NSIS 内容核验通过：安装包包含 `markdown-file.ico`，解出后的 SHA256 与 `build/windows/markdown-file.ico` 完全一致。
+- 新构建隐藏启动冒烟通过：`jskernmd.exe` 在 5 秒后保持运行，随后只停止了本次测试启动的进程。
+- Installer metadata verification passed：`ProductName=JS Kern.md`，`ProductVersion=0.1.21`，`FileDescription=JS Kern.md Installer`，`CompanyName=JS Labs`。
+- `git diff --check` passed after removing Wails-generated template and binding whitespace noise。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.21-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7358751` bytes。
+- Installer SHA256: `0ac337c581a2566b2e5bb01e42ad945bd12baed1b51996163276277c7b2cbcd8`。
+- Published release target: `v0.1.21`。
+
+---
+
 ## 2026-07-14 - v0.1.20 Windows Settings URI Launch Fix
 
 ### 修复

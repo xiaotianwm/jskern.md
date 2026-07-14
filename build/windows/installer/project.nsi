@@ -36,6 +36,7 @@ Unicode true
 !include "LogicLib.nsh"
 
 !define MARKDOWN_PROGID "JSKernMD.Markdown"
+!define MARKDOWN_FILE_ICON "markdown-file.ico"
 !define MARKDOWN_CAPABILITIES_KEY "Software\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}\Capabilities"
 
 # The version information for this two must consist of 4 parts
@@ -147,7 +148,7 @@ Function RegisterWindowsIntegration
     DeleteRegKey HKCU "Software\Classes\Folder\shell\JSKernMD.AddWorkspace"
 
     WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}" "" "JS Kern.md Markdown Document"
-    WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+    WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\DefaultIcon" "" '"$INSTDIR\${MARKDOWN_FILE_ICON}",0'
     WriteRegStr HKLM "Software\Classes\${MARKDOWN_PROGID}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
 
     WriteRegStr HKLM "Software\Classes\.md\OpenWithProgids" "${MARKDOWN_PROGID}" ""
@@ -155,7 +156,7 @@ Function RegisterWindowsIntegration
     WriteRegStr HKLM "Software\Classes\.mdown\OpenWithProgids" "${MARKDOWN_PROGID}" ""
 
     WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}" "FriendlyAppName" "${INFO_PRODUCTNAME}"
-    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\DefaultIcon" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}",0'
+    WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\DefaultIcon" "" '"$INSTDIR\${MARKDOWN_FILE_ICON}",0'
     WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\shell\open\command" "" '"$INSTDIR\${PRODUCT_EXECUTABLE}" --open-file "%1"'
     WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".md" ""
     WriteRegStr HKLM "Software\Classes\Applications\${PRODUCT_EXECUTABLE}\SupportedTypes" ".markdown" ""
@@ -218,6 +219,7 @@ Section
     SetOutPath $INSTDIR
 
     !insertmacro wails.files
+    File /oname=${MARKDOWN_FILE_ICON} "..\markdown-file.ico"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

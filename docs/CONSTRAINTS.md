@@ -111,6 +111,7 @@
 - Windows installer upgrades must default to the previously installed directory by reading the app uninstall registry entry; new installs must write `InstallLocation`, and upgrades from older installers must fall back to deriving the directory from the previous `UninstallString`.
 - Windows installer metadata in `wails.json.info` must be synchronized from `product.manifest.json` before packaging so the installer and uninstall entry stay aligned with the product identity.
 - Windows installer must use its existing administrator elevation to register machine-wide Explorer context-menu entries and JS Kern.md as a candidate for `.md`, `.markdown`, and `.mdown` default-app selection.
+- Both `JSKernMD.Markdown` and the `Applications\jskernmd.exe` fallback ProgID must use the dedicated installed `markdown-file.ico`; Capabilities application identity, shortcuts, and Explorer command icons must continue to use the application executable icon.
 - Windows installer and application code must never write the protected per-user `UserChoice` key; choosing the actual default remains an explicit Windows user action.
 - Windows uninstaller must remove only product-owned ProgID, capabilities, application-registration, OpenWith value, and `JSKernMD.*` context-menu entries without deleting shared extension keys or user documents.
 - GitHub Release asset labels must match their filenames exactly; do not use vague labels such as `Windows x64 installer`.

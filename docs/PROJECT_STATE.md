@@ -213,6 +213,11 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Windows Settings URIs now open through the native `ShellExecuteW` wrapper, with the generic default-app page as an error fallback.
 - Added focused tests for the registered-app URI, success path, and fallback path.
 - Product version advanced to `0.1.20` for the Windows Settings URI launch fix.
+- Added `markdown-file-icon.svg` as the source for a dedicated Windows Markdown document icon, using the CC0 Markdown Mark from `dcurtis/markdown-mark`.
+- Added a 1024-pixel PNG and a Windows ICO containing 16, 20, 24, 32, 40, 48, 64, 128, and 256-pixel icon layers.
+- Windows installer now copies `markdown-file.ico` into the install directory and points both `JSKernMD.Markdown\DefaultIcon` and the `Applications\jskernmd.exe` fallback ProgID to it.
+- Capabilities application identity, shortcuts, and Explorer command icons continue to use the application executable icon.
+- Product version advanced to `0.1.21` for the dedicated Markdown document icon release.
 
 ## Next
 
@@ -240,6 +245,20 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after dedicated Markdown file icon v0.1.21:
+  - Product version sources were updated to `0.1.21`.
+  - Visual checks passed at 16, 20, 24, 32, 48, and 64 pixels; the document silhouette remains visible at 16 pixels and the Markdown mark is clear from 24 pixels upward.
+  - `build/windows/markdown-file.ico` contains 16, 20, 24, 32, 40, 48, 64, 128, and 256-pixel icon layers with transparency.
+  - `go test ./...` passed, including dedicated Markdown icon installer coverage.
+  - `go vet ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.21/JSKernMD-Setup-0.1.21-x64.exe`.
+  - NSIS content verification passed: the installer contains `markdown-file.ico`, and the extracted icon SHA256 matches the source ICO.
+  - Fresh-build hidden launch smoke passed: the process remained alive after 5 seconds, then only the test-started process was stopped.
+  - Installer size is `7358751` bytes and `SHA256SUMS.txt` matches SHA256 `0ac337c581a2566b2e5bb01e42ad945bd12baed1b51996163276277c7b2cbcd8`.
+  - Installer metadata verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.21`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+  - `git diff --check` passed after removing Wails-generated template and binding whitespace noise.
 - Latest validation after Windows Settings URI launch fix v0.1.20:
   - Product version sources were updated to `0.1.20`.
   - Focused URI-launch tests passed for the registered-app URI, single-launch success path, and generic-page fallback.
