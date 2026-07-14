@@ -38,6 +38,9 @@
 - Installer size: `7358751` bytes。
 - Installer SHA256: `0ac337c581a2566b2e5bb01e42ad945bd12baed1b51996163276277c7b2cbcd8`。
 - Published release target: `v0.1.21`。
+- GitHub Release URL: `https://github.com/xiaotianwm/jskern.md/releases/tag/v0.1.21`。
+- GitHub Release `v0.1.21` 已核验为 Latest，标签解析到提交 `916974b7eacd422f0be7a1291d11225e56919c44`。
+- 远端资产核验通过：安装包 label/name 均为 `JSKernMD-Setup-0.1.21-x64.exe`，大小为 `7358751` bytes，digest 为 `sha256:0ac337c581a2566b2e5bb01e42ad945bd12baed1b51996163276277c7b2cbcd8`；校验文件 label/name 均为 `SHA256SUMS.txt`。
 
 ---
 
