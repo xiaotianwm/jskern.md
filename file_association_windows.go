@@ -4,15 +4,16 @@ package main
 
 import (
 	"net/url"
-	"os/exec"
 	"strings"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
 const (
 	markdownProgID            = "JSKernMD.Markdown"
 	markdownApplicationProgID = `Applications\jskernmd.exe`
+	windowsDefaultAppsURI     = "ms-settings:defaultapps"
 )
 
 func platformMarkdownAssociationStatus() (MarkdownAssociationStatus, error) {
@@ -78,6 +79,21 @@ func isJSKernMarkdownProgID(progID string) bool {
 }
 
 func platformOpenMarkdownDefaultAppsSettings() error {
-	settingsURI := "ms-settings:defaultapps?registeredAppMachine=" + url.PathEscape(productInfo.DisplayName)
-	return exec.Command("explorer.exe", settingsURI).Start()
+	return openMarkdownDefaultAppsSettings(shellOpenWindowsURI)
+}
+
+func openMarkdownDefaultAppsSettings(openURI func(string) error) error {
+	settingsURI := windowsDefaultAppsURI + "?registeredAppMachine=" + url.PathEscape(productInfo.DisplayName)
+	if err := openURI(settingsURI); err == nil {
+		return nil
+	}
+	return openURI(windowsDefaultAppsURI)
+}
+
+func shellOpenWindowsURI(uri string) error {
+	uriPointer, err := windows.UTF16PtrFromString(uri)
+	if err != nil {
+		return err
+	}
+	return windows.ShellExecute(0, nil, uriPointer, nil, nil, windows.SW_SHOWNORMAL)
 }

@@ -209,6 +209,10 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 - Windows association management opens the official default-app Settings page and never writes the protected user `UserChoice` key.
 - Explorer context-menu registration moved from legacy current-user keys to the existing administrator installer lifecycle; upgrades clean the legacy keys and uninstall remains product-scoped.
 - Product version advanced to `0.1.19` for the settings and Markdown association release.
+- Fixed the Markdown default-app action opening File Explorer because `explorer.exe` interpreted the `ms-settings:` URI as a path.
+- Windows Settings URIs now open through the native `ShellExecuteW` wrapper, with the generic default-app page as an error fallback.
+- Added focused tests for the registered-app URI, success path, and fallback path.
+- Product version advanced to `0.1.20` for the Windows Settings URI launch fix.
 
 ## Next
 
@@ -236,6 +240,20 @@ Readable Markdown document MVP loop with persisted multi-root workspaces, Go-own
 
 ## Validation
 
+- Latest validation after Windows Settings URI launch fix v0.1.20:
+  - Product version sources were updated to `0.1.20`.
+  - Focused URI-launch tests passed for the registered-app URI, single-launch success path, and generic-page fallback.
+  - `go test ./...` passed.
+  - `go vet ./...` passed.
+  - `npm.cmd run build` passed from `frontend/`; the existing Shiki WASM chunk-size warning remains with no new build error.
+  - `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities.
+  - Real ShellExecute smoke launched `C:\Windows\ImmersiveControlPanel\SystemSettings.exe`, confirming the action no longer routes through File Explorer.
+  - `wails build` passed and produced `build/bin/jskernmd.exe`.
+  - Fresh-build hidden launch smoke passed: the process remained alive after 5 seconds, then only the test-started process was stopped.
+  - `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.20/JSKernMD-Setup-0.1.20-x64.exe`.
+  - Installer size is `7331324` bytes and `SHA256SUMS.txt` matches SHA256 `3054cf4acf21e7f7866cbffa3ac8ccb3f3b93ff4fe4d6976272f7ed7975825eb`.
+  - Installer metadata verification passed: `ProductName=JS Kern.md`, `ProductVersion=0.1.20`, `FileDescription=JS Kern.md Installer`, `CompanyName=JS Labs`.
+  - `git diff --check` passed after removing Wails-generated template substitutions and trailing whitespace.
 - Latest validation after settings and Markdown association v0.1.19:
   - Product version sources were updated to `0.1.19`.
   - `go test ./...` passed, including settings locale coverage and NSIS registry ownership/symmetry checks.

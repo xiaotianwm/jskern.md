@@ -21,7 +21,7 @@ Go owns:
 - App config, recent workspace state, reading memory, theme, language, and persistence.
 - Open document tab session state, including the active tab for each workspace.
 - Update checks, installer download, checksum verification, ignored update version, and opening the downloaded installer.
-- Windows Markdown association status and launching the official Windows default-app settings page.
+- Windows Markdown association status and launching the official Windows default-app settings page through native `ShellExecuteW` protocol handling.
 - i18n dictionaries and final dynamic user-visible messages.
 
 React owns:
@@ -90,7 +90,7 @@ workspace folder(s)
 -> React changes language/theme only through Go preference APIs
 -> React asks Go for the installed Windows Markdown association status
 -> Go reads product registration and the current `.md` UserChoice without mutating either
--> React can ask Go to open the official Windows default-app settings page
+-> React can ask Go to open the official Windows default-app settings page through `ShellExecuteW`, with the generic default-app page as an error fallback
 ```
 
 Go sanitization preserves `language-*` classes only on `pre` and `code` so Shiki can identify fenced code languages. React treats Shiki as a display pass over the current document DOM; unsupported languages remain plain code blocks.

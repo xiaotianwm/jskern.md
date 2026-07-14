@@ -120,3 +120,9 @@ Consequence: Workspace restore validates only each root. React requests `LoadDir
 Reason: JS Kern.md should appear as a normal Windows default-app candidate, but Windows protects each user's actual file-type choice through the hashed `UserChoice` key.
 
 Consequence: The administrator-level NSIS installer registers the product ProgID, application capabilities, `RegisteredApplications`, supported Markdown extensions, and Explorer entry points under HKLM. The application may read association status and open the official Windows default-app settings page, but neither installer nor application may write `UserChoice`. Uninstall removes only JS Kern.md-owned keys and values.
+
+## 2026-07-14: Open Windows Shell URIs Through ShellExecute
+
+Reason: Passing an `ms-settings:` URI to `explorer.exe` can make Windows interpret it as a filesystem path and open a folder instead of Settings.
+
+Consequence: Go opens Windows shell-protocol URIs through `ShellExecuteW`. The Markdown default-app action first opens the registered-app URI and falls back to the generic default-app Settings page only if native launch returns an error.

@@ -1,5 +1,44 @@
 # 更新日志
 
+## 2026-07-14 - v0.1.20 Windows Settings URI Launch Fix
+
+### 修复
+
+- 修复点击设置中的“修复或设置默认应用”后打开文件资源管理器，而不是 Windows 默认应用设置的问题。
+- 根因是 `explorer.exe` 将 `ms-settings:defaultapps?...` 参数按文件系统路径处理。
+
+### 变更
+
+- Windows 设置 URI 改为通过 `golang.org/x/sys/windows` 的原生 `ShellExecuteW` 封装启动。
+- 优先打开带 `registeredAppMachine=JS%20Kern.md` 的精确页面；原生启动返回错误时回退到 `ms-settings:defaultapps`。
+- 未修改安装器注册表结构、Markdown ProgID、Capabilities 或受保护的 `UserChoice` 边界。
+- README、架构、约束、决策记录和项目状态已同步新的 Windows URI 启动边界。
+- 将产品版本提升到 `0.1.20`。
+
+### 验证
+
+- 聚焦 Go 测试通过：覆盖精确 URI、成功后不重复启动和失败后的通用页面回退。
+- `go test ./...` passed。
+- `go vet ./...` passed。
+- `npm.cmd run build` passed from `frontend/`；保留既有 Shiki WASM chunk-size warning，没有新增构建错误。
+- `npm.cmd audit --audit-level=moderate` passed with 0 vulnerabilities。
+- 真实 ShellExecute 冒烟通过：调用后启动 `C:\Windows\ImmersiveControlPanel\SystemSettings.exe`，不再通过文件资源管理器打开路径。
+- `wails build` passed and produced `build/bin/jskernmd.exe`。
+- 新构建隐藏启动冒烟通过：`jskernmd.exe` 在 5 秒后保持运行，随后只停止了本次测试启动的进程。
+- `scripts/package-windows.ps1` passed with process-local `-ExecutionPolicy Bypass` and produced `dist/releases/v0.1.20/JSKernMD-Setup-0.1.20-x64.exe`。
+- Installer metadata verification passed：`ProductName=JS Kern.md`，`ProductVersion=0.1.20`，`FileDescription=JS Kern.md Installer`，`CompanyName=JS Labs`。
+- `git diff --check` passed after cleaning Wails-generated template substitutions and trailing whitespace。
+
+### 发布打包
+
+- Windows installer artifact name: `JSKernMD-Setup-0.1.20-x64.exe`。
+- Checksum artifact: `SHA256SUMS.txt`。
+- Installer size: `7331324` bytes。
+- Installer SHA256: `3054cf4acf21e7f7866cbffa3ac8ccb3f3b93ff4fe4d6976272f7ed7975825eb`。
+- Published release target: `v0.1.20`。
+
+---
+
 ## 2026-07-14 - v0.1.19 Settings And Markdown Association
 
 ### 新增

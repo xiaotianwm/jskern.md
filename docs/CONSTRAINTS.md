@@ -48,6 +48,7 @@
 - Context-menu actions that reveal, rename, or remove workspace roots must go through Go path validation. Removing a workspace only removes it from JS Kern.md and must not delete disk files.
 - Explorer right-click entry points must route through Go-owned CLI argument handling: Markdown files open with JS Kern.md, and folders join the workspace list.
 - Windows Markdown association status and opening the official default-app settings page are Go-owned native integration responsibilities; React must not read or write the registry.
+- Windows shell-protocol URIs such as `ms-settings:` must be opened through the native shell launcher, not passed to `explorer.exe` as filesystem paths.
 - AppData storage must be versioned with `storage_version`, use a layered directory layout, and preserve bad JSON files with `.bad-*` backups instead of silently overwriting them.
 - Update checking, ignored update versions, installer downloads, checksum verification, and opening downloaded installers are Go-owned responsibilities.
 - Current update downloads are sourced from GitHub Releases and must only accept canonical `JSKernMD-Setup-<version>-x64.exe` assets from the official `xiaotianwm/jskern.md` repository.
